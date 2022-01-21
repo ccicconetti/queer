@@ -44,7 +44,7 @@ add_executable(testqr
   ${CMAKE_CURRENT_SOURCE_DIR}/testmain.cpp
 )
 
-target_link_libraries(testqr
   testqrlib
+target_link_libraries(testqr
 )
 
