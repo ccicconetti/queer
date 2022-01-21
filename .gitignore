@@ -41,6 +41,6 @@
 build
 .vscode
 rbuild
-workspace.code-workspace
+*.code-workspace
 .cache
 compile_commands.json
