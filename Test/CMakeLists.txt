@@ -30,6 +30,8 @@ endif()
 include_directories(${CMAKE_BINARY_DIR}/googletest-src/googletest/include)
 
 add_library(testqrlib SHARED
+  ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
+
   ${CMAKE_CURRENT_SOURCE_DIR}/testnetwork.cpp
 )
 
@@ -44,7 +46,7 @@ add_executable(testqr
   ${CMAKE_CURRENT_SOURCE_DIR}/testmain.cpp
 )
 
-  testqrlib
 target_link_libraries(testqr
+  testqrlib
 )
 

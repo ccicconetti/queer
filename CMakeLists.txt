@@ -17,7 +17,7 @@ endif()
 set(Boost_USE_MULTITHREADED TRUE)
 find_package(Boost
   REQUIRED
-  COMPONENTS program_options filesystem system chrono thread
+  COMPONENTS chrono filesystem graph program_options system thread
 )
 
 set(DISABLE_WARNINGS "-Wno-missing-field-initializers -Wno-unused-parameter -Wnon-virtual-dtor")
