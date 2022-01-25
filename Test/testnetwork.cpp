@@ -30,19 +30,24 @@ SOFTWARE.
 */
 
 #include "QuantumRouting/network.h"
+#include "Support/tostring.h"
 
 #include "Details/examplenetwork.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/compressed_sparse_row_graph.hpp>
 #include <boost/graph/detail/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/graph_selectors.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/graph/properties.hpp>
 #include <boost/property_map/dynamic_property_map.hpp>
 #include <boost/property_map/property_map.hpp>
 
+#include <cmath>
 #include <glog/logging.h>
 
 #include <fstream>
@@ -84,42 +89,108 @@ TEST_F(TestNetwork, test_ctor) {
 TEST_F(TestNetwork, test_read_graphml) {
   createExampleNetworkFile();
 
-  struct GraphData {
+  struct VertexData {
     std::string theLabel;
     double      theLongitude;
     double      theLatitude;
   };
 
-  using Graph =
-      boost::adjacency_list<boost::listS,
-                            boost::vecS,
-                            boost::undirectedS,
-                            GraphData,
-                            boost::property<boost::edge_weight_t, float>,
-                            boost::no_property,
-                            boost::listS>;
+  struct EdgeData {
+    double theLinkSpeed;
+    int    theInvLinkSpeed;
+  };
+
+  using Graph = boost::adjacency_list<boost::listS,
+                                      boost::vecS,
+                                      boost::undirectedS,
+                                      VertexData,
+                                      EdgeData,
+                                      boost::no_property,
+                                      boost::listS>;
 
   Graph myGraph;
 
   boost::dynamic_properties myDp(boost::ignore_other_properties);
-  myDp.property("label", boost::get(&GraphData::theLabel, myGraph));
-  myDp.property("Latitude", boost::get(&GraphData::theLatitude, myGraph));
-  myDp.property("Longitude", boost::get(&GraphData::theLongitude, myGraph));
+  myDp.property("label", boost::get(&VertexData::theLabel, myGraph));
+  myDp.property("Latitude", boost::get(&VertexData::theLatitude, myGraph));
+  myDp.property("Longitude", boost::get(&VertexData::theLongitude, myGraph));
+  myDp.property("LinkSpeedRaw", boost::get(&EdgeData::theLinkSpeed, myGraph));
 
   std::ifstream myInfile(theFilename);
   boost::read_graphml(myInfile, myGraph, myDp, 0);
 
+  if (VLOG_IS_ON(1)) {
+    boost::print_graph(myGraph, boost::get(&VertexData::theLabel, myGraph));
+  }
+
   EXPECT_EQ(61, boost::num_vertices(myGraph));
   EXPECT_EQ(89, boost::num_edges(myGraph));
 
-  const auto myVertices = boost::vertices(myGraph);
+  const auto  myVertices   = boost::vertices(myGraph);
+  const auto& myLabels     = boost::get(&VertexData::theLabel, myGraph);
+  const auto& myLatitudes  = boost::get(&VertexData::theLatitude, myGraph);
+  const auto& myLongitudes = boost::get(&VertexData::theLongitude, myGraph);
   for (auto it = myVertices.first; it != myVertices.second; ++it) {
-    LOG(INFO) << "vertex " << *it << "["
-              << boost::get(&GraphData::theLabel, myGraph, *it) << "]"
-              << ", out degree " << boost::out_degree(*it, myGraph);
+    LOG(INFO) << "vertex " << *it << " [" << myLabels[*it] << "] ("
+              << myLatitudes[*it] << "," << myLongitudes[*it]
+              << "), out degree " << boost::out_degree(*it, myGraph);
   }
 
-  boost::print_graph(myGraph, boost::get(&GraphData::theLabel, myGraph));
+  const auto myEdges = boost::edges(myGraph);
+  for (auto it = myEdges.first; it != myEdges.second; ++it) {
+    const auto myLinkSpeed = boost::get(&EdgeData::theLinkSpeed, myGraph, *it);
+    const auto myInvLinkSpeed =
+        ::isnormal(myLinkSpeed) ? static_cast<int>(1e12 / myLinkSpeed) : 0;
+    ASSERT_GE(myLinkSpeed, 0.0);
+    boost::put(&EdgeData::theInvLinkSpeed, myGraph, *it, myInvLinkSpeed);
+    LOG(INFO) << "edge " << *it << ", link speed "
+              << static_cast<size_t>(myLinkSpeed / 1e6) << " Mb/s"
+              << ", inv link speed "
+              << boost::get(&EdgeData::theInvLinkSpeed, myGraph, *it)
+              << " ps/b";
+  }
+
+  using VertexDescriptor = boost::graph_traits<Graph>::vertex_descriptor;
+  const VertexDescriptor        mySource = 0;
+  std::vector<int>              myDistances(boost::num_vertices(myGraph));
+  std::vector<VertexDescriptor> myPredecessors(boost::num_vertices(myGraph));
+  boost::dijkstra_shortest_paths(
+      myGraph,
+      mySource,
+      boost::predecessor_map(myPredecessors.data())
+          .distance_map(boost::make_iterator_property_map(
+              myDistances.data(), get(boost::vertex_index, myGraph)))
+          .weight_map(boost::get(&EdgeData::theInvLinkSpeed, myGraph)));
+
+  struct HopsFinder {
+    HopsFinder(const std::vector<VertexDescriptor>& aPredecessors,
+               const VertexDescriptor               aSource)
+        : thePredecessors(aPredecessors)
+        , theSource(aSource) {
+      // noop
+    }
+    void operator()(std::list<VertexDescriptor>& aHops,
+                    const VertexDescriptor       aNext) {
+      if (aNext == theSource) {
+        return;
+      }
+      aHops.push_front(aNext);
+      (*this)(aHops, thePredecessors[aNext]);
+    }
+    const std::vector<VertexDescriptor>& thePredecessors;
+    const VertexDescriptor               theSource;
+  };
+
+  HopsFinder myHopsFinder(myPredecessors, mySource);
+  for (auto it = myVertices.first; it != myVertices.second; ++it) {
+    std::list<VertexDescriptor> myHops;
+    myHopsFinder(myHops, *it);
+    LOG(INFO) << "from " << myLabels[mySource] << " to " << myLabels[*it]
+              << ", distance " << myDistances[*it] << ", via "
+              << toString(myHops, ",", [&myLabels](const auto& aValue) {
+                   return myLabels[aValue];
+                 });
+  }
 }
 
 } // namespace qr
