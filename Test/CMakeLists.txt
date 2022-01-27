@@ -33,7 +33,7 @@ add_library(testqrlib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/testnetwork.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testutils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testqrutils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testpoissonpointprocess.cpp
 )
 

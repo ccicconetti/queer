@@ -29,39 +29,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#pragma once
+#include "QuantumRouting/qrutils.h"
 
-#include <cinttypes>
-#include <tuple>
+#include "gtest/gtest.h"
+
+#include <cmath>
 
 namespace uiiit {
 namespace qr {
 
-//! Space coordinated (x, y, z)
-using Coordinate = std::tuple<double, double, double>;
+struct TestQrUtils : public ::testing::Test {};
 
-/**
- * @brief Return the fidelity of a pair of entangled qubits through L
- * neighboring links, each performing entanglement swapping, without considering
- * decoherence and depolarization impairments, see:
- * https://arxiv.org/abs/quant-ph/9803056
- *
- * @param p1 the reliability on one-qubit operations
- * @param p2 the reliability of two-qubit operations
- * @param eta the probability of a wrong measurement
- * @param L the number of intermediate nodes, i.e., swaps
- * @param F the local entanglement fidelity
- * @return the resulting fidelity in [0,1]
- *
- * @pre p1, p2, and F are in (0,1]
- * @pre eta is in [0.5, 1]
- * @pre L is greater than or equal to 1
- */
-double fidelitySwapping(const double      p1,
-                        const double      p2,
-                        const double      eta,
-                        const std::size_t L,
-                        const double      F);
+TEST_F(TestQrUtils, test_distance) {
+  ASSERT_FLOAT_EQ(5, distance({0, 0, 0}, {3, 4, 0}));
+  ASSERT_FLOAT_EQ(5, distance({0 - 5, 0 - 5, 0}, {3 - 5, 4 - 5, 0}));
+  ASSERT_FLOAT_EQ(::sqrt(3.0), distance({1, 2, 3}, {2, 3, 4}));
+}
+
+TEST_F(TestQrUtils, test_fidelity_swapping) {
+  ASSERT_FLOAT_EQ(0.985075, fidelitySwapping(1, 1, 1, 2, 0.9925));
+  ASSERT_FLOAT_EQ(0.9704470075, fidelitySwapping(1, 1, 1, 4, 0.9925));
+  ASSERT_FLOAT_EQ(0.92314349037037, fidelitySwapping(1, 1, 1, 4, 0.98));
+
+  //
+  // computed with gnuplot using:
+  //   f(x,y)=1.0/4+3.0/4*((4*y-1)/3)**x * \
+  //     (0.9**2 * 0.5 * (4 * 0.95 * 0.95 - 1 ) / 3.0)**(x-1)
+  // and then
+  //   print f(4,0.98)
+  //
+  ASSERT_FLOAT_EQ(0.279446282739145, fidelitySwapping(0.9, 0.5, 0.95, 4, 0.98));
+}
 
 } // namespace qr
 } // namespace uiiit

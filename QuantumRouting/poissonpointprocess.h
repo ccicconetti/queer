@@ -31,7 +31,7 @@ SOFTWARE.
 
 #pragma once
 
-#include "QuantumRouting/utils.h"
+#include "QuantumRouting/qrutils.h"
 #include "Support/macros.h"
 #include "Support/random.h"
 

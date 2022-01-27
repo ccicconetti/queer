@@ -29,13 +29,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/utils.h"
+#include "QuantumRouting/qrutils.h"
 
 #include <cassert>
 #include <cmath>
 
 namespace uiiit {
 namespace qr {
+
+double distance(const Coordinate& aLhs, const Coordinate& aRhs) {
+  return std::sqrt(std::pow(std::get<0>(aLhs) - std::get<0>(aRhs), 2.0) +
+                   std::pow(std::get<1>(aLhs) - std::get<1>(aRhs), 2.0) +
+                   std::pow(std::get<2>(aLhs) - std::get<2>(aRhs), 2.0));
+}
 
 double fidelitySwapping(const double      p1,
                         const double      p2,
