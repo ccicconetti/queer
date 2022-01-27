@@ -32,9 +32,13 @@ SOFTWARE.
 #pragma once
 
 #include <cinttypes>
+#include <tuple>
 
 namespace uiiit {
 namespace qr {
+
+//! Space coordinated (x, y, z)
+using Coordinate = std::tuple<double, double, double>;
 
 /**
  * @brief Return the fidelity of a pair of entangled qubits through L

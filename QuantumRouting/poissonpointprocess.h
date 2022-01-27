@@ -31,11 +31,11 @@ SOFTWARE.
 
 #pragma once
 
+#include "QuantumRouting/utils.h"
 #include "Support/macros.h"
 #include "Support/random.h"
 
 #include <cinttypes>
-#include <tuple>
 #include <vector>
 
 namespace uiiit {
@@ -50,8 +50,6 @@ class PoissonPointProcess
   NONCOPYABLE_NONMOVABLE(PoissonPointProcess);
 
  public:
-  using Coordinate = std::tuple<double, double, double>;
-
   PoissonPointProcess(const double aMu, const std::size_t aSeed);
 
   virtual ~PoissonPointProcess() = default;

@@ -54,10 +54,8 @@ PoissonPointProcessGrid::PoissonPointProcessGrid(const double      aMu,
   // noop
 }
 
-std::vector<PoissonPointProcess::Coordinate>
-PoissonPointProcessGrid::operator()() {
-  std::vector<PoissonPointProcess::Coordinate> ret(numItems(),
-                                                   std::make_tuple(0, 0, 0));
+std::vector<Coordinate> PoissonPointProcessGrid::operator()() {
+  std::vector<Coordinate> ret(numItems(), std::make_tuple(0, 0, 0));
   for (auto& elem : ret) {
     std::get<0>(elem) = theUniformRvWidth();
     std::get<1>(elem) = theUniformRvHeight();
