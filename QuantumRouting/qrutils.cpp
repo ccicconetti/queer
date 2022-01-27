@@ -32,6 +32,11 @@ SOFTWARE.
 #include "QuantumRouting/qrutils.h"
 #include "Support/random.h"
 
+#include <glog/logging.h>
+
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/depth_first_search.hpp>
+
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -68,6 +73,50 @@ findLinks(const std::vector<Coordinate>& aItems,
     }
   }
   return ret;
+}
+
+bool bigraphConnected(
+    const std::vector<std::pair<std::size_t, std::size_t>>& aEdges) {
+
+  // count the number of connected vertices
+  using Graph =
+      boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS>;
+  using Vertex = boost::graph_traits<Graph>::vertex_descriptor;
+
+  struct CountVisitor final : public boost::default_dfs_visitor {
+    CountVisitor(std::size_t& aCount)
+        : theCount(aCount) {
+      // noop
+    }
+    void discover_vertex([[maybe_unused]] Vertex       aVertex,
+                         [[maybe_unused]] const Graph& aGraph) const {
+      theCount++;
+    }
+    std::size_t& theCount;
+  };
+
+  Graph myGraph;
+  for (const auto& myEdge : aEdges) {
+    boost::add_edge(myEdge.first, myEdge.second, myGraph);
+  }
+  if (boost::num_vertices(myGraph) == 0) {
+    return true;
+  }
+
+  std::size_t                            myCount = 0;
+  CountVisitor                           myVisitor(myCount);
+  std::vector<boost::default_color_type> myColorMap(
+      boost::num_vertices(myGraph));
+  boost::depth_first_visit(myGraph,
+                           *boost::vertices(myGraph).first,
+                           myVisitor,
+                           boost::make_iterator_property_map(
+                               myColorMap.begin(),
+                               boost::get(boost::vertex_index, myGraph),
+                               myColorMap[0]));
+
+  // check if the graph is connected
+  return myCount == boost::num_vertices(myGraph);
 }
 
 double fidelitySwapping(const double      p1,

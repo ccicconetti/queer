@@ -77,6 +77,34 @@ TEST_F(TestQrUtils, test_find_links) {
   ASSERT_EQ(4, findLinks(myItems, 1.5, 0.8, 0).size());
 }
 
+TEST_F(TestQrUtils, test_bigraph_connected) {
+  using Graph = std::vector<std::pair<std::size_t, std::size_t>>;
+
+  // empty graph
+  ASSERT_TRUE(bigraphConnected(Graph()));
+
+  // connected graph
+  Graph myEdges({
+      {0, 1},
+      {1, 2},
+      {2, 3},
+      {0, 3},
+  });
+
+  ASSERT_TRUE(bigraphConnected(myEdges));
+
+  // add a disconnected clique of nodes
+  myEdges.push_back({4, 5});
+  myEdges.push_back({6, 5});
+  myEdges.push_back({4, 6});
+
+  ASSERT_FALSE(bigraphConnected(myEdges));
+
+  // connect the clique to the other sub-graph
+  myEdges.push_back({3, 4});
+  ASSERT_TRUE(bigraphConnected(myEdges));
+}
+
 TEST_F(TestQrUtils, test_fidelity_swapping) {
   ASSERT_FLOAT_EQ(0.985075, fidelitySwapping(1, 1, 1, 2, 0.9925));
   ASSERT_FLOAT_EQ(0.9704470075, fidelitySwapping(1, 1, 1, 4, 0.9925));

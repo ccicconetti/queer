@@ -72,6 +72,15 @@ findLinks(const std::vector<Coordinate>& aItems,
           const std::size_t              aSeed        = 0);
 
 /**
+ * @brief Detect if the bidirectional graph defined by the given edges is
+ * connected.
+ *
+ * \return true if connected, false otherwise
+ */
+bool bigraphConnected(
+    const std::vector<std::pair<std::size_t, std::size_t>>& aEdges);
+
+/**
  * @brief Return the fidelity of a pair of entangled qubits through L
  * neighboring links, each performing entanglement swapping, without considering
  * decoherence and depolarization impairments, see:
