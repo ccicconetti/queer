@@ -46,6 +46,37 @@ TEST_F(TestQrUtils, test_distance) {
   ASSERT_FLOAT_EQ(::sqrt(3.0), distance({1, 2, 3}, {2, 3, 4}));
 }
 
+TEST_F(TestQrUtils, test_find_links) {
+  // put items on the four cornes of a square
+  std::vector<Coordinate> myItems({
+      {0, 0, 0},
+      {0, 1, 0},
+      {1, 0, 0},
+      {1, 1, 0},
+  });
+
+  // items are too far
+  ASSERT_EQ(0, findLinks(myItems, 0.5).size());
+
+  // only edges are found
+  const auto myEdges = findLinks(myItems, 1.1);
+  ASSERT_EQ(4, myEdges.size());
+  ASSERT_EQ((std::vector<std::pair<std::size_t, std::size_t>>({
+                {1, 0},
+                {2, 0},
+                {3, 1},
+                {3, 2},
+            })),
+            myEdges);
+
+  // both edges and diagonals are found
+  ASSERT_EQ(6, findLinks(myItems, 1.5).size());
+
+  // random link generation
+  ASSERT_EQ(0, findLinks(myItems, 1.5, 0, 0).size());
+  ASSERT_EQ(4, findLinks(myItems, 1.5, 0.8, 0).size());
+}
+
 TEST_F(TestQrUtils, test_fidelity_swapping) {
   ASSERT_FLOAT_EQ(0.985075, fidelitySwapping(1, 1, 1, 2, 0.9925));
   ASSERT_FLOAT_EQ(0.9704470075, fidelitySwapping(1, 1, 1, 4, 0.9925));

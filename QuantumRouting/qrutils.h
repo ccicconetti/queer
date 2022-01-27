@@ -33,6 +33,8 @@ SOFTWARE.
 
 #include <cinttypes>
 #include <tuple>
+#include <utility>
+#include <vector>
 
 namespace uiiit {
 namespace qr {
@@ -42,6 +44,32 @@ using Coordinate = std::tuple<double, double, double>;
 
 //! \return the Euclidean distance between two points.
 double distance(const Coordinate& aLhs, const Coordinate& aRhs);
+
+/**
+ * @brief Detect items closer than a threshold distance, with a given
+ * probability.
+ *
+ * Links are assumed to be reciprocal: if A and B are two items then either
+ * there is no link with A and B or there is exactly one (A-B or B-A, but not
+ * both).
+ *
+ * @param aItems the items to be considered
+ * @param aThreshold the minimum distance to have a link between items
+ * @param aProbability the probability that a link is created between two items,
+ * provided that their Euclidean distance is within the threshold
+ * @param aSeed the pseudo-random number generator seed to use, if aProbability
+ * is < 1
+ *
+ * @return the list of pairs of items detected (returned through their indices)
+ *
+ * @pre aThreshold is non-negative
+ * @pre aProbability is in [0, 1]
+ */
+std::vector<std::pair<std::size_t, std::size_t>>
+findLinks(const std::vector<Coordinate>& aItems,
+          const double                   aThreshold,
+          const double                   aProbability = 1,
+          const std::size_t              aSeed        = 0);
 
 /**
  * @brief Return the fidelity of a pair of entangled qubits through L

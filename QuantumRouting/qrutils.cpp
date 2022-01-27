@@ -30,9 +30,11 @@ SOFTWARE.
 */
 
 #include "QuantumRouting/qrutils.h"
+#include "Support/random.h"
 
 #include <cassert>
 #include <cmath>
+#include <memory>
 
 namespace uiiit {
 namespace qr {
@@ -41,6 +43,31 @@ double distance(const Coordinate& aLhs, const Coordinate& aRhs) {
   return std::sqrt(std::pow(std::get<0>(aLhs) - std::get<0>(aRhs), 2.0) +
                    std::pow(std::get<1>(aLhs) - std::get<1>(aRhs), 2.0) +
                    std::pow(std::get<2>(aLhs) - std::get<2>(aRhs), 2.0));
+}
+
+std::vector<std::pair<std::size_t, std::size_t>>
+findLinks(const std::vector<Coordinate>& aItems,
+          const double                   aThreshold,
+          const double                   aProbability,
+          const std::size_t              aSeed) {
+  assert(aProbability >= 0 and aProbability <= 1);
+  assert(aThreshold >= 0);
+
+  const auto myRv =
+      aProbability < 1 ?
+          std::make_unique<support::UniformRv>(0, 1, aSeed, 0, 0) :
+          nullptr;
+
+  std::vector<std::pair<std::size_t, std::size_t>> ret;
+  for (std::size_t i = 0; i < aItems.size(); i++) {
+    for (std::size_t j = 0; j < i; j++) {
+      if (distance(aItems[i], aItems[j]) < aThreshold and
+          (myRv.get() == nullptr or (*myRv)() < aProbability)) {
+        ret.push_back({i, j});
+      }
+    }
+  }
+  return ret;
 }
 
 double fidelitySwapping(const double      p1,
