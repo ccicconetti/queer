@@ -33,9 +33,11 @@ add_library(testqrlib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/testnetwork.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testutils.cpp
 )
 
 target_link_libraries(testqrlib
+  uiiitqr
   uiiitsupport
 
   gtest
