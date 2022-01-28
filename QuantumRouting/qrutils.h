@@ -65,11 +65,11 @@ double distance(const Coordinate& aLhs, const Coordinate& aRhs);
  * @pre aThreshold is non-negative
  * @pre aProbability is in [0, 1]
  */
-std::vector<std::pair<std::size_t, std::size_t>>
+std::vector<std::pair<unsigned long, unsigned long>>
 findLinks(const std::vector<Coordinate>& aItems,
           const double                   aThreshold,
           const double                   aProbability = 1,
-          const std::size_t              aSeed        = 0);
+          const unsigned long            aSeed        = 0);
 
 /**
  * @brief Detect if the bidirectional graph defined by the given edges is
@@ -78,7 +78,7 @@ findLinks(const std::vector<Coordinate>& aItems,
  * \return true if connected, false otherwise
  */
 bool bigraphConnected(
-    const std::vector<std::pair<std::size_t, std::size_t>>& aEdges);
+    const std::vector<std::pair<unsigned long, unsigned long>>& aEdges);
 
 /**
  * @brief Return the fidelity of a pair of entangled qubits through L
@@ -97,11 +97,11 @@ bool bigraphConnected(
  * @pre eta is in [0.5, 1]
  * @pre L is greater than or equal to 1
  */
-double fidelitySwapping(const double      p1,
-                        const double      p2,
-                        const double      eta,
-                        const std::size_t L,
-                        const double      F);
+double fidelitySwapping(const double        p1,
+                        const double        p2,
+                        const double        eta,
+                        const unsigned long L,
+                        const double        F);
 
 } // namespace qr
 } // namespace uiiit

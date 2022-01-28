@@ -61,7 +61,7 @@ TEST_F(TestQrUtils, test_find_links) {
   // only edges are found
   const auto myEdges = findLinks(myItems, 1.1);
   ASSERT_EQ(4, myEdges.size());
-  ASSERT_EQ((std::vector<std::pair<std::size_t, std::size_t>>({
+  ASSERT_EQ((std::vector<std::pair<unsigned long, unsigned long>>({
                 {1, 0},
                 {2, 0},
                 {3, 1},
@@ -78,7 +78,7 @@ TEST_F(TestQrUtils, test_find_links) {
 }
 
 TEST_F(TestQrUtils, test_bigraph_connected) {
-  using Graph = std::vector<std::pair<std::size_t, std::size_t>>;
+  using Graph = std::vector<std::pair<unsigned long, unsigned long>>;
 
   // empty graph
   ASSERT_TRUE(bigraphConnected(Graph()));

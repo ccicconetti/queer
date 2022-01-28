@@ -59,11 +59,16 @@ namespace qr {
 class CapacityNetwork final : public Network
 {
  public:
+  // struct FlowDescriptor {
+  //     unsigned long
+
+  // };
+
   // vector of (src, dst)
-  using EdgeVector = std::vector<std::pair<std::size_t, std::size_t>>;
+  using EdgeVector = std::vector<std::pair<unsigned long, unsigned long>>;
   // vector of (src, dst, weight)
   using WeightVector =
-      std::vector<std::tuple<std::size_t, std::size_t, double>>;
+      std::vector<std::tuple<unsigned long, unsigned long, double>>;
 
   using Graph =
       boost::adjacency_list<boost::listS,

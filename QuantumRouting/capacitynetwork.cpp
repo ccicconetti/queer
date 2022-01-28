@@ -36,9 +36,9 @@ namespace uiiit {
 namespace qr {
 
 CapacityNetwork::CapacityNetwork(
-    const std::vector<std::pair<std::size_t, std::size_t>>& aEdges,
-    support::RealRvInterface&                               aWeightRv,
-    const bool                                              aMakeBidirectional)
+    const std::vector<std::pair<unsigned long, unsigned long>>& aEdges,
+    support::RealRvInterface&                                   aWeightRv,
+    const bool aMakeBidirectional)
     : Network()
     , theGraph() {
   for (const auto& myEdge : aEdges) {

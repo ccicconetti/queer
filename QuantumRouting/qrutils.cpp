@@ -50,11 +50,11 @@ double distance(const Coordinate& aLhs, const Coordinate& aRhs) {
                    std::pow(std::get<2>(aLhs) - std::get<2>(aRhs), 2.0));
 }
 
-std::vector<std::pair<std::size_t, std::size_t>>
+std::vector<std::pair<unsigned long, unsigned long>>
 findLinks(const std::vector<Coordinate>& aItems,
           const double                   aThreshold,
           const double                   aProbability,
-          const std::size_t              aSeed) {
+          const unsigned long            aSeed) {
   assert(aProbability >= 0 and aProbability <= 1);
   assert(aThreshold >= 0);
 
@@ -63,9 +63,9 @@ findLinks(const std::vector<Coordinate>& aItems,
           std::make_unique<support::UniformRv>(0, 1, aSeed, 0, 0) :
           nullptr;
 
-  std::vector<std::pair<std::size_t, std::size_t>> ret;
-  for (std::size_t i = 0; i < aItems.size(); i++) {
-    for (std::size_t j = 0; j < i; j++) {
+  std::vector<std::pair<unsigned long, unsigned long>> ret;
+  for (unsigned long i = 0; i < aItems.size(); i++) {
+    for (unsigned long j = 0; j < i; j++) {
       if (distance(aItems[i], aItems[j]) < aThreshold and
           (myRv.get() == nullptr or (*myRv)() < aProbability)) {
         ret.push_back({i, j});
@@ -76,7 +76,7 @@ findLinks(const std::vector<Coordinate>& aItems,
 }
 
 bool bigraphConnected(
-    const std::vector<std::pair<std::size_t, std::size_t>>& aEdges) {
+    const std::vector<std::pair<unsigned long, unsigned long>>& aEdges) {
 
   // count the number of connected vertices
   using Graph =
@@ -84,7 +84,7 @@ bool bigraphConnected(
   using Vertex = boost::graph_traits<Graph>::vertex_descriptor;
 
   struct CountVisitor final : public boost::default_dfs_visitor {
-    CountVisitor(std::size_t& aCount)
+    CountVisitor(unsigned long& aCount)
         : theCount(aCount) {
       // noop
     }
@@ -92,7 +92,7 @@ bool bigraphConnected(
                          [[maybe_unused]] const Graph& aGraph) const {
       theCount++;
     }
-    std::size_t& theCount;
+    unsigned long& theCount;
   };
 
   Graph myGraph;
@@ -103,7 +103,7 @@ bool bigraphConnected(
     return true;
   }
 
-  std::size_t                            myCount = 0;
+  unsigned long                          myCount = 0;
   CountVisitor                           myVisitor(myCount);
   std::vector<boost::default_color_type> myColorMap(
       boost::num_vertices(myGraph));
@@ -119,11 +119,11 @@ bool bigraphConnected(
   return myCount == boost::num_vertices(myGraph);
 }
 
-double fidelitySwapping(const double      p1,
-                        const double      p2,
-                        const double      eta,
-                        const std::size_t L,
-                        const double      F) {
+double fidelitySwapping(const double        p1,
+                        const double        p2,
+                        const double        eta,
+                        const unsigned long L,
+                        const double        F) {
   assert(p1 > 0 and p1 <= 1);
   assert(p2 > 0 and p2 <= 1);
   assert(eta >= 0.5 and eta <= 1);
