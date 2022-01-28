@@ -32,7 +32,8 @@ include_directories(${CMAKE_BINARY_DIR}/googletest-src/googletest/include)
 add_library(testqrlib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/testnetwork.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testcapacitynetwork.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testgraphml.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testqrutils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testpoissonpointprocess.cpp
 )

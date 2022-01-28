@@ -29,7 +29,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/network.h"
 #include "Support/tostring.h"
 
 #include "Details/examplenetwork.h"
@@ -57,8 +56,8 @@ SOFTWARE.
 namespace uiiit {
 namespace qr {
 
-struct TestNetwork : public ::testing::Test {
-  TestNetwork()
+struct TestGraphML : public ::testing::Test {
+  TestGraphML()
       : theFilename(
             (boost::filesystem::current_path() / "example.gml").string()) {
     // noop
@@ -82,11 +81,7 @@ struct TestNetwork : public ::testing::Test {
   const std::string theFilename;
 };
 
-TEST_F(TestNetwork, test_ctor) {
-  ASSERT_NO_THROW(Network());
-}
-
-TEST_F(TestNetwork, test_read_graphml) {
+TEST_F(TestGraphML, test_read_graphml) {
   createExampleNetworkFile();
 
   struct VertexData {
