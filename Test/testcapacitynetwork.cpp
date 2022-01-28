@@ -39,6 +39,7 @@ SOFTWARE.
 
 #include <ctime>
 #include <set>
+#include <stdexcept>
 
 namespace uiiit {
 namespace qr {
@@ -50,7 +51,22 @@ struct TestCapacityNetwork : public ::testing::Test {
         {1, 2},
         {2, 3},
         {0, 4},
-        {3, 4},
+        {4, 3},
+    });
+  }
+
+  //   /--> 1 -- >2 -+
+  //  /              v
+  // 0               3   all weights are 4, except 0->4 which is 1
+  //  \              ^
+  //   \---> 4 ------+
+  CapacityNetwork::WeightVector exampleEdgeWeights() {
+    return CapacityNetwork::WeightVector({
+        {0, 1, 4},
+        {1, 2, 4},
+        {2, 3, 4},
+        {0, 4, 1},
+        {4, 3, 4},
     });
   }
 };
@@ -78,6 +94,123 @@ TEST_F(TestCapacityNetwork, test_random_weights) {
                       std::to_string(myBidir) + ".dot");
     }
   }
+}
+TEST_F(TestCapacityNetwork, test_measurement_probability) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  ASSERT_FLOAT_EQ(1, myNetwork.measurementProbability());
+  myNetwork.measurementProbability(0.314);
+  ASSERT_FLOAT_EQ(0.314, myNetwork.measurementProbability());
+  ASSERT_THROW(myNetwork.measurementProbability(-0.5), std::runtime_error);
+  ASSERT_THROW(myNetwork.measurementProbability(2), std::runtime_error);
+}
+
+TEST_F(TestCapacityNetwork, test_route) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+
+  // no route existing
+  std::vector<CapacityNetwork::FlowDescriptor> myFlows({
+      {3, 0, 1.0},
+  });
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_TRUE(myFlows[0].thePath.empty());
+
+  // add a feasible route
+  myFlows.emplace_back(0, 3, 1.0);
+  myNetwork.route(myFlows);
+  ASSERT_EQ(2, myFlows.size());
+  ASSERT_TRUE(myFlows[0].thePath.empty());
+  ASSERT_FLOAT_EQ(0, myFlows[0].theGrossRate);
+  ASSERT_EQ(std::vector<unsigned long>({1, 2, 3}), myFlows[1].thePath);
+  ASSERT_FLOAT_EQ(4, myFlows[1].theGrossRate);
+  ASSERT_EQ(CapacityNetwork::WeightVector({
+                {0, 1, 0},
+                {1, 2, 0},
+                {2, 3, 0},
+                {0, 4, 1},
+                {4, 3, 4},
+            }),
+            myNetwork.weights());
+
+  // the same route is not feasible anymore
+  myFlows.clear();
+  myFlows.emplace_back(0, 3, 1.0);
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_TRUE(myFlows[0].thePath.empty());
+
+  // add a request with smaller capacity
+  myFlows.clear();
+  myFlows.emplace_back(0, 3, 0.5);
+
+  // cannot be admitted due to extra constraint
+  myNetwork.route(myFlows,
+                  [](const auto& aFlow) { return aFlow.thePath.size() == 1; });
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_TRUE(myFlows[0].thePath.empty());
+
+  // without that it an be admitted
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_EQ(std::vector<unsigned long>({4, 3}), myFlows[0].thePath);
+  ASSERT_FLOAT_EQ(1, myFlows[0].theGrossRate);
+  ASSERT_EQ(CapacityNetwork::WeightVector({
+                {0, 1, 0},
+                {1, 2, 0},
+                {2, 3, 0},
+                {0, 4, 0},
+                {4, 3, 3},
+            }),
+            myNetwork.weights());
+
+  // add a request for an adjacent node
+  myFlows.clear();
+  myFlows.emplace_back(4, 3, 3);
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_EQ(std::vector<unsigned long>({3}), myFlows[0].thePath);
+  ASSERT_FLOAT_EQ(3, myFlows[0].theGrossRate);
+  ASSERT_EQ(CapacityNetwork::WeightVector({
+                {0, 1, 0},
+                {1, 2, 0},
+                {2, 3, 0},
+                {0, 4, 0},
+                {4, 3, 0},
+            }),
+            myNetwork.weights());
+
+  // no request can be served now
+  myFlows.clear();
+  for (size_t i = 0; i < 5; i++) {
+    for (size_t j = 0; j < 5; j++) {
+      if (i != j) {
+        myFlows.emplace_back(i, j, 0.001);
+      }
+    }
+  }
+  myNetwork.route(myFlows);
+  for (const auto& myFlow : myFlows) {
+    ASSERT_TRUE(myFlow.thePath.empty());
+    ASSERT_FLOAT_EQ(0, myFlow.theGrossRate);
+  }
+
+  // add ill-formed requests
+  myFlows.clear();
+  myFlows.emplace_back(0, 0, 1);
+  ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
+  myFlows.clear();
+  myFlows.emplace_back(0, 1, 0);
+  ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
+  myFlows.clear();
+  myFlows.emplace_back(0, 1, -1);
+  ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
+  myFlows.clear();
+  myFlows.emplace_back(0, 99, 1);
+  ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
+  myFlows.clear();
+  myFlows.emplace_back(99, 0, 1);
+  ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
 }
 
 } // namespace qr

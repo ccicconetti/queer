@@ -42,6 +42,7 @@ SOFTWARE.
 #include <boost/property_map/property_map.hpp>
 
 #include <cinttypes>
+#include <functional>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -59,10 +60,27 @@ namespace qr {
 class CapacityNetwork final : public Network
 {
  public:
-  // struct FlowDescriptor {
-  //     unsigned long
+  struct FlowDescriptor {
+    FlowDescriptor(const unsigned long aSrc,
+                   const unsigned long aDst,
+                   const double        aNetRate) noexcept;
 
-  // };
+    void moveFrom(FlowDescriptor& aAnother);
+    void clear();
+
+    // input
+    const unsigned long theSrc;     //!< the source vertex
+    const unsigned long theDst;     //!< the destination vertex
+    const double        theNetRate; //!< in EPR/s
+
+    // output
+    std::vector<unsigned long> thePath;      //!< hops not including src
+    double                     theGrossRate; //!< in EPR/s
+
+    std::string toString() const;
+  };
+
+  using FlowCheckFunction = std::function<bool(const FlowDescriptor&)>;
 
   // vector of (src, dst)
   using EdgeVector = std::vector<std::pair<unsigned long, unsigned long>>;
@@ -73,15 +91,18 @@ class CapacityNetwork final : public Network
   using Graph =
       boost::adjacency_list<boost::listS,
                             boost::vecS,
-                            boost::undirectedS,
+                            boost::bidirectionalS,
                             boost::no_property,
                             boost::property<boost::edge_weight_t, double>,
                             boost::no_property,
                             boost::listS>;
   using VertexDescriptor = boost::graph_traits<Graph>::vertex_descriptor;
+  using EdgeDescriptor   = boost::graph_traits<Graph>::edge_descriptor;
 
   /**
    * @brief Create a network with given links and assign random weights
+   *
+   * The default measurement probability is 1.
    *
    * @param aEdges The edges of the network (src, dst).
    * @param aWeightRv The r.v. to draw the edge weights.
@@ -92,15 +113,97 @@ class CapacityNetwork final : public Network
                   support::RealRvInterface& aWeightRv,
                   const bool                aMakeBidirectional);
 
+  /**
+   * @brief Create a network with given links and weights
+   *
+   * The default measurement probability is 1.
+   *
+   * @param aEdgeWeights The unidirectional edges and weights of the network
+   * (src, dst, w).
+   */
+  CapacityNetwork(const WeightVector& aEdgeWeights);
+
+  /**
+   * @brief Set the measurement probability.
+   *
+   * @param aMeasurementProbability the new measurement probability
+   *
+   * @throw std::runtime_error if the measurement probability is not in [0,1]
+   */
+  void measurementProbability(const double aMeasurementProbability);
+
+  //! \return the measurement probability.
+  double measurementProbability() const noexcept {
+    return theMeasurementProbability;
+  }
+
   //! Save to a dot file.
   void toDot(const std::string& aFilename) const;
 
   //! \return the current weights, one per element in the return vector.
   WeightVector weights() const;
 
+  /**
+   * @brief Route the given flows in this network starting with current
+   * capacities.
+   *
+   * The flows are routed one by one in the order in which they are passed.
+   * The capacities are updated whenever a flow can be admitted, in which case
+   * the corresponding descriptor is also updated with routing info.
+   *
+   * @param aFlows the flows to be routed (admitted flows are modified)
+   * @param aCheckFunction the flow is considered feasible only if this
+   * function returns true, otherwise it is inadmissible; the default is to
+   * always accept the flow
+   *
+   * @throw std::runtime_error if aFlows contain an ill-formed request, in which
+   * case we guarantee that the internal state is not changed
+   */
+  void route(
+      std::vector<FlowDescriptor>& aFlows,
+      const FlowCheckFunction&     aCheckFunction = [](const auto&) {
+        return true;
+      });
+
  private:
-  Graph theGraph;
+  struct HopsFinder {
+    HopsFinder(const std::vector<VertexDescriptor>& aPredecessors,
+               const VertexDescriptor               aSource)
+        : thePredecessors(aPredecessors)
+        , theSource(aSource) {
+      // noop
+    }
+    void operator()(std::vector<VertexDescriptor>& aHops,
+                    const VertexDescriptor         aNext) {
+      if (aNext == theSource) {
+        return;
+      }
+      (*this)(aHops, thePredecessors[aNext]);
+      aHops.push_back(aNext);
+    }
+    const std::vector<VertexDescriptor>& thePredecessors;
+    const VertexDescriptor               theSource;
+  };
+
+  static bool checkCapacity(const VertexDescriptor               aSrc,
+                            const std::vector<VertexDescriptor>& aPath,
+                            const double                         aCapacity,
+                            const Graph&                         aGraph);
+
+  static void
+  removeSmallestCapacityEdge(const VertexDescriptor               aSrc,
+                             const std::vector<VertexDescriptor>& aPath,
+                             Graph&                               aGraph);
+
+  static void removeCapacityFromPath(const VertexDescriptor               aSrc,
+                                     const std::vector<VertexDescriptor>& aPath,
+                                     const double aCapacity,
+                                     Graph&       aGraph);
+
+ private:
+  Graph  theGraph;
+  double theMeasurementProbability;
 };
 
 } // namespace qr
-} // end namespace uiiit
+} // namespace uiiit
