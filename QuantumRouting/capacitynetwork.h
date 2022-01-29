@@ -65,8 +65,7 @@ class CapacityNetwork final : public Network
                    const unsigned long aDst,
                    const double        aNetRate) noexcept;
 
-    void moveFrom(FlowDescriptor& aAnother);
-    void clear();
+    void movePathRateFrom(FlowDescriptor& aAnother);
 
     // input
     const unsigned long theSrc;     //!< the source vertex
@@ -76,6 +75,7 @@ class CapacityNetwork final : public Network
     // output
     std::vector<unsigned long> thePath;      //!< hops not including src
     double                     theGrossRate; //!< in EPR/s
+    std::size_t                theDijsktra;  //!< number of times called
 
     std::string toString() const;
   };

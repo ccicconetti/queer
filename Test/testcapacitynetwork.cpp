@@ -115,15 +115,20 @@ TEST_F(TestCapacityNetwork, test_route) {
   myNetwork.route(myFlows);
   ASSERT_EQ(1, myFlows.size());
   ASSERT_TRUE(myFlows[0].thePath.empty());
+  ASSERT_EQ(1, myFlows[0].theDijsktra);
 
-  // add a feasible route
+  // add an unfeasible and a feasible route
+  myFlows.clear();
+  myFlows.emplace_back(3, 0, 1.0);
   myFlows.emplace_back(0, 3, 1.0);
   myNetwork.route(myFlows);
   ASSERT_EQ(2, myFlows.size());
   ASSERT_TRUE(myFlows[0].thePath.empty());
   ASSERT_FLOAT_EQ(0, myFlows[0].theGrossRate);
+  ASSERT_EQ(1, myFlows[0].theDijsktra);
   ASSERT_EQ(std::vector<unsigned long>({1, 2, 3}), myFlows[1].thePath);
   ASSERT_FLOAT_EQ(4, myFlows[1].theGrossRate);
+  ASSERT_EQ(2, myFlows[1].theDijsktra);
   ASSERT_EQ(CapacityNetwork::WeightVector({
                 {0, 1, 0},
                 {1, 2, 0},
@@ -140,17 +145,17 @@ TEST_F(TestCapacityNetwork, test_route) {
   ASSERT_EQ(1, myFlows.size());
   ASSERT_TRUE(myFlows[0].thePath.empty());
 
-  // add a request with smaller capacity
+  // request with smaller capacity, but cannot be admitted due to constraint
   myFlows.clear();
   myFlows.emplace_back(0, 3, 0.5);
-
-  // cannot be admitted due to extra constraint
   myNetwork.route(myFlows,
                   [](const auto& aFlow) { return aFlow.thePath.size() == 1; });
   ASSERT_EQ(1, myFlows.size());
   ASSERT_TRUE(myFlows[0].thePath.empty());
 
-  // without that it an be admitted
+  // same request without constrating can be admitted
+  myFlows.clear();
+  myFlows.emplace_back(0, 3, 0.5);
   myNetwork.route(myFlows);
   ASSERT_EQ(1, myFlows.size());
   ASSERT_EQ(std::vector<unsigned long>({4, 3}), myFlows[0].thePath);

@@ -54,18 +54,15 @@ CapacityNetwork::FlowDescriptor::FlowDescriptor(const unsigned long aSrc,
     , theDst(aDst)
     , theNetRate(aNetRate)
     , thePath()
-    , theGrossRate(0) {
+    , theGrossRate(0)
+    , theDijsktra(0) {
   // noop
 }
 
-void CapacityNetwork::FlowDescriptor::moveFrom(FlowDescriptor& aAnother) {
+void CapacityNetwork::FlowDescriptor::movePathRateFrom(
+    FlowDescriptor& aAnother) {
   std::swap(thePath, aAnother.thePath);
   std::swap(theGrossRate, aAnother.theGrossRate);
-}
-
-void CapacityNetwork::FlowDescriptor::clear() {
-  thePath.clear();
-  theGrossRate = 0;
 }
 
 std::string CapacityNetwork::FlowDescriptor::toString() const {
@@ -76,7 +73,7 @@ std::string CapacityNetwork::FlowDescriptor::toString() const {
                   thePath,
                   ",",
                   [](const auto& aValue) { return std::to_string(aValue); })
-           << "}";
+           << "}, " << theDijsktra << " Dijkstra calls";
   return myStream.str();
 }
 
@@ -136,6 +133,10 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
 
   // pre-condition checks
   for (const auto& myFlow : aFlows) {
+    assert(myFlow.thePath.empty());
+    assert(myFlow.theGrossRate == 0);
+    assert(myFlow.theDijsktra == 0);
+
     if (boost::vertex(myFlow.theSrc, theGraph) >= V) {
       throw std::runtime_error("invalid source node in flow: " +
                                std::to_string(myFlow.theSrc));
@@ -169,6 +170,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
     // loop until either there is no path from the source to the destination or
     // we find a candidate that can satisfy the flow requirements
     while (not myFoundOrDisconnected) {
+      myFlow.theDijsktra++;
       boost::dijkstra_shortest_paths(
           myCopiedGraph,
           myFlow.theSrc,
@@ -202,7 +204,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
             aCheckFunction(myCandidate)) {
           // flow is admissible on the shortest path, we can break from the loop
           myFoundOrDisconnected = true;
-          myFlow.moveFrom(myCandidate);
+          myFlow.movePathRateFrom(myCandidate);
 
         } else {
           // flow not admissible on the shortest path, remove the edge with
@@ -214,7 +216,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
     }
 
     if (myFlow.thePath.empty()) {
-      VLOG(1) << "flow cannot be admitted";
+      VLOG(1) << "flow rejected " << myFlow.toString();
 
     } else {
       VLOG(1) << "flow admitted " << myFlow.toString();
