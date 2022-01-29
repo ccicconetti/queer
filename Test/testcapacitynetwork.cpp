@@ -104,6 +104,12 @@ TEST_F(TestCapacityNetwork, test_measurement_probability) {
   ASSERT_THROW(myNetwork.measurementProbability(2), std::runtime_error);
 }
 
+TEST_F(TestCapacityNetwork, test_graph_properties) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  ASSERT_EQ(5, myNetwork.numEdges());
+  ASSERT_FLOAT_EQ(17, myNetwork.totalCapacity());
+}
+
 TEST_F(TestCapacityNetwork, test_route) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
   myNetwork.measurementProbability(0.5);
@@ -184,6 +190,7 @@ TEST_F(TestCapacityNetwork, test_route) {
                 {4, 3, 0},
             }),
             myNetwork.weights());
+  ASSERT_FLOAT_EQ(0, myNetwork.totalCapacity());
 
   // no request can be served now
   myFlows.clear();

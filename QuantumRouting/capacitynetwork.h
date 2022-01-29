@@ -137,6 +137,12 @@ class CapacityNetwork final : public Network
     return theMeasurementProbability;
   }
 
+  //! \return the number of edges.
+  std::size_t numEdges() const;
+
+  //! \return the total EPR capacity across all the edges.
+  double totalCapacity() const;
+
   //! Save to a dot file.
   void toDot(const std::string& aFilename) const;
 

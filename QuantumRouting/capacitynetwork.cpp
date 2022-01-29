@@ -127,6 +127,20 @@ void CapacityNetwork::measurementProbability(
   theMeasurementProbability = aMeasurementProbability;
 }
 
+std::size_t CapacityNetwork::numEdges() const {
+  return boost::num_edges(theGraph);
+}
+
+double CapacityNetwork::totalCapacity() const {
+  const auto myEdges   = boost::edges(theGraph);
+  const auto myWeights = boost::get(boost::edge_weight, theGraph);
+  double     ret       = 0;
+  for (auto it = myEdges.first; it != myEdges.second; ++it) {
+    ret += myWeights[*it];
+  }
+  return ret;
+}
+
 void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
                             const FlowCheckFunction&     aCheckFunction) {
   const auto V = boost::num_vertices(theGraph);
