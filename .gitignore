@@ -44,3 +44,4 @@ rbuild
 *.code-workspace
 .cache
 compile_commands.json
+release
