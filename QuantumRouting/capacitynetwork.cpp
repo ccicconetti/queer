@@ -127,6 +127,10 @@ void CapacityNetwork::measurementProbability(
   theMeasurementProbability = aMeasurementProbability;
 }
 
+std::size_t CapacityNetwork::numNodes() const {
+  return boost::num_vertices(theGraph);
+}
+
 std::size_t CapacityNetwork::numEdges() const {
   return boost::num_edges(theGraph);
 }

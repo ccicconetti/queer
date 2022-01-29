@@ -106,6 +106,7 @@ TEST_F(TestCapacityNetwork, test_measurement_probability) {
 
 TEST_F(TestCapacityNetwork, test_graph_properties) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
+  ASSERT_EQ(5, myNetwork.numNodes());
   ASSERT_EQ(5, myNetwork.numEdges());
   ASSERT_FLOAT_EQ(17, myNetwork.totalCapacity());
 }

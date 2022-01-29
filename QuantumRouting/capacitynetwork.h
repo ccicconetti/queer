@@ -137,6 +137,9 @@ class CapacityNetwork final : public Network
     return theMeasurementProbability;
   }
 
+  //! \return the number of nodes.
+  std::size_t numNodes() const;
+
   //! \return the number of edges.
   std::size_t numEdges() const;
 
