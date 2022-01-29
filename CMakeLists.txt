@@ -48,6 +48,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 # local libraries
 add_subdirectory(QuantumRouting)
 
+# add experiments
+add_subdirectory(Experiments)
+
 # external repos
 add_subdirectory(support/Support)
 
