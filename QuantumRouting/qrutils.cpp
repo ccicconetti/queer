@@ -127,8 +127,11 @@ double fidelitySwapping(const double        p1,
   assert(p1 > 0 and p1 <= 1);
   assert(p2 > 0 and p2 <= 1);
   assert(eta >= 0.5 and eta <= 1);
-  assert(L > 0);
   assert(F >= 0 and F <= 1);
+
+  if (L == 0) {
+    return F;
+  }
 
   return 1.0 / 4.0 +
          3.0 / 4.0 * std::pow(p1 * p1 * p2 * (4 * eta * eta - 1) / 3.0, L - 1) *

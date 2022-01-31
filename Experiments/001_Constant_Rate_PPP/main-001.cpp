@@ -124,6 +124,7 @@ struct Output {
   double      theAdmissionRate    = 0;
   std::size_t theAdmittedFlows    = 0;
   double      theAvgPathSize      = 0;
+  double      theAvgFidelity      = 0;
 
   std::string toString() const {
     std::stringstream myStream;
@@ -137,7 +138,9 @@ struct Output {
              << " (gross " << theSumGrossRate << "), with "
              << theAvgDijkstraCalls
              << " Dijkstra calls on average, average path size "
-             << theAvgPathSize;
+             << theAvgPathSize
+             << ", average fidelity of the end-to-end entangled pair "
+             << theAvgFidelity;
     return myStream.str();
   }
 
@@ -149,7 +152,7 @@ struct Output {
              << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
              << theSumGrossRate << ',' << theSumNetRate << ','
              << theAdmissionRate << ',' << theAdmittedFlows << ','
-             << theAvgPathSize;
+             << theAvgPathSize << ',' << theAvgFidelity;
     return myStream.str();
   }
 };
@@ -157,6 +160,11 @@ struct Output {
 using Data = us::ExperimentData<Parameters, Output>;
 
 void runExperiment(Data& aData, Parameters&& aParameters) {
+  // fidelity computation parameters
+  constexpr double p1  = 1.0;
+  constexpr double p2  = 1.0;
+  constexpr double eta = 1.0;
+
   Data::Raii myRaii(aData, std::move(aParameters));
 
   Output myOutput;
@@ -222,7 +230,15 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   }
 
   // route traffic flows
-  myNetwork->route(myFlows);
+  myNetwork->route(myFlows, [&myRaii](const auto& aFlow) {
+    assert(not aFlow.thePath.empty());
+    return qr::fidelitySwapping(p1,
+                                p2,
+                                eta,
+                                aFlow.thePath.size() - 1,
+                                myRaii.in().theFidelityInit) >=
+           myRaii.in().theFidelityThreshold;
+  });
 
   // traffic metrics
   myOutput.theResidualCapacity = myNetwork->totalCapacity();
@@ -231,6 +247,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   us::SummaryStat myNetRate;
   us::SummaryStat myAdmissionRate;
   us::SummaryStat myPathSize;
+  us::SummaryStat myFidelity;
   for (const auto& myFlow : myFlows) {
     myDijkstra(myFlow.theDijsktra);
     myGrossRate(myFlow.theGrossRate);
@@ -238,6 +255,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myNetRate(myFlow.theNetRate);
       myAdmissionRate(1);
       myPathSize(myFlow.thePath.size());
+      myFidelity(qr::fidelitySwapping(
+          p1, p2, eta, myFlow.thePath.size() - 1, myRaii.in().theFidelityInit));
     } else {
       myAdmissionRate(0);
     }
@@ -248,6 +267,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   myOutput.theAdmissionRate    = myAdmissionRate.mean();
   myOutput.theAdmittedFlows = myAdmissionRate.count() * myAdmissionRate.mean();
   myOutput.theAvgPathSize   = myPathSize.mean();
+  myOutput.theAvgFidelity   = myFidelity.mean();
 
   // save data
   VLOG(1) << "experiment finished\n"
@@ -331,11 +351,11 @@ int main(int argc, char* argv[]) {
     Data myData;
 
     const double myGridSize          = 60000;
-    const double myThreshold         = 10000;
+    const double myThreshold         = 15000;
     const double myLinkProbability   = 1;
     const double myQ                 = 0.5;
-    const double myFidelityInit      = 0.9925;
-    const double myFidelityThreshold = 0.7;
+    const double myFidelityInit      = 0.99;
+    const double myFidelityThreshold = 0.95;
 
     us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed <= mySeedEnd; ++mySeed) {

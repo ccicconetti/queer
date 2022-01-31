@@ -106,6 +106,7 @@ TEST_F(TestQrUtils, test_bigraph_connected) {
 }
 
 TEST_F(TestQrUtils, test_fidelity_swapping) {
+  ASSERT_FLOAT_EQ(0.9925, fidelitySwapping(1, 1, 1, 0, 0.9925));
   ASSERT_FLOAT_EQ(0.985075, fidelitySwapping(1, 1, 1, 2, 0.9925));
   ASSERT_FLOAT_EQ(0.9704470075, fidelitySwapping(1, 1, 1, 4, 0.9925));
   ASSERT_FLOAT_EQ(0.92314349037037, fidelitySwapping(1, 1, 1, 4, 0.98));

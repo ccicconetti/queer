@@ -95,7 +95,6 @@ bool bigraphConnected(
  *
  * @pre p1, p2, and F are in (0,1]
  * @pre eta is in [0.5, 1]
- * @pre L is greater than or equal to 1
  */
 double fidelitySwapping(const double        p1,
                         const double        p2,
