@@ -34,6 +34,8 @@ SOFTWARE.
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
 #include "Support/glograii.h"
+#include "Support/parallelbatch.h"
+#include "Support/queue.h"
 #include "Support/random.h"
 
 #include <boost/program_options.hpp>
@@ -139,9 +141,57 @@ struct Output {
   }
 };
 
+using Data = us::ExperimentData<Parameters, Output>;
+
+void runExperiment(Data& aData, Parameters&& aParameters) {
+  Data::Raii myRaii(aData, std::move(aParameters));
+
+  Output myOutput;
+
+  us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
+                            myRaii.in().theLinkMaxEpr,
+                            myRaii.in().theSeed,
+                            0,
+                            0);
+  auto                                 myPppSeed = myRaii.in().theSeed;
+  std::unique_ptr<qr::CapacityNetwork> myNetwork = nullptr;
+  while (not myNetwork) {
+    const auto myCoordinates =
+        qr::PoissonPointProcessGrid(myRaii.in().theMu,
+                                    myPppSeed,
+                                    myRaii.in().theGridLength,
+                                    myRaii.in().theGridLength)();
+    const auto myEdges = qr::findLinks(myCoordinates,
+                                       myRaii.in().theThreshold,
+                                       myRaii.in().theEdgeProbability,
+                                       myRaii.in().theSeed);
+    if (qr::bigraphConnected(myEdges)) {
+      myNetwork =
+          std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
+      myNetwork->measurementProbability(myRaii.in().theQ);
+    } else {
+      VLOG(1) << "graph with seed " << myPppSeed
+              << " is not connected, trying again";
+      myPppSeed += 1000000;
+    }
+  }
+
+  assert(myNetwork.get() != nullptr);
+  myOutput.theNumNodes      = myNetwork->numNodes();
+  myOutput.theNumEdges      = myNetwork->numEdges();
+  myOutput.theTotalCapacity = myNetwork->totalCapacity();
+
+  VLOG(1) << "experiment finished\n"
+          << myRaii.in().toString() << '\n'
+          << myOutput.toString();
+
+  myRaii.finish(std::move(myOutput));
+}
+
 int main(int argc, char* argv[]) {
   uiiit::support::GlogRaii myGlogRaii(argv[0]);
 
+  std::size_t myNumThreads;
   std::string myOutputFilename;
   std::size_t mySeedStart;
   std::size_t mySeedEnd;
@@ -157,6 +207,9 @@ int main(int argc, char* argv[]) {
   // clang-format off
   myDesc.add_options()
     ("help,h", "produce help message")
+    ("num-threads",
+     po::value<std::size_t>(&myNumThreads)->default_value(1),
+     "Number of threads used.")
     ("output",
      po::value<std::string>(&myOutputFilename)->default_value("output.csv"),
      "Output file name.")
@@ -206,7 +259,6 @@ int main(int argc, char* argv[]) {
                                myOutputFilename);
     }
 
-    using Data = us::ExperimentData<Parameters, Output>;
     Data myData;
 
     const double myGridSize          = 60000;
@@ -216,55 +268,30 @@ int main(int argc, char* argv[]) {
     const double myFidelityInit      = 0.9925;
     const double myFidelityThreshold = 0.7;
 
+    us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed <= mySeedEnd; ++mySeed) {
-      {
-        Data::Raii myRaii(myData,
-                          Parameters{mySeed,
-                                     myMu,
-                                     myGridSize,
-                                     myThreshold,
-                                     myLinkProbability,
-                                     myLinkMinEpr,
-                                     myLinkMaxEpr,
-                                     myQ,
-                                     myFidelityInit,
-                                     myNumFlows,
-                                     myMinNetRate,
-                                     myMaxNetRate,
-                                     myFidelityThreshold});
-
-        Output myOutput;
-
-        us::UniformRv myLinkEprRv(myLinkMinEpr, myLinkMaxEpr, mySeed, 0, 0);
-        auto          myPppSeed                        = mySeed;
-        std::unique_ptr<qr::CapacityNetwork> myNetwork = nullptr;
-        while (not myNetwork) {
-          const auto myCoordinates = qr::PoissonPointProcessGrid(
-              myMu, myPppSeed, myGridSize, myGridSize)();
-          const auto myEdges = qr::findLinks(
-              myCoordinates, myThreshold, myLinkProbability, mySeed);
-          if (qr::bigraphConnected(myEdges)) {
-            myNetwork = std::make_unique<qr::CapacityNetwork>(
-                myEdges, myLinkEprRv, true);
-            myNetwork->measurementProbability(myQ);
-          } else {
-            VLOG(1) << "graph with seed " << myPppSeed
-                    << " is not connected, trying again";
-            myPppSeed += 1000000;
-          }
-        }
-
-        assert(myNetwork.get() != nullptr);
-        myOutput.theNumNodes      = myNetwork->numNodes();
-        myOutput.theNumEdges      = myNetwork->numEdges();
-        myOutput.theTotalCapacity = myNetwork->totalCapacity();
-
-        myRaii.finish(std::move(myOutput));
-      }
-
-      VLOG(1) << "experiment finished\n"
-              << myData.lastIn() << '\n'
-              << myData.lastOut();
+      myParameters.push(Parameters{mySeed,
+                                   myMu,
+                                   myGridSize,
+                                   myThreshold,
+                                   myLinkProbability,
+                                   myLinkMinEpr,
+                                   myLinkMaxEpr,
+                                   myQ,
+                                   myFidelityInit,
+                                   myNumFlows,
+                                   myMinNetRate,
+                                   myMaxNetRate,
+                                   myFidelityThreshold});
+    }
+    us::ParallelBatch<Parameters> myWorkers(
+        myNumThreads, myParameters, [&myData](auto&& aParameters) {
+          runExperiment(myData, std::move(aParameters));
+        });
+    const auto myExceptions = myWorkers.wait();
+    LOG_IF(ERROR, not myExceptions.empty()) << "there were exceptions:";
+    for (const auto& myException : myExceptions) {
+      LOG(ERROR) << myException;
     }
 
     myData.toCsv(myFile);
