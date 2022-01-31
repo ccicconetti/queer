@@ -113,7 +113,7 @@ TEST_F(TestQrUtils, test_fidelity_swapping) {
 
   //
   // computed with gnuplot using:
-  //   f(x,y)=1.0/4+3.0/4*((4*y-1)/3)**x * \
+  //   f(x,y)=1.0/4+3.0/4*((4*y-1)/3)**x *
   //     (0.9**2 * 0.5 * (4 * 0.95 * 0.95 - 1 ) / 3.0)**(x-1)
   // and then
   //   print f(4,0.98)
