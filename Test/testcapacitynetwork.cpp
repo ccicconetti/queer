@@ -230,5 +230,29 @@ TEST_F(TestCapacityNetwork, test_route) {
   ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
 }
 
+TEST_F(TestCapacityNetwork, test_route_another) {
+  // swap weights
+  auto myWeights = exampleEdgeWeights();
+  for (auto& elem : myWeights) {
+    auto& myWeight = std::get<2>(elem);
+    if (myWeight == 1) {
+      myWeight = 4;
+    } else {
+      myWeight = 1;
+    }
+  }
+
+  CapacityNetwork myNetwork(myWeights);
+  myNetwork.measurementProbability(0.5);
+
+  std::vector<CapacityNetwork::FlowDescriptor> myFlows({
+      {0, 3, 0.1},
+  });
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_EQ(1, myFlows[0].theDijsktra);
+  ASSERT_EQ(std::vector<unsigned long>({4, 3}), myFlows[0].thePath);
+}
+
 } // namespace qr
 } // namespace uiiit

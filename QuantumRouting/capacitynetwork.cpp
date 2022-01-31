@@ -38,6 +38,7 @@ SOFTWARE.
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 
+#include <boost/property_map/property_map.hpp>
 #include <glog/logging.h>
 
 #include <limits>
@@ -68,7 +69,8 @@ void CapacityNetwork::FlowDescriptor::movePathRateFrom(
 std::string CapacityNetwork::FlowDescriptor::toString() const {
   std::stringstream myStream;
   myStream << "(" << theSrc << "," << theDst << ") [net rate = " << theNetRate
-           << ", gross rate " << theGrossRate << "] path = {"
+           << ", gross rate " << theGrossRate << "] path = [" << thePath.size()
+           << "]{"
            << ::toString(
                   thePath,
                   ",",
@@ -207,6 +209,8 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
           myCopiedGraph,
           myFlow.theSrc,
           boost::predecessor_map(myPredecessors.data())
+              .weight_map(
+                  boost::make_static_property_map<Graph::edge_descriptor>(1))
               .distance_map(boost::make_iterator_property_map(
                   myDistances.data(),
                   get(boost::vertex_index, myCopiedGraph))));
