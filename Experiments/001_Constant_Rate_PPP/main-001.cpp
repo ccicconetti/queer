@@ -30,8 +30,11 @@ SOFTWARE.
 */
 
 #include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/poissonpointprocess.h"
+#include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
 #include "Support/glograii.h"
+#include "Support/random.h"
 
 #include <boost/program_options.hpp>
 
@@ -101,35 +104,37 @@ struct Parameters {
 };
 
 struct Output {
-  double      theAvgDijkstraCalls;
-  double      theSumGrossRate;
-  double      theSumNetRate;
-  double      theAdmissionRate;
-  std::size_t theAdmittedFlows;
+  // graph properties
+  std::size_t theNumNodes      = 0;
+  std::size_t theNumEdges      = 0;
+  double      theTotalCapacity = 0;
 
-  Output()
-      : theAvgDijkstraCalls(0)
-      , theSumGrossRate(0)
-      , theSumNetRate(0)
-      , theAdmissionRate(0)
-      , theAdmittedFlows(0) {
-    // noop
-  }
+  // routing properties
+  double      theResidualCapacity = 0;
+  double      theAvgDijkstraCalls = 0;
+  double      theSumGrossRate     = 0;
+  double      theSumNetRate       = 0;
+  double      theAdmissionRate    = 0;
+  std::size_t theAdmittedFlows    = 0;
 
   std::string toString() const {
     std::stringstream myStream;
-    myStream << "admitted " << theAdmittedFlows << " (rate " << theAdmissionRate
-             << "), total EPR rate net " << theSumNetRate << " (gross "
-             << theSumGrossRate << "), with " << theAvgDijkstraCalls
-             << " Dijkstra calls on average";
+    myStream << "G(" << theNumNodes << "," << theNumEdges
+             << " with total capacity " << theTotalCapacity
+             << " EPR/s (residual " << theResidualCapacity
+             << " EPR/s); admitted " << theAdmittedFlows << " (rate "
+             << theAdmissionRate << "), total EPR rate net " << theSumNetRate
+             << " (gross " << theSumGrossRate << "), with "
+             << theAvgDijkstraCalls << " Dijkstra calls on average";
     return myStream.str();
   }
 
   std::string toCsv() const {
     std::stringstream myStream;
-    myStream << theAvgDijkstraCalls << ',' << theSumGrossRate << ','
-             << theSumNetRate << ',' << theAdmissionRate << ','
-             << theAdmittedFlows;
+    myStream << theNumNodes << ',' << theNumEdges << ',' << theTotalCapacity
+             << ',' << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
+             << theSumGrossRate << ',' << theSumNetRate << ','
+             << theAdmissionRate << ',' << theAdmittedFlows;
     return myStream.str();
   }
 };
@@ -204,24 +209,56 @@ int main(int argc, char* argv[]) {
     using Data = us::ExperimentData<Parameters, Output>;
     Data myData;
 
+    const double myGridSize          = 60000;
+    const double myThreshold         = 10000;
+    const double myLinkProbability   = 1;
+    const double myQ                 = 0.5;
+    const double myFidelityInit      = 0.9925;
+    const double myFidelityThreshold = 0.7;
+
     for (auto mySeed = mySeedStart; mySeed <= mySeedEnd; ++mySeed) {
       {
         Data::Raii myRaii(myData,
                           Parameters{mySeed,
                                      myMu,
-                                     60000,
-                                     10000,
-                                     0.5,
+                                     myGridSize,
+                                     myThreshold,
+                                     myLinkProbability,
                                      myLinkMinEpr,
                                      myLinkMaxEpr,
-                                     0.5,
-                                     0.9925,
+                                     myQ,
+                                     myFidelityInit,
                                      myNumFlows,
                                      myMinNetRate,
                                      myMaxNetRate,
-                                     0.7});
+                                     myFidelityThreshold});
 
         Output myOutput;
+
+        us::UniformRv myLinkEprRv(myLinkMinEpr, myLinkMaxEpr, mySeed, 0, 0);
+        auto          myPppSeed                        = mySeed;
+        std::unique_ptr<qr::CapacityNetwork> myNetwork = nullptr;
+        while (not myNetwork) {
+          const auto myCoordinates = qr::PoissonPointProcessGrid(
+              myMu, myPppSeed, myGridSize, myGridSize)();
+          const auto myEdges = qr::findLinks(
+              myCoordinates, myThreshold, myLinkProbability, mySeed);
+          if (qr::bigraphConnected(myEdges)) {
+            myNetwork = std::make_unique<qr::CapacityNetwork>(
+                myEdges, myLinkEprRv, true);
+            myNetwork->measurementProbability(myQ);
+          } else {
+            VLOG(1) << "graph with seed " << myPppSeed
+                    << " is not connected, trying again";
+            myPppSeed += 1000000;
+          }
+        }
+
+        assert(myNetwork.get() != nullptr);
+        myOutput.theNumNodes      = myNetwork->numNodes();
+        myOutput.theNumEdges      = myNetwork->numEdges();
+        myOutput.theTotalCapacity = myNetwork->totalCapacity();
+
         myRaii.finish(std::move(myOutput));
       }
 
