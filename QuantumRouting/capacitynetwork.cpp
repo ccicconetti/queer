@@ -135,6 +135,20 @@ std::size_t CapacityNetwork::numEdges() const {
   return boost::num_edges(theGraph);
 }
 
+std::pair<std::size_t, std::size_t> CapacityNetwork::inDegree() const {
+  return minMaxVertexProp(
+      [](Graph::vertex_descriptor aVertex, const Graph& aGraph) {
+        return boost::in_degree(aVertex, aGraph);
+      });
+}
+
+std::pair<std::size_t, std::size_t> CapacityNetwork::outDegree() const {
+  return minMaxVertexProp(
+      [](Graph::vertex_descriptor aVertex, const Graph& aGraph) {
+        return boost::out_degree(aVertex, aGraph);
+      });
+}
+
 double CapacityNetwork::totalCapacity() const {
   const auto myEdges   = boost::edges(theGraph);
   const auto myWeights = boost::get(boost::edge_weight, theGraph);
@@ -314,6 +328,24 @@ void CapacityNetwork::removeCapacityFromPath(
     // move to the next edge
     mySrc = myDst;
   }
+}
+
+std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
+    const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
+        aPropFunctor) const {
+  auto        myRange = boost::vertices(theGraph);
+  std::size_t myMin   = std::numeric_limits<std::size_t>::max();
+  std::size_t myMax   = 0;
+  for (auto it = myRange.first; it != myRange.second; ++it) {
+    const auto myCur = aPropFunctor(*it, theGraph);
+    if (myCur < myMin) {
+      myMin = myCur;
+    }
+    if (myCur > myMax) {
+      myMax = myCur;
+    }
+  }
+  return {myMin, myMax};
 }
 
 } // namespace qr

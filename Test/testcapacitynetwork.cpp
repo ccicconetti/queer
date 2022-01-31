@@ -109,6 +109,10 @@ TEST_F(TestCapacityNetwork, test_graph_properties) {
   ASSERT_EQ(5, myNetwork.numNodes());
   ASSERT_EQ(5, myNetwork.numEdges());
   ASSERT_FLOAT_EQ(17, myNetwork.totalCapacity());
+  ASSERT_EQ(0, myNetwork.inDegree().first);
+  ASSERT_EQ(2, myNetwork.inDegree().second);
+  ASSERT_EQ(0, myNetwork.outDegree().first);
+  ASSERT_EQ(2, myNetwork.outDegree().second);
 }
 
 TEST_F(TestCapacityNetwork, test_route) {

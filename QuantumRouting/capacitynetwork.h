@@ -143,6 +143,12 @@ class CapacityNetwork final : public Network
   //! \return the number of edges.
   std::size_t numEdges() const;
 
+  //! \return the min-max in-degree of the graph.
+  std::pair<std::size_t, std::size_t> inDegree() const;
+
+  //! \return the min-max out-degree of the graph.
+  std::pair<std::size_t, std::size_t> outDegree() const;
+
   //! \return the total EPR capacity across all the edges.
   double totalCapacity() const;
 
@@ -208,6 +214,10 @@ class CapacityNetwork final : public Network
                                      const std::vector<VertexDescriptor>& aPath,
                                      const double aCapacity,
                                      Graph&       aGraph);
+
+  std::pair<std::size_t, std::size_t> minMaxVertexProp(
+      const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
+          aPropFunctor) const;
 
  private:
   Graph  theGraph;
