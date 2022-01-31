@@ -23,7 +23,7 @@ for i in ${!columns[@]}; do
   rm -f $outfile 2> /dev/null
   for f in $flows ; do
     datafile=data/out-$f.csv
-    value=$(sed -e "s/,/ /g" $datafile | percentile.py --column ${columns[$i]} --mean | cut -f 1 -d ' ')
+    value=$(sed -e "s/,/ /g" $datafile | percentile.py --column ${columns[$i]} --mean | cut -f 1,3 -d ' ')
     echo $f $value >> $outfile
   done
 done
