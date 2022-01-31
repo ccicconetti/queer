@@ -227,14 +227,18 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
         }
         VLOG(1) << "candidate " << myCandidate.toString();
 
-        // check that the gross EPR rate is feasible along the path selected
-        // and that the external functions gives the clear-to-go, as well
-        if (checkCapacity(myCandidate.theSrc,
-                          myCandidate.thePath,
-                          myCandidate.theGrossRate,
-                          myCopiedGraph) and
-            aCheckFunction(myCandidate)) {
-          // flow is admissible on the shortest path, we can break from the loop
+        // if the flow is not admissible because of the external function
+        // we assume there is no need to continue the search, otherwise
+        // we check that the gross EPR rate is feasible along the path selected
+        if (not aCheckFunction(myCandidate)) {
+          myFoundOrDisconnected = true;
+
+        } else if (checkCapacity(myCandidate.theSrc,
+                                 myCandidate.thePath,
+                                 myCandidate.theGrossRate,
+                                 myCopiedGraph)) {
+          // flow is admissible on the shortest path, we can break from the
+          // loop
           myFoundOrDisconnected = true;
           myFlow.movePathRateFrom(myCandidate);
 

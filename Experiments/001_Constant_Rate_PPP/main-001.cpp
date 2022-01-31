@@ -37,6 +37,7 @@ SOFTWARE.
 #include "Support/parallelbatch.h"
 #include "Support/queue.h"
 #include "Support/random.h"
+#include "Support/stat.h"
 
 #include <boost/program_options.hpp>
 
@@ -109,6 +110,10 @@ struct Output {
   // graph properties
   std::size_t theNumNodes      = 0;
   std::size_t theNumEdges      = 0;
+  std::size_t theMinInDegree   = 0;
+  std::size_t theMaxInDegree   = 0;
+  std::size_t theMinOutDegree  = 0;
+  std::size_t theMaxOutDegree  = 0;
   double      theTotalCapacity = 0;
 
   // routing properties
@@ -118,25 +123,33 @@ struct Output {
   double      theSumNetRate       = 0;
   double      theAdmissionRate    = 0;
   std::size_t theAdmittedFlows    = 0;
+  double      theAvgPathSize      = 0;
 
   std::string toString() const {
     std::stringstream myStream;
-    myStream << "G(" << theNumNodes << "," << theNumEdges
+    myStream << "G(" << theNumNodes << "," << theNumEdges << "), in-degree "
+             << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
+             << theMinOutDegree << "-" << theMaxOutDegree
              << " with total capacity " << theTotalCapacity
              << " EPR/s (residual " << theResidualCapacity
              << " EPR/s); admitted " << theAdmittedFlows << " (rate "
              << theAdmissionRate << "), total EPR rate net " << theSumNetRate
              << " (gross " << theSumGrossRate << "), with "
-             << theAvgDijkstraCalls << " Dijkstra calls on average";
+             << theAvgDijkstraCalls
+             << " Dijkstra calls on average, average path size "
+             << theAvgPathSize;
     return myStream.str();
   }
 
   std::string toCsv() const {
     std::stringstream myStream;
-    myStream << theNumNodes << ',' << theNumEdges << ',' << theTotalCapacity
-             << ',' << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
+    myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
+             << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
+             << theMaxOutDegree << ',' << theTotalCapacity << ','
+             << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
              << theSumGrossRate << ',' << theSumNetRate << ','
-             << theAdmissionRate << ',' << theAdmittedFlows;
+             << theAdmissionRate << ',' << theAdmittedFlows << ','
+             << theAvgPathSize;
     return myStream.str();
   }
 };
@@ -148,6 +161,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   Output myOutput;
 
+  // create network
   us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
                             myRaii.in().theLinkMaxEpr,
                             myRaii.in().theSeed,
@@ -176,11 +190,66 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     }
   }
 
+  // network properties
   assert(myNetwork.get() != nullptr);
   myOutput.theNumNodes      = myNetwork->numNodes();
   myOutput.theNumEdges      = myNetwork->numEdges();
   myOutput.theTotalCapacity = myNetwork->totalCapacity();
+  std::tie(myOutput.theMinInDegree, myOutput.theMaxInDegree) =
+      myNetwork->inDegree();
+  std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
+      myNetwork->outDegree();
 
+  // create traffic flows
+  std::vector<qr::CapacityNetwork::FlowDescriptor> myFlows;
+  us::UniformRv                   myNetRateRv(myRaii.in().theMinNetRate,
+                            myRaii.in().theMaxNetRate,
+                            myRaii.in().theSeed,
+                            0,
+                            0);
+  us::UniformIntRv<unsigned long> mySrcDstRv(
+      0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
+  for (std::size_t i = 0; i < myRaii.in().theNumFlows; i++) {
+    unsigned long mySrc = 0;
+    unsigned long myDst = 0;
+    while (mySrc == myDst) {
+      mySrc = mySrcDstRv();
+      myDst = mySrcDstRv();
+    }
+    assert(mySrc != myDst);
+
+    myFlows.emplace_back(mySrc, myDst, myNetRateRv());
+  }
+
+  // route traffic flows
+  myNetwork->route(myFlows);
+
+  // traffic metrics
+  myOutput.theResidualCapacity = myNetwork->totalCapacity();
+  us::SummaryStat myDijkstra;
+  us::SummaryStat myGrossRate;
+  us::SummaryStat myNetRate;
+  us::SummaryStat myAdmissionRate;
+  us::SummaryStat myPathSize;
+  for (const auto& myFlow : myFlows) {
+    myDijkstra(myFlow.theDijsktra);
+    myGrossRate(myFlow.theGrossRate);
+    if (not myFlow.thePath.empty()) {
+      myNetRate(myFlow.theNetRate);
+      myAdmissionRate(1);
+      myPathSize(myFlow.thePath.size());
+    } else {
+      myAdmissionRate(0);
+    }
+  }
+  myOutput.theAvgDijkstraCalls = myDijkstra.mean();
+  myOutput.theSumGrossRate     = myGrossRate.count() * myGrossRate.mean();
+  myOutput.theSumNetRate       = myNetRate.count() * myNetRate.mean();
+  myOutput.theAdmissionRate    = myAdmissionRate.mean();
+  myOutput.theAdmittedFlows = myAdmissionRate.count() * myAdmissionRate.mean();
+  myOutput.theAvgPathSize   = myPathSize.mean();
+
+  // save data
   VLOG(1) << "experiment finished\n"
           << myRaii.in().toString() << '\n'
           << myOutput.toString();
