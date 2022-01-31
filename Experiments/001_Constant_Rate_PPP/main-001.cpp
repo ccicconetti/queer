@@ -73,6 +73,25 @@ struct Parameters {
   double      theMaxNetRate;
   double      theFidelityThreshold;
 
+  static const std::vector<std::string>& names() {
+    static std::vector<std::string> ret({
+        "seed",
+        "mu",
+        "grid-length",
+        "threshold",
+        "edge-prob",
+        "link-min-epr",
+        "link-max-epr",
+        "q",
+        "fidelity-init",
+        "num-flows",
+        "min-net-rate",
+        "max-net-rate",
+        "fidelity-thresh",
+    });
+    return ret;
+  }
+
   std::string toString() const {
     std::stringstream myStream;
     myStream
@@ -97,11 +116,11 @@ struct Parameters {
 
   std::string toCsv() const {
     std::stringstream myStream;
-    myStream << theMu << ',' << theGridLength << ',' << theThreshold << ','
-             << theEdgeProbability << ',' << theLinkMinEpr << ','
-             << theLinkMaxEpr << ',' << theQ << ',' << theFidelityInit << ','
-             << theNumFlows << ',' << theMinNetRate << ',' << theMaxNetRate
-             << ',' << theFidelityThreshold << ',' << theSeed;
+    myStream << theSeed << ',' << theMu << ',' << theGridLength << ','
+             << theThreshold << ',' << theEdgeProbability << ','
+             << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theQ << ','
+             << theFidelityInit << ',' << theNumFlows << ',' << theMinNetRate
+             << ',' << theMaxNetRate << ',' << theFidelityThreshold;
     return myStream.str();
   }
 };
@@ -125,6 +144,27 @@ struct Output {
   std::size_t theAdmittedFlows    = 0;
   double      theAvgPathSize      = 0;
   double      theAvgFidelity      = 0;
+
+  static const std::vector<std::string>& names() {
+    static std::vector<std::string> ret({
+        "N",
+        "V",
+        "min-in-degree",
+        "max-in-degree",
+        "min-out-degree",
+        "max-out-degree",
+        "capacity-tot",
+        "capacity-res",
+        "avg-dijkstra-calls",
+        "sum-gross-rate",
+        "sum-net-rate",
+        "admission-rate",
+        "admitted-flows",
+        "avg-path-size",
+        "avg-fidelity",
+    });
+    return ret;
+  }
 
   std::string toString() const {
     std::stringstream myStream;
@@ -296,6 +336,7 @@ int main(int argc, char* argv[]) {
   // clang-format off
   myDesc.add_options()
     ("help,h", "produce help message")
+    ("explain-output", "report the meaning of the columns in the output")
     ("num-threads",
      po::value<std::size_t>(&myNumThreads)->default_value(1),
      "Number of threads used.")
@@ -338,6 +379,17 @@ int main(int argc, char* argv[]) {
     if (myVarMap.count("help")) {
       std::cout << myDesc << std::endl;
       return EXIT_FAILURE;
+    }
+
+    if (myVarMap.count("explain-output")) {
+      std::size_t myCol = 0;
+      for (const auto& elem : Parameters::names()) {
+        std::cout << '#' << ++myCol << '\t' << elem << '\n';
+      }
+      for (const auto& elem : Output::names()) {
+        std::cout << '#' << ++myCol << '\t' << elem << '\n';
+      }
+      return EXIT_SUCCESS;
     }
 
     std::ofstream myFile(myOutputFilename,
