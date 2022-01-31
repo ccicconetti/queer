@@ -123,7 +123,7 @@ void CapacityNetwork::measurementProbability(
     throw std::runtime_error("Invalid measurement probability: " +
                              std::to_string(aMeasurementProbability));
   }
-  LOG(INFO) << "measurement probability set to " << aMeasurementProbability;
+  VLOG(1) << "measurement probability set to " << aMeasurementProbability;
   theMeasurementProbability = aMeasurementProbability;
 }
 
