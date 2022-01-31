@@ -84,7 +84,7 @@ bool bigraphConnected(
   using Vertex = boost::graph_traits<Graph>::vertex_descriptor;
 
   struct CountVisitor final : public boost::default_dfs_visitor {
-    CountVisitor(unsigned long& aCount)
+    explicit CountVisitor(unsigned long& aCount)
         : theCount(aCount) {
       // noop
     }
