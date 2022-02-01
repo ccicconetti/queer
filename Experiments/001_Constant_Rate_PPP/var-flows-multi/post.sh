@@ -36,7 +36,7 @@ for m in $mus ; do
       for f in $flows ; do
         inmangle=out-$f-$m-$e
         datafile=data/$inmangle.csv
-        value=$($percentile_script --column ${columns[$i]} --mean < $datafile | cut -f 1,3 -d ' ')
+        value=$($percentile_script --delimiter , --column ${columns[$i]} --mean < $datafile | cut -f 1,3 -d ' ')
         echo $f $value >> $outfile
       done
     done
