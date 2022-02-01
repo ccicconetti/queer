@@ -36,6 +36,7 @@ add_library(testqrlib SHARED
   ${CMAKE_CURRENT_SOURCE_DIR}/testgraphml.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testqrutils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testpoissonpointprocess.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testyen.cpp
 )
 
 target_link_libraries(testqrlib
