@@ -1,3 +1,6 @@
 [submodule "support"]
 	path = support
 	url = ../support.git
+[submodule "yen"]
+	path = yen
+	url = ../yen.git
