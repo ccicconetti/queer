@@ -79,6 +79,47 @@ std::string CapacityNetwork::FlowDescriptor::toString() const {
   return myStream.str();
 }
 
+CapacityNetwork::AppDescriptor::AppDescriptor(
+    const unsigned long               aHost,
+    const std::vector<unsigned long>& aPeers,
+    const double                      aPriority) noexcept
+    : theHost(aHost)
+    , thePeers(aPeers)
+    , thePriority(aPriority)
+    , thePaths()
+    , theYen(0)
+    , theDelta(0) {
+  // noop
+}
+
+std::string CapacityNetwork::AppDescriptor::toString() const {
+  std::stringstream myStream;
+  myStream << "host " << theHost << ", peers {"
+           << ::toString(
+                  thePeers,
+                  ",",
+                  [](const auto& aPeer) { return std::to_string(aPeer); })
+           << "}, prio " << thePriority << ", paths {"
+           << ::toString(thePaths,
+                         ",",
+                         [](const auto& aPath) {
+                           std::stringstream myStream;
+                           myStream
+                               << "[" << std::get<NetRate>(aPath) << ","
+                               << std::get<GrossRate>(aPath) << ","
+                               << "("
+                               << ::toString(std::get<Path>(aPath),
+                                             ",",
+                                             [](const auto& aNode) {
+                                               return std::to_string(aNode);
+                                             })
+                               << ")";
+                           return myStream.str();
+                         })
+           << "}, " << theYen << " Yen algorithm calls";
+  return myStream.str();
+}
+
 CapacityNetwork::CapacityNetwork(
     const std::vector<std::pair<unsigned long, unsigned long>>& aEdges,
     support::RealRvInterface&                                   aWeightRv,

@@ -56,6 +56,16 @@ namespace qr {
  *
  * Links are directional and, in principle, the capacity can be different
  * for the two directions.
+ *
+ * It is possible to route two types of resources:
+ *
+ * - flows: they are characterized by a source, a destination and a net EPR
+ * rate; they represent metrology, sensing, and QKD applications that require a
+ * constant rate of end-to-end entangled pairs
+ *
+ * - apps: they are characterized by a host node and a number of peers, as well
+ * as a numeric priority; they represent elastic applications, e.g., for
+ * distributed quantum computing
  */
 class CapacityNetwork final : public Network
 {
@@ -76,6 +86,33 @@ class CapacityNetwork final : public Network
     std::vector<unsigned long> thePath;      //!< hops not including src
     double                     theGrossRate; //!< in EPR/s
     std::size_t                theDijsktra;  //!< number of times called
+
+    std::string toString() const;
+  };
+
+  struct AppDescriptor {
+    AppDescriptor(const unsigned long               aHost,
+                  const std::vector<unsigned long>& aPeers,
+                  const double                      aPriority) noexcept;
+
+    // input
+    const unsigned long theHost; //!< the vertex that hosts the computation
+    const std::vector<unsigned long>
+                 thePeers;    //!< the possible entanglement peers
+    const double thePriority; //! weight
+
+    // output
+    enum {
+      NetRate   = 0,
+      GrossRate = 1,
+      Path      = 2,
+    };
+    std::list<std::tuple<double, double, std::vector<unsigned long>>>
+                thePaths; //!< the paths allocated
+    std::size_t theYen;   //!< the number of times called
+
+    // working
+    double theDelta; //!< deficit counter, in gross rate (EPRs/s)
 
     std::string toString() const;
   };
@@ -109,9 +146,9 @@ class CapacityNetwork final : public Network
    * @param aMakeBidirectional If true then for each pair (A,B) two edges are
    * added A->B and B->A, with the same weight.
    */
-  CapacityNetwork(const EdgeVector&         aEdges,
-                  support::RealRvInterface& aWeightRv,
-                  const bool                aMakeBidirectional);
+  explicit CapacityNetwork(const EdgeVector&         aEdges,
+                           support::RealRvInterface& aWeightRv,
+                           const bool                aMakeBidirectional);
 
   /**
    * @brief Create a network with given links and weights
@@ -121,7 +158,7 @@ class CapacityNetwork final : public Network
    * @param aEdgeWeights The unidirectional edges and weights of the network
    * (src, dst, w).
    */
-  CapacityNetwork(const WeightVector& aEdgeWeights);
+  explicit CapacityNetwork(const WeightVector& aEdgeWeights);
 
   /**
    * @brief Set the measurement probability.
