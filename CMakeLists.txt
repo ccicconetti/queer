@@ -53,6 +53,7 @@ add_subdirectory(Experiments)
 
 # external repos
 add_subdirectory(support/Support)
+add_subdirectory(yen)
 
 # unit tests
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
