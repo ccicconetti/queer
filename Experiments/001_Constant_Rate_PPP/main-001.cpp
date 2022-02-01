@@ -147,8 +147,8 @@ struct Output {
 
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
-        "N",
-        "V",
+        "num-nodes",
+        "num-edges",
         "min-in-degree",
         "max-in-degree",
         "min-out-degree",
