@@ -32,7 +32,7 @@ for f in $flows ; do
         --num-threads 100 \
         --output data/out-$f-$m-$e.csv \
         --seed-start 0 \
-        --seed-end 999 \
+        --seed-end 10000 \
         --mu $m \
         --num-flows $f \
         $link_epr \

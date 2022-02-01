@@ -4,9 +4,16 @@ if [ ! -d "data" ] ; then
   echo "no 'data' directory"
 fi
 
-if [ "$(which percentile.py)" == "" ] ; then
-  echo "wrong environment"
-  exit 1
+percentile_script=$(which percentile.py)
+if [ "$percentile_script" == "" ] ; then
+  if [ ! -x percentile.py ] ; then
+    curl -opercentile.py https://raw.githubusercontent.com/ccicconetti/serverlessonedge/master/scripts/percentile.py >& /dev/null
+    if [ $? -ne 0 ] ; then
+      echo "error downloading the percentile.py script"
+    fi
+    chmod 755 percentile.py
+  fi
+  percentile_script=./percentile.py
 fi
 
 if [ ! -d "post" ] ; then
@@ -23,7 +30,7 @@ for i in ${!columns[@]}; do
   rm -f $outfile 2> /dev/null
   for f in $flows ; do
     datafile=data/out-$f.csv
-    value=$(sed -e "s/,/ /g" $datafile | percentile.py --column ${columns[$i]} --mean | cut -f 1,3 -d ' ')
+    value=$($percentile_script --delimiter , --column ${columns[$i]} --mean < $datafile | cut -f 1,3 -d ' ')
     echo $f $value >> $outfile
   done
 done

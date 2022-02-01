@@ -18,7 +18,7 @@ for f in $flows ; do
     --num-threads 100 \
     --output data/out-$f.csv \
     --seed-start 0 \
-    --seed-end 999 \
+    --seed-end 10000 \
     --mu 50 \
     --link-min-epr 1 \
     --link-max-epr 100 \
