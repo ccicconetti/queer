@@ -45,3 +45,5 @@ rbuild
 .cache
 compile_commands.json
 release
+
+*.swp
