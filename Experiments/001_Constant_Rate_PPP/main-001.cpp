@@ -347,8 +347,8 @@ int main(int argc, char* argv[]) {
      po::value<std::size_t>(&mySeedStart)->default_value(0),
      "First seed used.")
     ("seed-end",
-     po::value<std::size_t>(&mySeedEnd)->default_value(0),
-     "Last seed used.")
+     po::value<std::size_t>(&mySeedEnd)->default_value(1),
+    "Next seed after the last one to be used, i.e., the number of simulations is (seed-end - seed-start).")
     ("append", "Append to the output file.")
     ("mu",
      po::value<double>(&myMu)->default_value(100),
@@ -410,7 +410,7 @@ int main(int argc, char* argv[]) {
     const double myFidelityThreshold = 0.95;
 
     us::Queue<Parameters> myParameters;
-    for (auto mySeed = mySeedStart; mySeed <= mySeedEnd; ++mySeed) {
+    for (auto mySeed = mySeedStart; mySeed < mySeedEnd; ++mySeed) {
       myParameters.push(Parameters{mySeed,
                                    myMu,
                                    myGridSize,
