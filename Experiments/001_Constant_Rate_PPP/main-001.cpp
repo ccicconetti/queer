@@ -389,6 +389,7 @@ int main(int argc, char* argv[]) {
       for (const auto& elem : Output::names()) {
         std::cout << '#' << ++myCol << '\t' << elem << '\n';
       }
+      std::cout << '#' << ++myCol << "\tduration\n";
       return EXIT_SUCCESS;
     }
 
