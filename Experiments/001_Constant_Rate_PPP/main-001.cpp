@@ -317,6 +317,37 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   myRaii.finish(std::move(myOutput));
 }
 
+bool explainOrPrint(const po::variables_map& aVarMap) {
+  if (aVarMap.count("explain-output") == 1 and
+      aVarMap.count("print-header") == 1) {
+    throw std::runtime_error(
+        "cannot specify both --explain-output and --print-header");
+  }
+  if (aVarMap.count("explain-output") == 1) {
+    std::size_t myCol = 0;
+    for (const auto& elem : Parameters::names()) {
+      std::cout << '#' << ++myCol << '\t' << elem << '\n';
+    }
+    for (const auto& elem : Output::names()) {
+      std::cout << '#' << ++myCol << '\t' << elem << '\n';
+    }
+    std::cout << '#' << ++myCol << "\tduration\n";
+    return true;
+  }
+
+  if (aVarMap.count("print-header") == 1) {
+    for (const auto& elem : Parameters::names()) {
+      std::cout << elem << ',';
+    }
+    for (const auto& elem : Output::names()) {
+      std::cout << elem << ',';
+    }
+    std::cout << "duration\n";
+    return true;
+  }
+  return false;
+}
+
 int main(int argc, char* argv[]) {
   uiiit::support::GlogRaii myGlogRaii(argv[0]);
 
@@ -337,6 +368,7 @@ int main(int argc, char* argv[]) {
   myDesc.add_options()
     ("help,h", "produce help message")
     ("explain-output", "report the meaning of the columns in the output")
+    ("print-header", "print the header of the CSV output file")
     ("num-threads",
      po::value<std::size_t>(&myNumThreads)->default_value(1),
      "Number of threads used.")
@@ -381,15 +413,7 @@ int main(int argc, char* argv[]) {
       return EXIT_FAILURE;
     }
 
-    if (myVarMap.count("explain-output")) {
-      std::size_t myCol = 0;
-      for (const auto& elem : Parameters::names()) {
-        std::cout << '#' << ++myCol << '\t' << elem << '\n';
-      }
-      for (const auto& elem : Output::names()) {
-        std::cout << '#' << ++myCol << '\t' << elem << '\n';
-      }
-      std::cout << '#' << ++myCol << "\tduration\n";
+    if (explainOrPrint(myVarMap)) {
       return EXIT_SUCCESS;
     }
 
