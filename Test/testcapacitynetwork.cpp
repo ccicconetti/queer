@@ -115,7 +115,7 @@ TEST_F(TestCapacityNetwork, test_graph_properties) {
   ASSERT_EQ(2, myNetwork.outDegree().second);
 }
 
-TEST_F(TestCapacityNetwork, test_route) {
+TEST_F(TestCapacityNetwork, test_route_flows) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
   myNetwork.measurementProbability(0.5);
 
@@ -230,7 +230,7 @@ TEST_F(TestCapacityNetwork, test_route) {
   ASSERT_THROW(myNetwork.route(myFlows), std::runtime_error);
 }
 
-TEST_F(TestCapacityNetwork, test_route_another) {
+TEST_F(TestCapacityNetwork, test_route_flows_another) {
   // swap weights
   auto myWeights = exampleEdgeWeights();
   for (auto& elem : myWeights) {
@@ -252,6 +252,111 @@ TEST_F(TestCapacityNetwork, test_route_another) {
   ASSERT_EQ(1, myFlows.size());
   ASSERT_EQ(1, myFlows[0].theDijsktra);
   ASSERT_EQ(std::vector<unsigned long>({4, 3}), myFlows[0].thePath);
+}
+
+TEST_F(TestCapacityNetwork, test_route_apps) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+  std::vector<CapacityNetwork::AppDescriptor> myApps;
+
+  // ill-formed requests
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {0}, 1},
+  });
+  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {42}, 1},
+  });
+  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1}, 0},
+  });
+  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1}, -1},
+  });
+  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1}, 1},
+  });
+  ASSERT_THROW(myNetwork.route(myApps, 0, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, -1, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, 1, 0), std::runtime_error);
+
+  // no route existing
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {3, {2, 0}, 1},
+      {2, {1}, 1},
+  });
+  myNetwork.route(myApps, 1.4, 99);
+  ASSERT_EQ(2, myApps.size());
+  ASSERT_EQ(0, myApps[0].theAllocated.size());
+  ASSERT_FLOAT_EQ(0, myApps[0].grossRate());
+  ASSERT_EQ(0, myApps[1].theAllocated.size());
+  ASSERT_FLOAT_EQ(0, myApps[1].grossRate());
+
+  // existing routes
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {2, 3}, 1},
+      {1, {3}, 1},
+  });
+  myNetwork.route(myApps, 1.4, 99);
+  ASSERT_EQ(2, myApps.size());
+  ASSERT_TRUE(myApps[0].theRemainingPaths.empty());
+  ASSERT_EQ(8, myApps[0].theVisits);
+  ASSERT_EQ(2, myApps[0].theAllocated.size());
+  ASSERT_EQ(1, myApps[0].theAllocated[2].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({1, 2}),
+            myApps[0].theAllocated[2][0].theHops);
+  ASSERT_EQ(1, myApps[0].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({4, 3}),
+            myApps[0].theAllocated[3][0].theHops);
+  ASSERT_TRUE(myApps[1].theRemainingPaths.empty());
+  ASSERT_EQ(4, myApps[1].theVisits);
+  ASSERT_EQ(1, myApps[1].theAllocated.size());
+  ASSERT_EQ(1, myApps[1].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({2, 3}),
+            myApps[1].theAllocated[3][0].theHops);
+
+  double myGrossRate = 0;
+  double myNetRate   = 0;
+  for (const auto& myApp : myApps) {
+    myGrossRate += myApp.grossRate();
+    myNetRate += myApp.netRate();
+  }
+  ASSERT_FLOAT_EQ(5, myGrossRate);
+  ASSERT_FLOAT_EQ(2.5, myNetRate);
+  ASSERT_FLOAT_EQ(7, myNetwork.totalCapacity());
+  const auto myWeights = myNetwork.weights();
+  ASSERT_EQ(3, myWeights.size());
+  ASSERT_EQ(0, std::get<0>(myWeights[0]));
+  ASSERT_EQ(1, std::get<1>(myWeights[0]));
+  ASSERT_FLOAT_EQ(1.9, std::get<2>(myWeights[0]));
+  ASSERT_EQ(2, std::get<0>(myWeights[1]));
+  ASSERT_EQ(3, std::get<1>(myWeights[1]));
+  ASSERT_FLOAT_EQ(2.1, std::get<2>(myWeights[1]));
+  ASSERT_EQ(4, std::get<0>(myWeights[2]));
+  ASSERT_EQ(3, std::get<1>(myWeights[2]));
+  ASSERT_FLOAT_EQ(3, std::get<2>(myWeights[2]));
+
+  // consume the remaining capacity
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1, 2, 3, 4}, 1}, // only 0->1 is still available
+      {2, {0, 1, 3, 4}, 1}, // same for 2->3
+      {4, {0, 1, 2, 3}, 1}, // same for 4->3
+  });
+  myNetwork.route(myApps, 0.1, 99);
+  ASSERT_EQ(3, myApps.size());
+  ASSERT_EQ(1, myApps[0].theAllocated.size());
+  ASSERT_EQ(1, myApps[1].theAllocated.size());
+  ASSERT_EQ(1, myApps[2].theAllocated.size());
+  ASSERT_EQ(1, myApps[0].theAllocated[1].size());
+  ASSERT_EQ(1, myApps[1].theAllocated[3].size());
+  ASSERT_EQ(1, myApps[2].theAllocated[3].size());
+  ASSERT_EQ(58, myApps[0].theVisits);
+  ASSERT_EQ(64, myApps[1].theVisits);
+  ASSERT_EQ(92, myApps[2].theVisits);
+  ASSERT_FLOAT_EQ(0, myNetwork.totalCapacity());
 }
 
 } // namespace qr

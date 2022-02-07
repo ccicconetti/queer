@@ -117,8 +117,7 @@ class CapacityNetwork final : public Network
     const double thePriority; //! weight
 
     // working variables
-    std::list<std::pair<double, Path>> theAllPaths;
-    std::map<double, Path>             theRemainingPaths;
+    std::map<unsigned long, std::list<Path>> theRemainingPaths;
 
     // output
     struct Output {
@@ -128,9 +127,9 @@ class CapacityNetwork final : public Network
       double theNetRate   = 0; //!< in EPR-pairs/s
       double theGrossRate = 0; //!< in EPR-pairs/s
     };
-    std::map<unsigned long, Output> theAllocated; //!< key: destination
-    std::size_t                     theYen;       //!< number of times called
-    std::size_t                     theVisits;    //!< number of visits
+    std::map<unsigned long, std::vector<Output>>
+                theAllocated; //!< key: destination
+    std::size_t theVisits;    //!< number of visits
 
     double      netRate() const;
     double      grossRate() const;
@@ -138,6 +137,7 @@ class CapacityNetwork final : public Network
   };
 
   using FlowCheckFunction = std::function<bool(const FlowDescriptor&)>;
+  using AppCheckFunction  = std::function<bool(const AppDescriptor::Path&)>;
 
   // vector of (src, dst)
   using EdgeVector = std::vector<std::pair<unsigned long, unsigned long>>;
@@ -226,6 +226,27 @@ class CapacityNetwork final : public Network
         return true;
       });
 
+  /**
+   * @brief Route the given elastic applications in the network.
+   *
+   * @param aApps the applications to be routed
+   * @param aQuantum  the allocation quantum to be used
+   * @param aK the maximum number of paths to be found for each app and peer
+   * @param aCheckFunction the flow is considered feasible only if this
+   * function returns true, otherwise it is inadmissible; the default is to
+   * always accept the flow
+   *
+   * @throw std::runtime_error if aFlows contain an ill-formed request, in which
+   * case we guarantee that the internal state is not changed
+   */
+  void route(
+      std::vector<AppDescriptor>& aApps,
+      const double                aQuantum,
+      const std::size_t           aK,
+      const AppCheckFunction&     aCheckFunction = [](const auto&) {
+        return true;
+      });
+
  private:
   struct HopsFinder {
     HopsFinder(const std::vector<VertexDescriptor>& aPredecessors,
@@ -267,6 +288,9 @@ class CapacityNetwork final : public Network
 
   //! \return the gross rate for a given path length, in num of edges.
   double toGrossRate(const double aNetRate, const std::size_t aNumEdges) const;
+
+  //! \return the net rate for a given path length, in num of edges.
+  double toNetRate(const double aGrossRate, const std::size_t aNumEdges) const;
 
  private:
   Graph  theGraph;

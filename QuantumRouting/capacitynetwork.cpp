@@ -33,6 +33,8 @@ SOFTWARE.
 
 #include "Support/tostring.h"
 
+#include "yen/yen_ksp.hpp"
+
 #include <boost/graph/detail/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/graph_utility.hpp>
@@ -86,10 +88,8 @@ CapacityNetwork::AppDescriptor::AppDescriptor(
     : theHost(aHost)
     , thePeers(aPeers)
     , thePriority(aPriority)
-    , theAllPaths()
     , theRemainingPaths()
     , theAllocated()
-    , theYen(0)
     , theVisits(0) {
   // noop
 }
@@ -104,7 +104,9 @@ CapacityNetwork::AppDescriptor::AppDescriptor::Output::Output(const Path& aPath)
 double CapacityNetwork::AppDescriptor::netRate() const {
   double ret = 0;
   for (const auto& elem : theAllocated) {
-    ret += elem.second.theNetRate;
+    for (const auto& inner : elem.second) {
+      ret += inner.theNetRate;
+    }
   }
   return ret;
 }
@@ -112,7 +114,9 @@ double CapacityNetwork::AppDescriptor::netRate() const {
 double CapacityNetwork::AppDescriptor::grossRate() const {
   double ret = 0;
   for (const auto& elem : theAllocated) {
-    ret += elem.second.theGrossRate;
+    for (const auto& inner : elem.second) {
+      ret += inner.theGrossRate;
+    }
   }
   return ret;
 }
@@ -125,10 +129,9 @@ std::string CapacityNetwork::AppDescriptor::toString() const {
                   ",",
                   [](const auto& aPeer) { return std::to_string(aPeer); })
            << "}, prio " << thePriority << ", " << theRemainingPaths.size()
-           << " remaining paths (" << theAllPaths.size() << " total), "
-           << theAllocated.size() << " paths allocated with totale capacity "
-           << netRate() << " (gross " << grossRate() << "), " << theYen
-           << " Yen algorithm calls, " << theVisits << " visits made";
+           << " remaining paths, " << theAllocated.size()
+           << " paths allocated with totale capacity " << netRate()
+           << " (gross " << grossRate() << "), " << theVisits << " visits made";
   return myStream.str();
 }
 
@@ -318,6 +321,271 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
   }
 }
 
+void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
+                            const double                aQuantum,
+                            const std::size_t           aK,
+                            const AppCheckFunction&     aCheckFunction) {
+  if (aK == 0) {
+    throw std::runtime_error("invalid k: cannot be null");
+  }
+  if (aQuantum <= 0) {
+    throw std::runtime_error("invalid non-positive quantum value: " +
+                             std::to_string(aQuantum));
+  }
+  const auto V = boost::num_vertices(theGraph);
+
+  // pre-condition checks
+  for (const auto& myApp : aApps) {
+    assert(myApp.theRemainingPaths.empty());
+    assert(myApp.theAllocated.empty());
+    assert(myApp.theVisits == 0);
+
+    if (boost::vertex(myApp.theHost, theGraph) >= V) {
+      throw std::runtime_error("invalid host node in app: " +
+                               std::to_string(myApp.theHost));
+    }
+    for (const auto& myPeer : myApp.thePeers) {
+      if (boost::vertex(myPeer, theGraph) >= V) {
+        throw std::runtime_error("invalid peer node in app: " +
+                                 std::to_string(myPeer));
+      }
+      if (myApp.theHost == myPeer) {
+        throw std::runtime_error("invalid app: from " +
+                                 std::to_string(myApp.theHost) + " to itself");
+      }
+    }
+    if (myApp.thePriority <= 0) {
+      throw std::runtime_error("invalid nonpositive priority for app: " +
+                               std::to_string(myApp.thePriority));
+    }
+  }
+
+  // determine the quantum per application
+  std::vector<double> myQuanta(aApps.size());
+  double              mySumPriorities = 0;
+  for (size_t i = 0; i < aApps.size(); i++) {
+    mySumPriorities += aApps[i].thePriority;
+  }
+  for (size_t i = 0; i < aApps.size(); i++) {
+    myQuanta[i] = aQuantum * aApps[i].thePriority / mySumPriorities;
+  }
+
+  // for each app, find k-shortest paths towards each peer using Yen's algorithm
+  auto myIndexMap = boost::get(boost::vertex_index, theGraph);
+  for (auto& myApp : aApps) {
+    for (const auto& myPeer : myApp.thePeers) {
+      auto myResult = boost::yen_ksp(
+          theGraph,
+          myApp.theHost,
+          myPeer,
+          boost::make_static_property_map<Graph::edge_descriptor>(1),
+          myIndexMap,
+          aK);
+      for (auto& elem : myResult) {
+        const auto myValid = aCheckFunction(elem.second);
+        VLOG(1) << myApp.theHost << " -> " << myPeer << ": "
+                << (myValid ? "valid" : "invalid") << " path found ["
+                << elem.first << "] {"
+                << ::toString(elem.second,
+                              ",",
+                              [](const auto& aEdge) {
+                                return std::to_string(aEdge.m_target);
+                              })
+                << "}";
+        if (myValid) {
+          auto myRes = myApp.theRemainingPaths.emplace(
+              elem.first, std::list<AppDescriptor::Path>());
+          myRes.first->second.emplace_back(std::move(elem.second));
+        }
+      }
+    }
+  }
+
+  // do the allocation using weighted round-robin
+  std::list<std::size_t> myActiveApps;
+  for (std::size_t i = 0; i < aApps.size(); i++) {
+    // only add apps with at least one path
+    if (not aApps[i].theRemainingPaths.empty()) {
+      myActiveApps.emplace_back(i);
+    }
+  }
+  auto myCurAppIt = myActiveApps.begin();
+  while (not myActiveApps.empty()) {
+    auto  myResidualCapacity = myQuanta[*myCurAppIt];
+    auto& myCurApp           = aApps[*myCurAppIt];
+
+    // loop until there are valid paths and capacity to be allocated
+    while (not myCurApp.theRemainingPaths.empty() and myResidualCapacity > 0) {
+      ++myCurApp.theVisits;
+
+      // select the first of the shortest paths of the current app
+      const auto& myCandidate =
+          myCurApp.theRemainingPaths.begin()->second.front();
+      VLOG(2) << "host " << myCurApp.theHost << ", path {"
+              << ::toString(myCandidate,
+                            ",",
+                            [](const auto& aEdge) {
+                              return std::to_string(aEdge.m_target);
+                            })
+              << "}";
+
+      // check that all the edges still exist and find that with less capacity
+      auto   myValidPath   = true;
+      double myMinCapacity = std::numeric_limits<double>::max();
+      for (const auto& elem : myCandidate) {
+        EdgeDescriptor myEdge;
+        bool           myFound;
+        std::tie(myEdge, myFound) =
+            boost::edge(elem.m_source, elem.m_target, theGraph);
+        if (not myFound) {
+          myValidPath = false;
+          break;
+        }
+        myMinCapacity = std::min(
+            myMinCapacity, boost::get(boost::edge_weight, theGraph, myEdge));
+      }
+
+      // remove the path if it is not available anymore
+      if (not myValidPath) {
+        myCurApp.theRemainingPaths.begin()->second.pop_front();
+        if (myCurApp.theRemainingPaths.begin()->second.empty()) {
+          // no more same-length paths, remove entry from theRemainingPaths
+          myCurApp.theRemainingPaths.erase(myCurApp.theRemainingPaths.begin());
+          if (myCurApp.theRemainingPaths.empty()) {
+            // no more feasible paths at all: remove this app from active set
+            VLOG(2) << "removing app host " << myCurApp.theHost;
+            myCurAppIt = myActiveApps.erase(myCurAppIt);
+          }
+        }
+        continue;
+      }
+
+      // set rate allocated
+      const auto myAllocatedGross = std::min(myMinCapacity, myResidualCapacity);
+      myResidualCapacity -= myAllocatedGross;
+
+      // remove the gross capacity from all edges along the path
+      // if the capacity becomes zero, remove the edge, too
+      for (const auto& elem : myCandidate) {
+        assert(boost::get(boost::edge_weight, theGraph, elem) >=
+               myAllocatedGross);
+        auto& myWeight = boost::get(boost::edge_weight, theGraph, elem) -=
+            myAllocatedGross;
+        if (myWeight == 0) {
+          VLOG(2) << "removing edge (" << elem.m_source << "," << elem.m_target
+                  << ")";
+          boost::remove_edge(elem, theGraph);
+        }
+      }
+
+      // add the allocation to the path
+      AppDescriptor::Output myOutput(myCandidate);
+      VLOG(1) << "allocated gross capacity " << myAllocatedGross
+              << " EPR-pairs/s for host " << myCurApp.theHost << " towards "
+              << myOutput.theHops.back() << " along path {"
+              << ::toString(
+                     myOutput.theHops,
+                     ",",
+                     [](const auto& aHop) { return std::to_string(aHop); })
+              << "}, residual capacity " << myResidualCapacity;
+      assert(not myOutput.theHops.empty());
+      auto it = myCurApp.theAllocated.emplace(
+          myOutput.theHops.back(),
+          std::vector<AppDescriptor::Output>({myOutput}));
+
+      for (auto& elem : it.first->second) {
+        if (elem.theHops == myOutput.theHops) {
+          elem.theNetRate += toNetRate(myAllocatedGross, elem.theHops.size());
+          elem.theGrossRate += myAllocatedGross;
+          break;
+        }
+      }
+    }
+
+    // move to the next app (wrap-around at the end)
+    if (++myCurAppIt == myActiveApps.end()) {
+      myCurAppIt = myActiveApps.begin();
+    }
+  }
+
+  // std::vector<VertexDescriptor> myDistances(V);
+  // std::vector<VertexDescriptor> myPredecessors(V);
+
+  // for (auto& myFlow : aFlows) {
+  //   assert(myFlow.thePath.empty());
+  //   assert(myFlow.theGrossRate == 0);
+  //   VLOG(1) << "flow " << myFlow.toString();
+
+  //   auto myFoundOrDisconnected = false;
+  //   auto myCopiedGraph         = theGraph;
+
+  //   // loop until either there is no path from the source to the
+  //   destination or
+  //   // we find a candidate that can satisfy the flow requirements
+  //   while (not myFoundOrDisconnected) {
+  //     myFlow.theDijsktra++;
+  //     boost::dijkstra_shortest_paths(
+  //         myCopiedGraph,
+  //         myFlow.theSrc,
+  //         boost::predecessor_map(myPredecessors.data())
+  //             .weight_map(
+  //                 boost::make_static_property_map<Graph::edge_descriptor>(1))
+  //             .distance_map(boost::make_iterator_property_map(
+  //                 myDistances.data(),
+  //                 get(boost::vertex_index, myCopiedGraph))));
+
+  //     if (myPredecessors[myFlow.theDst] == myFlow.theDst) {
+  //       myFoundOrDisconnected = true; // disconnected
+
+  //     } else {
+  //       // there is at least one path from source to destination
+  //       HopsFinder     myHopsFinder(myPredecessors, myFlow.theSrc);
+  //       FlowDescriptor myCandidate(myFlow);
+  //       myHopsFinder(myCandidate.thePath, myFlow.theDst);
+  //       assert(not myCandidate.thePath.empty());
+  //       myCandidate.theGrossRate =
+  //           toGrossRate(myCandidate.theNetRate,
+  //           myCandidate.thePath.size());
+  //       VLOG(1) << "candidate " << myCandidate.toString();
+
+  //       // if the flow is not admissible because of the external function
+  //       // we assume there is no need to continue the search, otherwise
+  //       // we check that the gross EPR rate is feasible along the path
+  //       selected if (not aCheckFunction(myCandidate)) {
+  //         myFoundOrDisconnected = true;
+
+  //       } else if (checkCapacity(myCandidate.theSrc,
+  //                                myCandidate.thePath,
+  //                                myCandidate.theGrossRate,
+  //                                myCopiedGraph)) {
+  //         // flow is admissible on the shortest path, we can break from the
+  //         // loop
+  //         myFoundOrDisconnected = true;
+  //         myFlow.movePathRateFrom(myCandidate);
+
+  //       } else {
+  //         // flow not admissible on the shortest path, remove the edge with
+  //         // smallest capacity along the path and try again
+  //         removeSmallestCapacityEdge(
+  //             myCandidate.theSrc, myCandidate.thePath, myCopiedGraph);
+  //       }
+  //     }
+  //   }
+
+  //   if (myFlow.thePath.empty()) {
+  //     VLOG(1) << "flow rejected " << myFlow.toString();
+
+  //   } else {
+  //     VLOG(1) << "flow admitted " << myFlow.toString();
+  //     // flow admissible: remove the gross capacity from the edges along
+  //     the
+  //     // path and then move to the next flow in the list
+  //     removeCapacityFromPath(
+  //         myFlow.theSrc, myFlow.thePath, myFlow.theGrossRate, theGraph);
+  //   }
+  // }
+}
+
 bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
                                     const std::vector<VertexDescriptor>& aPath,
                                     const double aCapacity,
@@ -414,6 +682,13 @@ double CapacityNetwork::toGrossRate(const double      aNetRate,
   return aNetRate / std::pow(theMeasurementProbability, aNumEdges - 1);
 }
 
-} // namespace qr
+double CapacityNetwork::toNetRate(const double      aGrossRate,
+                                  const std::size_t aNumEdges) const {
+  if (aNumEdges <= 1) {
+    return aGrossRate;
+  }
+  return aGrossRate * std::pow(theMeasurementProbability, aNumEdges - 1);
+}
 
-} // end namespace uiiit
+} // namespace qr
+} // namespace uiiit
