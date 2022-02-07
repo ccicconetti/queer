@@ -94,6 +94,13 @@ CapacityNetwork::AppDescriptor::AppDescriptor(
   // noop
 }
 
+CapacityNetwork::AppDescriptor::AppDescriptor::Output::Output(const Path& aPath)
+    : theHops() {
+  for (const auto& myEdge : aPath) {
+    theHops.emplace_back(myEdge.m_target);
+  }
+}
+
 double CapacityNetwork::AppDescriptor::netRate() const {
   double ret = 0;
   for (const auto& elem : theAllocated) {
