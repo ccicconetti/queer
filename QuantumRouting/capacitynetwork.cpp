@@ -86,10 +86,28 @@ CapacityNetwork::AppDescriptor::AppDescriptor(
     : theHost(aHost)
     , thePeers(aPeers)
     , thePriority(aPriority)
-    , thePaths()
+    , theAllPaths()
+    , theRemainingPaths()
+    , theAllocated()
     , theYen(0)
-    , theDelta(0) {
+    , theVisits(0) {
   // noop
+}
+
+double CapacityNetwork::AppDescriptor::netRate() const {
+  double ret = 0;
+  for (const auto& elem : theAllocated) {
+    ret += elem.second.theNetRate;
+  }
+  return ret;
+}
+
+double CapacityNetwork::AppDescriptor::grossRate() const {
+  double ret = 0;
+  for (const auto& elem : theAllocated) {
+    ret += elem.second.theGrossRate;
+  }
+  return ret;
 }
 
 std::string CapacityNetwork::AppDescriptor::toString() const {
@@ -99,24 +117,11 @@ std::string CapacityNetwork::AppDescriptor::toString() const {
                   thePeers,
                   ",",
                   [](const auto& aPeer) { return std::to_string(aPeer); })
-           << "}, prio " << thePriority << ", paths {"
-           << ::toString(thePaths,
-                         ",",
-                         [](const auto& aPath) {
-                           std::stringstream myStream;
-                           myStream
-                               << "[" << std::get<NetRate>(aPath) << ","
-                               << std::get<GrossRate>(aPath) << ","
-                               << "("
-                               << ::toString(std::get<Path>(aPath),
-                                             ",",
-                                             [](const auto& aNode) {
-                                               return std::to_string(aNode);
-                                             })
-                               << ")";
-                           return myStream.str();
-                         })
-           << "}, " << theYen << " Yen algorithm calls";
+           << "}, prio " << thePriority << ", " << theRemainingPaths.size()
+           << " remaining paths (" << theAllPaths.size() << " total), "
+           << theAllocated.size() << " paths allocated with totale capacity "
+           << netRate() << " (gross " << grossRate() << "), " << theYen
+           << " Yen algorithm calls, " << theVisits << " visits made";
   return myStream.str();
 }
 
@@ -265,11 +270,8 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
         FlowDescriptor myCandidate(myFlow);
         myHopsFinder(myCandidate.thePath, myFlow.theDst);
         assert(not myCandidate.thePath.empty());
-        myCandidate.theGrossRate = myCandidate.theNetRate;
-        if (myCandidate.thePath.size() > 1) {
-          myCandidate.theGrossRate /= std::pow(theMeasurementProbability,
-                                               myCandidate.thePath.size() - 1);
-        }
+        myCandidate.theGrossRate =
+            toGrossRate(myCandidate.theNetRate, myCandidate.thePath.size());
         VLOG(1) << "candidate " << myCandidate.toString();
 
         // if the flow is not admissible because of the external function
@@ -397,5 +399,14 @@ std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
   return {myMin, myMax};
 }
 
+double CapacityNetwork::toGrossRate(const double      aNetRate,
+                                    const std::size_t aNumEdges) const {
+  if (aNumEdges <= 1) {
+    return aNetRate;
+  }
+  return aNetRate / std::pow(theMeasurementProbability, aNumEdges - 1);
+}
+
 } // namespace qr
+
 } // end namespace uiiit

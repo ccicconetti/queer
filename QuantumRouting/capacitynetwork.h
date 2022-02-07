@@ -43,6 +43,7 @@ SOFTWARE.
 
 #include <cinttypes>
 #include <functional>
+#include <list>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -70,6 +71,17 @@ namespace qr {
 class CapacityNetwork final : public Network
 {
  public:
+  using Graph =
+      boost::adjacency_list<boost::listS,
+                            boost::vecS,
+                            boost::bidirectionalS,
+                            boost::no_property,
+                            boost::property<boost::edge_weight_t, double>,
+                            boost::no_property,
+                            boost::listS>;
+  using VertexDescriptor = boost::graph_traits<Graph>::vertex_descriptor;
+  using EdgeDescriptor   = boost::graph_traits<Graph>::edge_descriptor;
+
   struct FlowDescriptor {
     FlowDescriptor(const unsigned long aSrc,
                    const unsigned long aDst,
@@ -91,6 +103,9 @@ class CapacityNetwork final : public Network
   };
 
   struct AppDescriptor {
+    using Path = std::list<EdgeDescriptor>;
+    using Hops = std::vector<unsigned long>;
+
     AppDescriptor(const unsigned long               aHost,
                   const std::vector<unsigned long>& aPeers,
                   const double                      aPriority) noexcept;
@@ -101,19 +116,24 @@ class CapacityNetwork final : public Network
                  thePeers;    //!< the possible entanglement peers
     const double thePriority; //! weight
 
+    // working variables
+    std::list<std::pair<double, Path>> theAllPaths;
+    std::map<double, Path>             theRemainingPaths;
+
     // output
-    enum {
-      NetRate   = 0,
-      GrossRate = 1,
-      Path      = 2,
+    struct Output {
+      explicit Output(const Path& aPath);
+
+      Hops   theHops;
+      double theNetRate   = 0; //!< in EPR-pairs/s
+      double theGrossRate = 0; //!< in EPR-pairs/s
     };
-    std::list<std::tuple<double, double, std::vector<unsigned long>>>
-                thePaths; //!< the paths allocated
-    std::size_t theYen;   //!< the number of times called
+    std::map<unsigned long, Output> theAllocated; //!< key: destination
+    std::size_t                     theYen;       //!< number of times called
+    std::size_t                     theVisits;    //!< number of visits
 
-    // working
-    double theDelta; //!< deficit counter, in gross rate (EPRs/s)
-
+    double      netRate() const;
+    double      grossRate() const;
     std::string toString() const;
   };
 
@@ -124,17 +144,6 @@ class CapacityNetwork final : public Network
   // vector of (src, dst, weight)
   using WeightVector =
       std::vector<std::tuple<unsigned long, unsigned long, double>>;
-
-  using Graph =
-      boost::adjacency_list<boost::listS,
-                            boost::vecS,
-                            boost::bidirectionalS,
-                            boost::no_property,
-                            boost::property<boost::edge_weight_t, double>,
-                            boost::no_property,
-                            boost::listS>;
-  using VertexDescriptor = boost::graph_traits<Graph>::vertex_descriptor;
-  using EdgeDescriptor   = boost::graph_traits<Graph>::edge_descriptor;
 
   /**
    * @brief Create a network with given links and assign random weights
@@ -255,6 +264,9 @@ class CapacityNetwork final : public Network
   std::pair<std::size_t, std::size_t> minMaxVertexProp(
       const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
           aPropFunctor) const;
+
+  //! \return the gross rate for a given path length, in num of edges.
+  double toGrossRate(const double aNetRate, const std::size_t aNumEdges) const;
 
  private:
   Graph  theGraph;
