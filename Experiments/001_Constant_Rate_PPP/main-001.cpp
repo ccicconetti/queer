@@ -362,6 +362,12 @@ int main(int argc, char* argv[]) {
   std::size_t myNumFlows;
   double      myMinNetRate;
   double      myMaxNetRate;
+  double      myGridSize;
+  double      myThreshold;
+  double      myLinkProbability;
+  double      myQ;
+  double      myFidelityInit;
+  double      myFidelityThreshold;
 
   po::options_description myDesc("Allowed options");
   // clang-format off
@@ -396,10 +402,28 @@ int main(int argc, char* argv[]) {
      "Number of flows.")
     ("rate-min",
      po::value<double>(&myMinNetRate)->default_value(1),
-     "Min net rate requested, in EPR/s.")
+     "Min net rate requested, in EPR-pairs/s.")
     ("rate-max",
      po::value<double>(&myMaxNetRate)->default_value(10),
-     "Max net rate requested, in EPR/s.")
+     "Max net rate requested, in EPR-pairs/s.")
+    ("grid-size",
+     po::value<double>(&myGridSize)->default_value(60000),
+     "Grid length, in km.")
+    ("threshold",
+     po::value<double>(&myThreshold)->default_value(15000),
+     "Link creation threshold (Euclidean distance), in km.")
+    ("link-probability",
+     po::value<double>(&myLinkProbability)->default_value(1),
+     "Link creation probability.")
+    ("q",
+     po::value<double>(&myQ)->default_value(0.5),
+     "Correct measurement probability.")
+    ("fidelity-init",
+     po::value<double>(&myFidelityInit)->default_value(0.99),
+     "Fidelity of local entanglement between adjacent nodes.")
+    ("fidelity-threshold",
+     po::value<double>(&myFidelityThreshold)->default_value(0.95),
+     "Fidelity threshold.")
     ;
   // clang-format on
 
@@ -426,13 +450,6 @@ int main(int argc, char* argv[]) {
     }
 
     Data myData;
-
-    const double myGridSize          = 60000;
-    const double myThreshold         = 15000;
-    const double myLinkProbability   = 1;
-    const double myQ                 = 0.5;
-    const double myFidelityInit      = 0.99;
-    const double myFidelityThreshold = 0.95;
 
     us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed < mySeedEnd; ++mySeed) {
