@@ -151,6 +151,7 @@ struct Output {
   std::size_t theMaxInDegree   = 0;
   std::size_t theMinOutDegree  = 0;
   std::size_t theMaxOutDegree  = 0;
+  std::size_t theDiameter      = 0;
   double      theTotalCapacity = 0;
 
   // routing properties
@@ -171,6 +172,7 @@ struct Output {
         "max-in-degree",
         "min-out-degree",
         "max-out-degree",
+        "diameter",
         "capacity-tot",
 
         "capacity-res",
@@ -189,12 +191,13 @@ struct Output {
     std::stringstream myStream;
     myStream << "G(" << theNumNodes << "," << theNumEdges << "), in-degree "
              << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
-             << theMinOutDegree << "-" << theMaxOutDegree
-             << " with total capacity " << theTotalCapacity
+             << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
+             << theDiameter << ", total capacity " << theTotalCapacity
              << " EPR-pairs/s (residual " << theResidualCapacity
              << " EPR-pairs/s); total EPR rate net " << theSumNetRate
-             << " (gross " << theSumGrossRate << "), with " << theAvgVisits
-             << " visits on average, average path size " << theAvgPathSize
+             << " (gross " << theSumGrossRate << ") EPR-pairs/s, with "
+             << theAvgVisits << " visits on average, average path size "
+             << theAvgPathSize
              << ", average fidelity of the end-to-end entangled pair "
              << theAvgFidelity << ", Jain's fairness index " << theFairnessJain
              << ", max rate - min rate " << theFairnessJitter << " EPR-pairs/s";
@@ -205,8 +208,8 @@ struct Output {
     std::stringstream myStream;
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
-             << theMaxOutDegree << ',' << theTotalCapacity << ','
-             << theResidualCapacity << ',' << theAvgVisits << ','
+             << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
+             << ',' << theResidualCapacity << ',' << theAvgVisits << ','
              << theSumGrossRate << ',' << theSumNetRate << ',' << theAvgPathSize
              << ',' << theAvgFidelity << ',' << theFairnessJain << ','
              << theFairnessJitter;
@@ -254,7 +257,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
     // create applications
     myReachableNodes = myNetwork->reachableNodes(myRaii.in().theDistanceMin,
-                                                 myRaii.in().theDistanceMax);
+                                                 myRaii.in().theDistanceMax,
+                                                 myOutput.theDiameter);
     const std::size_t myNumPossibleHosts =
         std::count_if(myReachableNodes.begin(),
                       myReachableNodes.end(),

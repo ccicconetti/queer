@@ -145,7 +145,10 @@ TEST_F(TestCapacityNetwork, test_graph_properties) {
 TEST_F(TestCapacityNetwork, test_reachable_nodes) {
   CapacityNetwork myNetwork(anotherExampleEdgeWeights());
 
-  const auto myAll = myNetwork.reachableNodes(0, 99);
+  std::size_t myDiameter;
+
+  const auto myAll = myNetwork.reachableNodes(0, 99, myDiameter);
+  ASSERT_EQ(4, myDiameter);
   ASSERT_EQ(7, myAll.size());
   ASSERT_EQ(std::set<unsigned long>({1, 2, 3, 4, 5, 6}), myAll.find(0)->second);
   ASSERT_EQ(std::set<unsigned long>({2, 3, 4, 5, 6}), myAll.find(1)->second);
@@ -155,7 +158,7 @@ TEST_F(TestCapacityNetwork, test_reachable_nodes) {
   ASSERT_EQ(std::set<unsigned long>({1, 2, 3, 4, 6}), myAll.find(5)->second);
   ASSERT_EQ(std::set<unsigned long>({}), myAll.find(6)->second);
 
-  const auto mySome = myNetwork.reachableNodes(0, 2);
+  const auto mySome = myNetwork.reachableNodes(0, 2, myDiameter);
   ASSERT_EQ(7, myAll.size());
   ASSERT_EQ(std::set<unsigned long>({1, 2, 3}), mySome.find(0)->second);
   ASSERT_EQ(std::set<unsigned long>({2, 3, 4, 5}), mySome.find(1)->second);
@@ -165,7 +168,7 @@ TEST_F(TestCapacityNetwork, test_reachable_nodes) {
   ASSERT_EQ(std::set<unsigned long>({1, 2, 3, 4, 6}), mySome.find(5)->second);
   ASSERT_EQ(std::set<unsigned long>({}), mySome.find(6)->second);
 
-  const auto myTwo = myNetwork.reachableNodes(2, 2);
+  const auto myTwo = myNetwork.reachableNodes(2, 2, myDiameter);
   ASSERT_EQ(7, myTwo.size());
   ASSERT_EQ(std::set<unsigned long>({3}), myTwo.find(0)->second);
   ASSERT_EQ(std::set<unsigned long>({2, 4, 5}), myTwo.find(1)->second);
@@ -175,7 +178,7 @@ TEST_F(TestCapacityNetwork, test_reachable_nodes) {
   ASSERT_EQ(std::set<unsigned long>({1, 2, 4}), myTwo.find(5)->second);
   ASSERT_EQ(std::set<unsigned long>({}), myTwo.find(6)->second);
 
-  const auto myNone = myNetwork.reachableNodes(99, 99);
+  const auto myNone = myNetwork.reachableNodes(99, 99, myDiameter);
   ASSERT_EQ(7, myNone.size());
   for (const auto& elem : myNone) {
     ASSERT_TRUE(elem.second.empty());

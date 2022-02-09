@@ -213,10 +213,12 @@ class CapacityNetwork final : public Network
    *
    * @param aMinHops The minimum distance, in hops.
    * @param aMaxHops The maximum distance, in hops.
+   * @param aDiameter Return the network diameter, in hops.
    * @return std::map<unsigned long, std::set<unsigned long>>
    */
   ReachableNodes reachableNodes(const std::size_t aMinHops,
-                                const std::size_t aMaxHops) const;
+                                const std::size_t aMaxHops,
+                                std::size_t&      aDiameter) const;
 
   /**
    * @brief Route the given flows in this network starting with current

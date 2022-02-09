@@ -220,7 +220,8 @@ double CapacityNetwork::totalCapacity() const {
 
 std::map<unsigned long, std::set<unsigned long>>
 CapacityNetwork::reachableNodes(const std::size_t aMinHops,
-                                const std::size_t aMaxHops) const {
+                                const std::size_t aMaxHops,
+                                std::size_t&      aDiameter) const {
   if (aMinHops > aMaxHops) {
     throw std::runtime_error(
         "Invalid min distance (" + std::to_string(aMinHops) +
@@ -230,6 +231,7 @@ CapacityNetwork::reachableNodes(const std::size_t aMinHops,
   const auto                    V = boost::num_vertices(theGraph);
   std::vector<VertexDescriptor> myDistances(V);
 
+  aDiameter = 0;
   std::map<unsigned long, std::set<unsigned long>> ret;
   boost::graph_traits<Graph>::vertex_iterator      it, end;
   for (std::tie(it, end) = vertices(theGraph); it != end; ++it) {
@@ -246,6 +248,7 @@ CapacityNetwork::reachableNodes(const std::size_t aMinHops,
     for (unsigned long i = 0; i < V; i++) {
       if (*it != i and
           myDistances[i] != std::numeric_limits<unsigned long>::max()) {
+        aDiameter = std::max(aDiameter, myDistances[i]);
         VLOG(2) << *it << "->" << i << ": " << myDistances[i];
         if (myDistances[i] >= aMinHops and myDistances[i] <= aMaxHops) {
           myEmplaceRet.first->second.emplace(i);
