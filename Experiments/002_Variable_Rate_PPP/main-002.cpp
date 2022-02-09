@@ -340,9 +340,9 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                               myRaii.in().theFidelityInit));
         }
       }
+      myPathSize(myHostPathSize.mean() * myHostPathSize.count());
+      myFidelity(myHostFidelity.mean() * myHostFidelity.count());
     }
-    myPathSize(myHostPathSize.mean());
-    myFidelity(myHostFidelity.mean());
   }
   myOutput.theAvgVisits      = myVisits.mean();
   myOutput.theSumGrossRate   = myGrossRate.count() * myGrossRate.mean();
