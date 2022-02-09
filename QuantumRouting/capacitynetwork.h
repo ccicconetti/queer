@@ -44,6 +44,8 @@ SOFTWARE.
 #include <cinttypes>
 #include <functional>
 #include <list>
+#include <map>
+#include <set>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -203,6 +205,16 @@ class CapacityNetwork final : public Network
 
   //! \return the current weights, one per element in the return vector.
   WeightVector weights() const;
+
+  /**
+   * @brief For each node, find the reachable nodes with min/max distance.
+   *
+   * @param aMinHops The minimum distance, in hops.
+   * @param aMaxHops The maximum distance, in hops.
+   * @return std::map<unsigned long, std::set<unsigned long>>
+   */
+  std::map<unsigned long, std::set<unsigned long>>
+  reachableNodes(const std::size_t aMinHops, const std::size_t aMaxHops) const;
 
   /**
    * @brief Route the given flows in this network starting with current

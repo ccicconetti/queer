@@ -43,6 +43,7 @@ SOFTWARE.
 #include <boost/property_map/property_map.hpp>
 #include <glog/logging.h>
 
+#include <glog/vlog_is_on.h>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -217,6 +218,44 @@ double CapacityNetwork::totalCapacity() const {
   return ret;
 }
 
+std::map<unsigned long, std::set<unsigned long>>
+CapacityNetwork::reachableNodes(const std::size_t aMinHops,
+                                const std::size_t aMaxHops) const {
+  if (aMinHops > aMaxHops) {
+    throw std::runtime_error(
+        "Invalid min distance (" + std::to_string(aMinHops) +
+        ") larger than max distance (" + std::to_string(aMaxHops) + ")");
+  }
+
+  const auto                    V = boost::num_vertices(theGraph);
+  std::vector<VertexDescriptor> myDistances(V);
+
+  std::map<unsigned long, std::set<unsigned long>> ret;
+  boost::graph_traits<Graph>::vertex_iterator      it, end;
+  for (std::tie(it, end) = vertices(theGraph); it != end; ++it) {
+    boost::dijkstra_shortest_paths(
+        theGraph,
+        *it,
+        boost::weight_map(
+            boost::make_static_property_map<Graph::edge_descriptor>(1))
+            .distance_map(boost::make_iterator_property_map(
+                myDistances.data(), get(boost::vertex_index, theGraph))));
+
+    auto myEmplaceRet = ret.emplace(*it, std::set<unsigned long>());
+    assert(myEmplaceRet.second);
+    for (unsigned long i = 0; i < V; i++) {
+      if (*it != i and
+          myDistances[i] != std::numeric_limits<unsigned long>::max()) {
+        VLOG(2) << *it << "->" << i << ": " << myDistances[i];
+        if (myDistances[i] >= aMinHops and myDistances[i] <= aMaxHops) {
+          myEmplaceRet.first->second.emplace(i);
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
                             const FlowCheckFunction&     aCheckFunction) {
   const auto V = boost::num_vertices(theGraph);
@@ -257,8 +296,8 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
     auto myFoundOrDisconnected = false;
     auto myCopiedGraph         = theGraph;
 
-    // loop until either there is no path from the source to the destination or
-    // we find a candidate that can satisfy the flow requirements
+    // loop until either there is no path from the source to the destination
+    // or we find a candidate that can satisfy the flow requirements
     while (not myFoundOrDisconnected) {
       myFlow.theDijsktra++;
       boost::dijkstra_shortest_paths(
@@ -286,7 +325,8 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
 
         // if the flow is not admissible because of the external function
         // we assume there is no need to continue the search, otherwise
-        // we check that the gross EPR rate is feasible along the path selected
+        // we check that the gross EPR rate is feasible along the path
+        // selected
         if (not aCheckFunction(myCandidate)) {
           myFoundOrDisconnected = true;
 
@@ -370,7 +410,8 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
     myQuanta[i] = aQuantum * aApps[i].thePriority / mySumPriorities;
   }
 
-  // for each app, find k-shortest paths towards each peer using Yen's algorithm
+  // for each app, find k-shortest paths towards each peer using Yen's
+  // algorithm
   auto myIndexMap = boost::get(boost::vertex_index, theGraph);
   for (auto& myApp : aApps) {
     for (const auto& myPeer : myApp.thePeers) {
