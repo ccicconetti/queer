@@ -38,6 +38,7 @@ SOFTWARE.
 #include "Support/queue.h"
 #include "Support/random.h"
 #include "Support/stat.h"
+#include "Support/versionutils.h"
 
 #include <boost/program_options.hpp>
 
@@ -356,6 +357,7 @@ int main(int argc, char* argv[]) {
   // clang-format off
   myDesc.add_options()
     ("help,h", "produce help message")
+    ("version,v", "print the version and quit")
     ("explain-output", "report the meaning of the columns in the output")
     ("print-header", "print the header of the CSV output file")
     ("num-threads",
@@ -418,6 +420,11 @@ int main(int argc, char* argv[]) {
     if (myVarMap.count("help")) {
       std::cout << myDesc << std::endl;
       return EXIT_FAILURE;
+    }
+
+    if (myVarMap.count("version")) {
+      std::cout << us::version() << std::endl;
+      return EXIT_SUCCESS;
     }
 
     if (explainOrPrint(myVarMap)) {
