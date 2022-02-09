@@ -39,6 +39,7 @@ SOFTWARE.
 #include "Support/queue.h"
 #include "Support/random.h"
 #include "Support/stat.h"
+#include "Support/versionutils.h"
 
 #include <boost/program_options.hpp>
 
@@ -80,6 +81,7 @@ struct Parameters {
   std::size_t theDistanceMin;
   std::size_t theDistanceMax;
   double      theFidelityThreshold;
+  double      theTargetResidual;
 
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
@@ -102,6 +104,7 @@ struct Parameters {
         "distance-min",
         "distance-max",
         "fidelity-thresh",
+        "target-residual",
     });
     return ret;
   }
@@ -125,8 +128,14 @@ struct Parameters {
              << theNumPeersMin << "," << theNumPeersMax
              << "] from nodes with distance drawn from U[" << theDistanceMin
              << "," << theDistanceMax << "], with minimum fidelity "
-             << theFidelityThreshold << "; experiment seed " << theSeed;
-    ;
+             << theFidelityThreshold;
+    if (theTargetResidual < 0) {
+      myStream << ", no target residual capacity";
+    } else {
+      myStream << ", target residual capacity " << theTargetResidual
+               << " EPR-pairs/s";
+    }
+    myStream << "; experiment seed " << theSeed;
     return myStream.str();
   }
 
@@ -138,7 +147,7 @@ struct Parameters {
              << theQuantum << ',' << theK << ',' << theFidelityInit << ','
              << theNumApps << ',' << theNumPeersMin << ',' << theNumPeersMax
              << ',' << theDistanceMin << ',' << theDistanceMax << ','
-             << theFidelityThreshold;
+             << theFidelityThreshold << ',' << theTargetResidual;
     return myStream.str();
   }
 };
@@ -155,14 +164,15 @@ struct Output {
   double      theTotalCapacity = 0;
 
   // routing properties
-  double theResidualCapacity = 0;
-  double theAvgVisits        = 0;
-  double theSumGrossRate     = 0;
-  double theSumNetRate       = 0;
-  double theAvgPathSize      = 0;
-  double theAvgFidelity      = 0;
-  double theFairnessJain     = 0;
-  double theFairnessJitter   = 0;
+  double      theResidualCapacity = 0;
+  std::size_t theNumApps          = 0;
+  double      theAvgVisits        = 0;
+  double      theSumGrossRate     = 0;
+  double      theSumNetRate       = 0;
+  double      theAvgPathSize      = 0;
+  double      theAvgFidelity      = 0;
+  double      theFairnessJain     = 0;
+  double      theFairnessJitter   = 0;
 
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
@@ -176,6 +186,7 @@ struct Output {
         "capacity-tot",
 
         "capacity-res",
+        "num-apps",
         "avg-visits",
         "sum-gross-rate",
         "sum-net-rate",
@@ -194,8 +205,9 @@ struct Output {
              << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
              << theDiameter << ", total capacity " << theTotalCapacity
              << " EPR-pairs/s (residual " << theResidualCapacity
-             << " EPR-pairs/s); total EPR rate net " << theSumNetRate
-             << " (gross " << theSumGrossRate << ") EPR-pairs/s, with "
+             << " EPR-pairs/s); " << theNumApps
+             << " applications served, total EPR rate net " << theSumNetRate
+             << " (gross " << theSumGrossRate << ") EPR-pairs/s, "
              << theAvgVisits << " visits on average, average path size "
              << theAvgPathSize
              << ", average fidelity of the end-to-end entangled pair "
@@ -209,10 +221,10 @@ struct Output {
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
              << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
-             << ',' << theResidualCapacity << ',' << theAvgVisits << ','
-             << theSumGrossRate << ',' << theSumNetRate << ',' << theAvgPathSize
-             << ',' << theAvgFidelity << ',' << theFairnessJain << ','
-             << theFairnessJitter;
+             << ',' << theResidualCapacity << ',' << theNumApps << ','
+             << theAvgVisits << ',' << theSumGrossRate << ',' << theSumNetRate
+             << ',' << theAvgPathSize << ',' << theAvgFidelity << ','
+             << theFairnessJain << ',' << theFairnessJitter;
     return myStream.str();
   }
 };
@@ -220,6 +232,11 @@ struct Output {
 using Data = us::ExperimentData<Parameters, Output>;
 
 void runExperiment(Data& aData, Parameters&& aParameters) {
+  if (aParameters.theTargetResidual > 1) {
+    throw std::runtime_error(
+        "the target residual must be negative or in [0,1]");
+  }
+
   // fidelity computation parameters
   constexpr double p1  = 1.0;
   constexpr double p2  = 1.0;
@@ -284,36 +301,49 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                                0,
                                                0);
   us::UniformRv myPeerSampleRv(0, 1, myRaii.in().theSeed, 0, 0);
-  for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
-    const auto myHost = myHostRv();
-    const auto it     = myReachableNodes.find(myHost);
-    assert(it != myReachableNodes.end());
-    const auto myPeersSet =
-        us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
-    std::vector<unsigned long> myPeersVector;
-    std::copy(myPeersSet.begin(),
-              myPeersSet.end(),
-              std::back_inserter(myPeersVector));
-    const auto myPriority = 1.0;
-    myApps.emplace_back(myHost, myPeersVector, myPriority);
-  }
 
-  // route applications
-  myNetwork->route(myApps,
-                   myRaii.in().theQuantum * myRaii.in().theNumApps,
-                   myRaii.in().theK,
-                   [&myRaii](const auto& aPath) {
-                     assert(not aPath.empty());
-                     return qr::fidelitySwapping(p1,
-                                                 p2,
-                                                 eta,
-                                                 aPath.size() - 1,
-                                                 myRaii.in().theFidelityInit) >=
-                            myRaii.in().theFidelityThreshold;
-                   });
+  do {
+    std::vector<qr::CapacityNetwork::AppDescriptor> mySingleRunApps;
 
-  // // traffic metrics
+    for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
+      const auto myHost = myHostRv();
+      const auto it     = myReachableNodes.find(myHost);
+      assert(it != myReachableNodes.end());
+      const auto myPeersSet =
+          us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
+      std::vector<unsigned long> myPeersVector;
+      std::copy(myPeersSet.begin(),
+                myPeersSet.end(),
+                std::back_inserter(myPeersVector));
+      const auto myPriority = 1.0;
+      mySingleRunApps.emplace_back(myHost, myPeersVector, myPriority);
+    }
+
+    // route applications
+    myNetwork->route(mySingleRunApps,
+                     myRaii.in().theQuantum * myRaii.in().theNumApps,
+                     myRaii.in().theK,
+                     [&myRaii](const auto& aPath) {
+                       assert(not aPath.empty());
+                       return qr::fidelitySwapping(
+                                  p1,
+                                  p2,
+                                  eta,
+                                  aPath.size() - 1,
+                                  myRaii.in().theFidelityInit) >=
+                              myRaii.in().theFidelityThreshold;
+                     });
+
+    std::move(mySingleRunApps.begin(),
+              mySingleRunApps.end(),
+              std::back_inserter(myApps));
+  } while (myRaii.in().theTargetResidual >= 0 and
+           myNetwork->totalCapacity() >
+               (myOutput.theTotalCapacity * myRaii.in().theTargetResidual));
+
+  // traffic metrics
   myOutput.theResidualCapacity = myNetwork->totalCapacity();
+  myOutput.theNumApps          = myApps.size();
   us::SummaryStat     myVisits;
   us::SummaryStat     myGrossRate;
   us::SummaryStat     myNetRate;
@@ -419,11 +449,13 @@ int main(int argc, char* argv[]) {
   std::size_t myNumPeersMax;
   std::size_t myDistanceMin;
   std::size_t myDistanceMax;
+  double      myTargetResidual;
 
   po::options_description myDesc("Allowed options");
   // clang-format off
   myDesc.add_options()
     ("help,h", "produce help message")
+    ("version,v", "print the version and quit")
     ("explain-output", "report the meaning of the columns in the output")
     ("print-header", "print the header of the CSV output file")
     ("num-threads",
@@ -450,7 +482,7 @@ int main(int argc, char* argv[]) {
      "Max EPR rate of links.")
     ("num-apps",
      po::value<std::size_t>(&myNumApps)->default_value(100),
-     "Number of applications.")
+     "Number of applications added at each iteration.")
     ("num-peers-min",
      po::value<std::size_t>(&myNumPeersMin)->default_value(1),
      "Minimum number of peers per app.")
@@ -487,6 +519,9 @@ int main(int argc, char* argv[]) {
     ("fidelity-threshold",
      po::value<double>(&myFidelityThreshold)->default_value(0.95),
      "Fidelity threshold.")
+    ("target-residual",
+     po::value<double>(&myTargetResidual)->default_value(-1),
+     "Continue adding applications until this residual is reached, in fraction of the total capacity. A negative value means: single iteration.")
     ;
   // clang-format on
 
@@ -498,6 +533,11 @@ int main(int argc, char* argv[]) {
     if (myVarMap.count("help")) {
       std::cout << myDesc << std::endl;
       return EXIT_FAILURE;
+    }
+
+    if (myVarMap.count("version")) {
+      std::cout << us::version() << std::endl;
+      return EXIT_SUCCESS;
     }
 
     if (explainOrPrint(myVarMap)) {
@@ -532,7 +572,8 @@ int main(int argc, char* argv[]) {
                                    myNumPeersMax,
                                    myDistanceMin,
                                    myDistanceMax,
-                                   myFidelityThreshold});
+                                   myFidelityThreshold,
+                                   myTargetResidual});
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {
