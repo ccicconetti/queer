@@ -30,7 +30,7 @@ SOFTWARE.
 */
 
 #include "QuantumRouting/capacitynetwork.h"
-#include "QuantumRouting/poissonpointprocess.h"
+#include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
 #include "Support/glograii.h"
@@ -59,7 +59,7 @@ struct Parameters {
   double theMu;
   double theGridLength;
   double theThreshold;
-  double theEdgeProbability;
+  double theLinkProbability;
   double theLinkMinEpr;
   double theLinkMaxEpr;
 
@@ -79,7 +79,7 @@ struct Parameters {
         "mu",
         "grid-length",
         "threshold",
-        "edge-prob",
+        "link-prob",
         "link-min-epr",
         "link-max-epr",
         "q",
@@ -97,7 +97,7 @@ struct Parameters {
     myStream
         << "num nodes drawn from PPP with mu " << theMu
         << " distributed on a flat square grid with edge size " << theGridLength
-        << " m, a link is generated with probability " << theEdgeProbability
+        << " m, a link is generated with probability " << theLinkProbability
         << " between any two nodes within " << theThreshold
         << " m apart, and the EPR generation rate of the list is drawn "
            "randomly from U["
@@ -117,7 +117,7 @@ struct Parameters {
   std::string toCsv() const {
     std::stringstream myStream;
     myStream << theSeed << ',' << theMu << ',' << theGridLength << ','
-             << theThreshold << ',' << theEdgeProbability << ','
+             << theThreshold << ',' << theLinkProbability << ','
              << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theQ << ','
              << theFidelityInit << ',' << theNumFlows << ',' << theMinNetRate
              << ',' << theMaxNetRate << ',' << theFidelityThreshold;
@@ -210,33 +210,16 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   Output myOutput;
 
   // create network
-  us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
-                            myRaii.in().theLinkMaxEpr,
-                            myRaii.in().theSeed,
-                            0,
-                            0);
-  auto                                 myPppSeed = myRaii.in().theSeed;
-  std::unique_ptr<qr::CapacityNetwork> myNetwork = nullptr;
-  while (not myNetwork) {
-    const auto myCoordinates =
-        qr::PoissonPointProcessGrid(myRaii.in().theMu,
-                                    myPppSeed,
-                                    myRaii.in().theGridLength,
-                                    myRaii.in().theGridLength)();
-    const auto myEdges = qr::findLinks(myCoordinates,
-                                       myRaii.in().theThreshold,
-                                       myRaii.in().theEdgeProbability,
-                                       myRaii.in().theSeed);
-    if (qr::bigraphConnected(myEdges)) {
-      myNetwork =
-          std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
-      myNetwork->measurementProbability(myRaii.in().theQ);
-    } else {
-      VLOG(1) << "graph with seed " << myPppSeed
-              << " is not connected, trying again";
-      myPppSeed += 1000000;
-    }
-  }
+  // create network
+  const auto myNetwork =
+      qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
+                                 myRaii.in().theLinkMaxEpr,
+                                 myRaii.in().theSeed,
+                                 myRaii.in().theMu,
+                                 myRaii.in().theGridLength,
+                                 myRaii.in().theThreshold,
+                                 myRaii.in().theLinkProbability);
+  myNetwork->measurementProbability(myRaii.in().theQ);
 
   // network properties
   assert(myNetwork.get() != nullptr);
