@@ -34,6 +34,7 @@ SOFTWARE.
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
 #include "Support/glograii.h"
+#include "Support/jain.h"
 #include "Support/parallelbatch.h"
 #include "Support/queue.h"
 #include "Support/random.h"
@@ -41,11 +42,13 @@ SOFTWARE.
 
 #include <boost/program_options.hpp>
 
+#include <cmath>
 #include <cstddef>
 #include <glog/logging.h>
 
 #include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 
@@ -70,8 +73,8 @@ struct Parameters {
   std::size_t theK;
   double      theFidelityInit;
 
-  // application flows
-  std::size_t theNumFlows;
+  // applications
+  std::size_t theNumApps;
   std::size_t theNumPeersMin;
   std::size_t theNumPeersMax;
   std::size_t theDistanceMin;
@@ -93,7 +96,7 @@ struct Parameters {
         "k",
         "fidelity-init",
 
-        "num-flows",
+        "num-apps",
         "num-peers-min",
         "num-peers-max",
         "distance-min",
@@ -117,7 +120,7 @@ struct Parameters {
              << theQuantum << " EPR-pairs/s, max " << theK
              << " shortest paths per host/destination pair"
              << ", fidelity of freshly generated pairs " << theFidelityInit
-             << "; there are " << theNumFlows
+             << "; there are " << theNumApps
              << " applications, with number of peers drawn from U["
              << theNumPeersMin << "," << theNumPeersMax
              << "] from nodes with distance drawn from U[" << theDistanceMin
@@ -133,7 +136,7 @@ struct Parameters {
              << theThreshold << ',' << theLinkProbability << ','
              << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theQ << ','
              << theQuantum << ',' << theK << ',' << theFidelityInit << ','
-             << theNumFlows << ',' << theNumPeersMin << ',' << theNumPeersMax
+             << theNumApps << ',' << theNumPeersMin << ',' << theNumPeersMax
              << ',' << theDistanceMin << ',' << theDistanceMax << ','
              << theFidelityThreshold;
     return myStream.str();
@@ -151,14 +154,14 @@ struct Output {
   double      theTotalCapacity = 0;
 
   // routing properties
-  double      theResidualCapacity = 0;
-  double      theAvgDijkstraCalls = 0;
-  double      theSumGrossRate     = 0;
-  double      theSumNetRate       = 0;
-  double      theAdmissionRate    = 0;
-  std::size_t theAdmittedFlows    = 0;
-  double      theAvgPathSize      = 0;
-  double      theAvgFidelity      = 0;
+  double theResidualCapacity = 0;
+  double theAvgVisits        = 0;
+  double theSumGrossRate     = 0;
+  double theSumNetRate       = 0;
+  double theAvgPathSize      = 0;
+  double theAvgFidelity      = 0;
+  double theFairnessJain     = 0;
+  double theFairnessJitter   = 0;
 
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
@@ -169,14 +172,15 @@ struct Output {
         "min-out-degree",
         "max-out-degree",
         "capacity-tot",
+
         "capacity-res",
-        "avg-dijkstra-calls",
+        "avg-visits",
         "sum-gross-rate",
         "sum-net-rate",
-        "admission-rate",
-        "admitted-flows",
         "avg-path-size",
         "avg-fidelity",
+        "fairness-jain",
+        "fairness-jitter",
     });
     return ret;
   }
@@ -187,15 +191,13 @@ struct Output {
              << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
              << theMinOutDegree << "-" << theMaxOutDegree
              << " with total capacity " << theTotalCapacity
-             << " EPR/s (residual " << theResidualCapacity
-             << " EPR/s); admitted " << theAdmittedFlows << " (rate "
-             << theAdmissionRate << "), total EPR rate net " << theSumNetRate
-             << " (gross " << theSumGrossRate << "), with "
-             << theAvgDijkstraCalls
-             << " Dijkstra calls on average, average path size "
-             << theAvgPathSize
+             << " EPR-pairs/s (residual " << theResidualCapacity
+             << " EPR-pairs/s); total EPR rate net " << theSumNetRate
+             << " (gross " << theSumGrossRate << "), with " << theAvgVisits
+             << " visits on average, average path size " << theAvgPathSize
              << ", average fidelity of the end-to-end entangled pair "
-             << theAvgFidelity;
+             << theAvgFidelity << ", Jain's fairness index " << theFairnessJain
+             << ", max rate - min rate " << theFairnessJitter << " EPR-pairs/s";
     return myStream.str();
   }
 
@@ -204,10 +206,10 @@ struct Output {
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
              << theMaxOutDegree << ',' << theTotalCapacity << ','
-             << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
-             << theSumGrossRate << ',' << theSumNetRate << ','
-             << theAdmissionRate << ',' << theAdmittedFlows << ','
-             << theAvgPathSize << ',' << theAvgFidelity;
+             << theResidualCapacity << ',' << theAvgVisits << ','
+             << theSumGrossRate << ',' << theSumNetRate << ',' << theAvgPathSize
+             << ',' << theAvgFidelity << ',' << theFairnessJain << ','
+             << theFairnessJitter;
     return myStream.str();
   }
 };
@@ -216,96 +218,139 @@ using Data = us::ExperimentData<Parameters, Output>;
 
 void runExperiment(Data& aData, Parameters&& aParameters) {
   // fidelity computation parameters
-  // constexpr double p1  = 1.0;
-  // constexpr double p2  = 1.0;
-  // constexpr double eta = 1.0;
+  constexpr double p1  = 1.0;
+  constexpr double p2  = 1.0;
+  constexpr double eta = 1.0;
 
   Data::Raii myRaii(aData, std::move(aParameters));
 
   Output myOutput;
 
-  // create network
-  const auto myNetwork =
-      qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
-                                 myRaii.in().theLinkMaxEpr,
-                                 myRaii.in().theSeed,
-                                 myRaii.in().theMu,
-                                 myRaii.in().theGridLength,
-                                 myRaii.in().theThreshold,
-                                 myRaii.in().theLinkProbability);
+  const auto                           MANY_TRIES = 1000000u;
+  std::unique_ptr<qr::CapacityNetwork> myNetwork  = nullptr;
+  qr::CapacityNetwork::ReachableNodes  myReachableNodes;
+  for (std::size_t mySeedOffset = 0;
+       myNetwork.get() == nullptr and mySeedOffset < (MANY_TRIES * 10000);
+       mySeedOffset += 10000) {
+    const auto mySeed = myRaii.in().theSeed + mySeedOffset;
+    // create network
+    myNetwork = qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
+                                           myRaii.in().theLinkMaxEpr,
+                                           mySeed,
+                                           myRaii.in().theMu,
+                                           myRaii.in().theGridLength,
+                                           myRaii.in().theThreshold,
+                                           myRaii.in().theLinkProbability);
+
+    // network properties
+    assert(myNetwork.get() != nullptr);
+    myOutput.theNumNodes      = myNetwork->numNodes();
+    myOutput.theNumEdges      = myNetwork->numEdges();
+    myOutput.theTotalCapacity = myNetwork->totalCapacity();
+    std::tie(myOutput.theMinInDegree, myOutput.theMaxInDegree) =
+        myNetwork->inDegree();
+    std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
+        myNetwork->outDegree();
+
+    // create applications
+    myReachableNodes = myNetwork->reachableNodes(myRaii.in().theDistanceMin,
+                                                 myRaii.in().theDistanceMax);
+    const std::size_t myNumPossibleHosts =
+        std::count_if(myReachableNodes.begin(),
+                      myReachableNodes.end(),
+                      [](const auto& elem) { return not elem.second.empty(); });
+    if (myNumPossibleHosts == 0) {
+      VLOG(1) << "graph does not have possible hosts (seed " << mySeed
+              << "), trying again";
+      myNetwork.reset();
+    }
+  }
+  if (myNetwork.get() == nullptr) {
+    throw std::runtime_error("Could not find a connected network after " +
+                             std::to_string(MANY_TRIES) + " tries");
+  }
   myNetwork->measurementProbability(myRaii.in().theQ);
 
-  // network properties
-  assert(myNetwork.get() != nullptr);
-  myOutput.theNumNodes      = myNetwork->numNodes();
-  myOutput.theNumEdges      = myNetwork->numEdges();
-  myOutput.theTotalCapacity = myNetwork->totalCapacity();
-  std::tie(myOutput.theMinInDegree, myOutput.theMaxInDegree) =
-      myNetwork->inDegree();
-  std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
-      myNetwork->outDegree();
+  std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
+  us::UniformIntRv<unsigned long>                 myHostRv(
+      0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
+  us::UniformIntRv<unsigned long> myNumPeersRv(myRaii.in().theNumPeersMin,
+                                               myRaii.in().theNumPeersMax,
+                                               myRaii.in().theSeed,
+                                               0,
+                                               0);
+  us::UniformRv myPeerSampleRv(0, 1, myRaii.in().theSeed, 0, 0);
+  for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
+    const auto myHost = myHostRv();
+    const auto it     = myReachableNodes.find(myHost);
+    assert(it != myReachableNodes.end());
+    const auto myPeersSet =
+        us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
+    std::vector<unsigned long> myPeersVector;
+    std::copy(myPeersSet.begin(),
+              myPeersSet.end(),
+              std::back_inserter(myPeersVector));
+    const auto myPriority = 1.0;
+    myApps.emplace_back(myHost, myPeersVector, myPriority);
+  }
 
-  // create traffic flows
-  std::vector<qr::CapacityNetwork::FlowDescriptor> myFlows;
-  // us::UniformRv                   myNetRateRv(myRaii.in().theMinNetRate,
-  //                           myRaii.in().theMaxNetRate,
-  //                           myRaii.in().theSeed,
-  //                           0,
-  //                           0);
-  // us::UniformIntRv<unsigned long> mySrcDstRv(
-  //     0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
-  // for (std::size_t i = 0; i < myRaii.in().theNumFlows; i++) {
-  //   unsigned long mySrc = 0;
-  //   unsigned long myDst = 0;
-  //   while (mySrc == myDst) {
-  //     mySrc = mySrcDstRv();
-  //     myDst = mySrcDstRv();
-  //   }
-  //   assert(mySrc != myDst);
-
-  //   myFlows.emplace_back(mySrc, myDst, myNetRateRv());
-  // }
-
-  // // route traffic flows
-  // myNetwork->route(myFlows, [&myRaii](const auto& aFlow) {
-  //   assert(not aFlow.thePath.empty());
-  //   return qr::fidelitySwapping(p1,
-  //                               p2,
-  //                               eta,
-  //                               aFlow.thePath.size() - 1,
-  //                               myRaii.in().theFidelityInit) >=
-  //          myRaii.in().theFidelityThreshold;
-  // });
+  // route applications
+  myNetwork->route(myApps,
+                   myRaii.in().theQuantum * myRaii.in().theNumApps,
+                   myRaii.in().theK,
+                   [&myRaii](const auto& aPath) {
+                     assert(not aPath.empty());
+                     return qr::fidelitySwapping(p1,
+                                                 p2,
+                                                 eta,
+                                                 aPath.size() - 1,
+                                                 myRaii.in().theFidelityInit) >=
+                            myRaii.in().theFidelityThreshold;
+                   });
 
   // // traffic metrics
-  // myOutput.theResidualCapacity = myNetwork->totalCapacity();
-  // us::SummaryStat myDijkstra;
-  // us::SummaryStat myGrossRate;
-  // us::SummaryStat myNetRate;
-  // us::SummaryStat myAdmissionRate;
-  // us::SummaryStat myPathSize;
-  // us::SummaryStat myFidelity;
-  // for (const auto& myFlow : myFlows) {
-  //   myDijkstra(myFlow.theDijsktra);
-  //   myGrossRate(myFlow.theGrossRate);
-  //   if (not myFlow.thePath.empty()) {
-  //     myNetRate(myFlow.theNetRate);
-  //     myAdmissionRate(1);
-  //     myPathSize(myFlow.thePath.size());
-  //     myFidelity(qr::fidelitySwapping(
-  //         p1, p2, eta, myFlow.thePath.size() - 1,
-  //         myRaii.in().theFidelityInit));
-  //   } else {
-  //     myAdmissionRate(0);
-  //   }
-  // }
-  // myOutput.theAvgDijkstraCalls = myDijkstra.mean();
-  // myOutput.theSumGrossRate     = myGrossRate.count() * myGrossRate.mean();
-  // myOutput.theSumNetRate       = myNetRate.count() * myNetRate.mean();
-  // myOutput.theAdmissionRate    = myAdmissionRate.mean();
-  // myOutput.theAdmittedFlows = myAdmissionRate.count() *
-  // myAdmissionRate.mean(); myOutput.theAvgPathSize   = myPathSize.mean();
-  // myOutput.theAvgFidelity   = myFidelity.mean();
+  myOutput.theResidualCapacity = myNetwork->totalCapacity();
+  us::SummaryStat     myVisits;
+  us::SummaryStat     myGrossRate;
+  us::SummaryStat     myNetRate;
+  us::SummaryStat     myAdmissionRate;
+  us::SummaryStat     myPathSize;
+  us::SummaryStat     myFidelity;
+  std::vector<double> myNetRates;
+  for (const auto& myApp : myApps) {
+    const auto myHostNetRate = myApp.netRate();
+    myNetRates.emplace_back(myHostNetRate);
+    myVisits(myApp.theVisits);
+    myGrossRate(myApp.grossRate());
+    myNetRate(myHostNetRate);
+
+    us::SummaryStat myHostPathSize;
+    us::SummaryStat myHostFidelity;
+    if (myHostNetRate > 0) {
+      assert(std::isnormal(myHostNetRate));
+      for (const auto& myAllocation : myApp.theAllocated) {
+        for (const auto& myPeer : myAllocation.second) {
+          const auto myWeight = myPeer.theNetRate / myHostNetRate;
+          myHostPathSize(myWeight * myPeer.theHops.size());
+          myHostFidelity(myWeight *
+                         qr::fidelitySwapping(p1,
+                                              p2,
+                                              eta,
+                                              myPeer.theHops.size() - 1,
+                                              myRaii.in().theFidelityInit));
+        }
+      }
+    }
+    myPathSize(myHostPathSize.mean());
+    myFidelity(myHostFidelity.mean());
+  }
+  myOutput.theAvgVisits      = myVisits.mean();
+  myOutput.theSumGrossRate   = myGrossRate.count() * myGrossRate.mean();
+  myOutput.theSumNetRate     = myNetRate.count() * myNetRate.mean();
+  myOutput.theAvgPathSize    = myPathSize.mean();
+  myOutput.theAvgFidelity    = myFidelity.mean();
+  myOutput.theFairnessJain   = us::jainFairnessIndex(myNetRates);
+  myOutput.theFairnessJitter = myNetRate.max() - myNetRate.min();
 
   // save data
   VLOG(1) << "experiment finished\n"
@@ -357,7 +402,7 @@ int main(int argc, char* argv[]) {
   double      myMu;
   double      myLinkMinEpr;
   double      myLinkMaxEpr;
-  std::size_t myNumFlows;
+  std::size_t myNumApps;
   double      myGridSize;
   double      myThreshold;
   double      myLinkProbability;
@@ -399,9 +444,9 @@ int main(int argc, char* argv[]) {
     ("link-max-epr",
      po::value<double>(&myLinkMaxEpr)->default_value(400),
      "Max EPR rate of links.")
-    ("num-flows",
-     po::value<std::size_t>(&myNumFlows)->default_value(100),
-     "Number of flows.")
+    ("num-apps",
+     po::value<std::size_t>(&myNumApps)->default_value(100),
+     "Number of applications.")
     ("num-peers-min",
      po::value<std::size_t>(&myNumPeersMin)->default_value(1),
      "Minimum number of peers per app.")
@@ -478,7 +523,7 @@ int main(int argc, char* argv[]) {
                                    myQuantum,
                                    myK,
                                    myFidelityInit,
-                                   myNumFlows,
+                                   myNumApps,
                                    myNumPeersMin,
                                    myNumPeersMax,
                                    myDistanceMin,

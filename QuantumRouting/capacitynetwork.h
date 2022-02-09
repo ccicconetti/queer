@@ -146,6 +146,8 @@ class CapacityNetwork final : public Network
   // vector of (src, dst, weight)
   using WeightVector =
       std::vector<std::tuple<unsigned long, unsigned long, double>>;
+  // map of host -> { peers }
+  using ReachableNodes = std::map<unsigned long, std::set<unsigned long>>;
 
   /**
    * @brief Create a network with given links and assign random weights
@@ -213,8 +215,8 @@ class CapacityNetwork final : public Network
    * @param aMaxHops The maximum distance, in hops.
    * @return std::map<unsigned long, std::set<unsigned long>>
    */
-  std::map<unsigned long, std::set<unsigned long>>
-  reachableNodes(const std::size_t aMinHops, const std::size_t aMaxHops) const;
+  ReachableNodes reachableNodes(const std::size_t aMinHops,
+                                const std::size_t aMaxHops) const;
 
   /**
    * @brief Route the given flows in this network starting with current

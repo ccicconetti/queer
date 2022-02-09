@@ -424,7 +424,7 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
           aK);
       for (auto& elem : myResult) {
         const auto myValid = aCheckFunction(elem.second);
-        VLOG(1) << myApp.theHost << " -> " << myPeer << ": "
+        VLOG(2) << myApp.theHost << " -> " << myPeer << ": "
                 << (myValid ? "valid" : "invalid") << " path found ["
                 << elem.first << "] {"
                 << ::toString(elem.second,
