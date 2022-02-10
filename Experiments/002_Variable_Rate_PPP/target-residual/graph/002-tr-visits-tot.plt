@@ -129,7 +129,7 @@ set x2label ""
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ 0.100000 : 1.00000 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback
-set ylabel "Average number of visits/app"
+set ylabel "Number of visits"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
