@@ -293,98 +293,101 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
-  us::UniformIntRv<unsigned long>                 myHostRv(
-      0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
-  us::UniformIntRv<unsigned long> myNumPeersRv(myRaii.in().theNumPeersMin,
-                                               myRaii.in().theNumPeersMax,
-                                               myRaii.in().theSeed,
-                                               0,
-                                               0);
-  us::UniformRv myPeerSampleRv(0, 1, myRaii.in().theSeed, 0, 0);
 
-  do {
-    std::vector<qr::CapacityNetwork::AppDescriptor> mySingleRunApps;
+  if (myRaii.in().theNumApps > 0) {
+    us::UniformIntRv<unsigned long> myHostRv(
+        0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
+    us::UniformIntRv<unsigned long> myNumPeersRv(myRaii.in().theNumPeersMin,
+                                                 myRaii.in().theNumPeersMax,
+                                                 myRaii.in().theSeed,
+                                                 0,
+                                                 0);
+    us::UniformRv myPeerSampleRv(0, 1, myRaii.in().theSeed, 0, 0);
 
-    for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
-      const auto myHost = myHostRv();
-      const auto it     = myReachableNodes.find(myHost);
-      assert(it != myReachableNodes.end());
-      const auto myPeersSet =
-          us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
-      std::vector<unsigned long> myPeersVector;
-      std::copy(myPeersSet.begin(),
-                myPeersSet.end(),
-                std::back_inserter(myPeersVector));
-      const auto myPriority = 1.0;
-      mySingleRunApps.emplace_back(myHost, myPeersVector, myPriority);
-    }
+    do {
+      std::vector<qr::CapacityNetwork::AppDescriptor> mySingleRunApps;
 
-    // route applications
-    myNetwork->route(mySingleRunApps,
-                     myRaii.in().theQuantum * myRaii.in().theNumApps,
-                     myRaii.in().theK,
-                     [&myRaii](const auto& aPath) {
-                       assert(not aPath.empty());
-                       return qr::fidelitySwapping(
-                                  p1,
-                                  p2,
-                                  eta,
-                                  aPath.size() - 1,
-                                  myRaii.in().theFidelityInit) >=
-                              myRaii.in().theFidelityThreshold;
-                     });
-
-    std::move(mySingleRunApps.begin(),
-              mySingleRunApps.end(),
-              std::back_inserter(myApps));
-  } while (myRaii.in().theTargetResidual >= 0 and
-           myNetwork->totalCapacity() >
-               (myOutput.theTotalCapacity * myRaii.in().theTargetResidual));
-
-  // traffic metrics
-  myOutput.theResidualCapacity = myNetwork->totalCapacity();
-  myOutput.theNumApps          = myApps.size();
-  us::SummaryStat     myVisits;
-  us::SummaryStat     myGrossRate;
-  us::SummaryStat     myNetRate;
-  us::SummaryStat     myAdmissionRate;
-  us::SummaryStat     myPathSize;
-  us::SummaryStat     myFidelity;
-  std::vector<double> myNetRates;
-  for (const auto& myApp : myApps) {
-    const auto myHostNetRate = myApp.netRate();
-    myNetRates.emplace_back(myHostNetRate);
-    myVisits(myApp.theVisits);
-    myGrossRate(myApp.grossRate());
-    myNetRate(myHostNetRate);
-
-    us::SummaryStat myHostPathSize;
-    us::SummaryStat myHostFidelity;
-    if (myHostNetRate > 0) {
-      assert(std::isnormal(myHostNetRate));
-      for (const auto& myAllocation : myApp.theAllocated) {
-        for (const auto& myPeer : myAllocation.second) {
-          const auto myWeight = myPeer.theNetRate / myHostNetRate;
-          myHostPathSize(myWeight * myPeer.theHops.size());
-          myHostFidelity(myWeight *
-                         qr::fidelitySwapping(p1,
-                                              p2,
-                                              eta,
-                                              myPeer.theHops.size() - 1,
-                                              myRaii.in().theFidelityInit));
-        }
+      for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
+        const auto myHost = myHostRv();
+        const auto it     = myReachableNodes.find(myHost);
+        assert(it != myReachableNodes.end());
+        const auto myPeersSet =
+            us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
+        std::vector<unsigned long> myPeersVector;
+        std::copy(myPeersSet.begin(),
+                  myPeersSet.end(),
+                  std::back_inserter(myPeersVector));
+        const auto myPriority = 1.0;
+        mySingleRunApps.emplace_back(myHost, myPeersVector, myPriority);
       }
-      myPathSize(myHostPathSize.mean() * myHostPathSize.count());
-      myFidelity(myHostFidelity.mean() * myHostFidelity.count());
+
+      // route applications
+      myNetwork->route(mySingleRunApps,
+                       myRaii.in().theQuantum * myRaii.in().theNumApps,
+                       myRaii.in().theK,
+                       [&myRaii](const auto& aPath) {
+                         assert(not aPath.empty());
+                         return qr::fidelitySwapping(
+                                    p1,
+                                    p2,
+                                    eta,
+                                    aPath.size() - 1,
+                                    myRaii.in().theFidelityInit) >=
+                                myRaii.in().theFidelityThreshold;
+                       });
+
+      std::move(mySingleRunApps.begin(),
+                mySingleRunApps.end(),
+                std::back_inserter(myApps));
+    } while (myRaii.in().theTargetResidual >= 0 and
+             myNetwork->totalCapacity() >
+                 (myOutput.theTotalCapacity * myRaii.in().theTargetResidual));
+
+    // traffic metrics
+    myOutput.theResidualCapacity = myNetwork->totalCapacity();
+    myOutput.theNumApps          = myApps.size();
+    us::SummaryStat     myVisits;
+    us::SummaryStat     myGrossRate;
+    us::SummaryStat     myNetRate;
+    us::SummaryStat     myAdmissionRate;
+    us::SummaryStat     myPathSize;
+    us::SummaryStat     myFidelity;
+    std::vector<double> myNetRates;
+    for (const auto& myApp : myApps) {
+      const auto myHostNetRate = myApp.netRate();
+      myNetRates.emplace_back(myHostNetRate);
+      myVisits(myApp.theVisits);
+      myGrossRate(myApp.grossRate());
+      myNetRate(myHostNetRate);
+
+      us::SummaryStat myHostPathSize;
+      us::SummaryStat myHostFidelity;
+      if (myHostNetRate > 0) {
+        assert(std::isnormal(myHostNetRate));
+        for (const auto& myAllocation : myApp.theAllocated) {
+          for (const auto& myPeer : myAllocation.second) {
+            const auto myWeight = myPeer.theNetRate / myHostNetRate;
+            myHostPathSize(myWeight * myPeer.theHops.size());
+            myHostFidelity(myWeight *
+                           qr::fidelitySwapping(p1,
+                                                p2,
+                                                eta,
+                                                myPeer.theHops.size() - 1,
+                                                myRaii.in().theFidelityInit));
+          }
+        }
+        myPathSize(myHostPathSize.mean() * myHostPathSize.count());
+        myFidelity(myHostFidelity.mean() * myHostFidelity.count());
+      }
     }
+    myOutput.theAvgVisits      = myVisits.mean();
+    myOutput.theSumGrossRate   = myGrossRate.count() * myGrossRate.mean();
+    myOutput.theSumNetRate     = myNetRate.count() * myNetRate.mean();
+    myOutput.theAvgPathSize    = myPathSize.mean();
+    myOutput.theAvgFidelity    = myFidelity.mean();
+    myOutput.theFairnessJain   = us::jainFairnessIndex(myNetRates);
+    myOutput.theFairnessJitter = myNetRate.max() - myNetRate.min();
   }
-  myOutput.theAvgVisits      = myVisits.mean();
-  myOutput.theSumGrossRate   = myGrossRate.count() * myGrossRate.mean();
-  myOutput.theSumNetRate     = myNetRate.count() * myNetRate.mean();
-  myOutput.theAvgPathSize    = myPathSize.mean();
-  myOutput.theAvgFidelity    = myFidelity.mean();
-  myOutput.theFairnessJain   = us::jainFairnessIndex(myNetRates);
-  myOutput.theFairnessJitter = myNetRate.max() - myNetRate.min();
 
   // save data
   VLOG(1) << "experiment finished\n"
