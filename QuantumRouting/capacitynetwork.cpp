@@ -182,7 +182,7 @@ void CapacityNetwork::measurementProbability(
     throw std::runtime_error("Invalid measurement probability: " +
                              std::to_string(aMeasurementProbability));
   }
-  VLOG(1) << "measurement probability set to " << aMeasurementProbability;
+  VLOG(2) << "measurement probability set to " << aMeasurementProbability;
   theMeasurementProbability = aMeasurementProbability;
 }
 
@@ -294,7 +294,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
   for (auto& myFlow : aFlows) {
     assert(myFlow.thePath.empty());
     assert(myFlow.theGrossRate == 0);
-    VLOG(1) << "flow " << myFlow.toString();
+    VLOG(2) << "flow " << myFlow.toString();
 
     auto myFoundOrDisconnected = false;
     auto myCopiedGraph         = theGraph;
@@ -324,7 +324,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
         assert(not myCandidate.thePath.empty());
         myCandidate.theGrossRate =
             toGrossRate(myCandidate.theNetRate, myCandidate.thePath.size());
-        VLOG(1) << "candidate " << myCandidate.toString();
+        VLOG(2) << "candidate " << myCandidate.toString();
 
         // if the flow is not admissible because of the external function
         // we assume there is no need to continue the search, otherwise
@@ -352,10 +352,10 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
     }
 
     if (myFlow.thePath.empty()) {
-      VLOG(1) << "flow rejected " << myFlow.toString();
+      VLOG(2) << "flow rejected " << myFlow.toString();
 
     } else {
-      VLOG(1) << "flow admitted " << myFlow.toString();
+      VLOG(2) << "flow admitted " << myFlow.toString();
       // flow admissible: remove the gross capacity from the edges along the
       // path and then move to the next flow in the list
       removeCapacityFromPath(
@@ -524,7 +524,7 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
 
       // add the allocation to the path
       AppDescriptor::Output myOutput(myCandidate);
-      VLOG(1) << "allocated gross capacity " << myAllocatedGross
+      VLOG(2) << "allocated gross capacity " << myAllocatedGross
               << " EPR-pairs/s for host " << myCurApp.theHost << " towards "
               << myOutput.theHops.back() << " along path {"
               << ::toString(
@@ -551,83 +551,6 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
       myCurAppIt = myActiveApps.begin();
     }
   }
-
-  // std::vector<VertexDescriptor> myDistances(V);
-  // std::vector<VertexDescriptor> myPredecessors(V);
-
-  // for (auto& myFlow : aFlows) {
-  //   assert(myFlow.thePath.empty());
-  //   assert(myFlow.theGrossRate == 0);
-  //   VLOG(1) << "flow " << myFlow.toString();
-
-  //   auto myFoundOrDisconnected = false;
-  //   auto myCopiedGraph         = theGraph;
-
-  //   // loop until either there is no path from the source to the
-  //   destination or
-  //   // we find a candidate that can satisfy the flow requirements
-  //   while (not myFoundOrDisconnected) {
-  //     myFlow.theDijsktra++;
-  //     boost::dijkstra_shortest_paths(
-  //         myCopiedGraph,
-  //         myFlow.theSrc,
-  //         boost::predecessor_map(myPredecessors.data())
-  //             .weight_map(
-  //                 boost::make_static_property_map<Graph::edge_descriptor>(1))
-  //             .distance_map(boost::make_iterator_property_map(
-  //                 myDistances.data(),
-  //                 get(boost::vertex_index, myCopiedGraph))));
-
-  //     if (myPredecessors[myFlow.theDst] == myFlow.theDst) {
-  //       myFoundOrDisconnected = true; // disconnected
-
-  //     } else {
-  //       // there is at least one path from source to destination
-  //       HopsFinder     myHopsFinder(myPredecessors, myFlow.theSrc);
-  //       FlowDescriptor myCandidate(myFlow);
-  //       myHopsFinder(myCandidate.thePath, myFlow.theDst);
-  //       assert(not myCandidate.thePath.empty());
-  //       myCandidate.theGrossRate =
-  //           toGrossRate(myCandidate.theNetRate,
-  //           myCandidate.thePath.size());
-  //       VLOG(1) << "candidate " << myCandidate.toString();
-
-  //       // if the flow is not admissible because of the external function
-  //       // we assume there is no need to continue the search, otherwise
-  //       // we check that the gross EPR rate is feasible along the path
-  //       selected if (not aCheckFunction(myCandidate)) {
-  //         myFoundOrDisconnected = true;
-
-  //       } else if (checkCapacity(myCandidate.theSrc,
-  //                                myCandidate.thePath,
-  //                                myCandidate.theGrossRate,
-  //                                myCopiedGraph)) {
-  //         // flow is admissible on the shortest path, we can break from the
-  //         // loop
-  //         myFoundOrDisconnected = true;
-  //         myFlow.movePathRateFrom(myCandidate);
-
-  //       } else {
-  //         // flow not admissible on the shortest path, remove the edge with
-  //         // smallest capacity along the path and try again
-  //         removeSmallestCapacityEdge(
-  //             myCandidate.theSrc, myCandidate.thePath, myCopiedGraph);
-  //       }
-  //     }
-  //   }
-
-  //   if (myFlow.thePath.empty()) {
-  //     VLOG(1) << "flow rejected " << myFlow.toString();
-
-  //   } else {
-  //     VLOG(1) << "flow admitted " << myFlow.toString();
-  //     // flow admissible: remove the gross capacity from the edges along
-  //     the
-  //     // path and then move to the next flow in the list
-  //     removeCapacityFromPath(
-  //         myFlow.theSrc, myFlow.thePath, myFlow.theGrossRate, theGraph);
-  //   }
-  // }
 }
 
 bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
