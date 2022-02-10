@@ -33,7 +33,10 @@ SOFTWARE.
 
 #include "gtest/gtest.h"
 
+#include <glog/logging.h>
+
 #include <cmath>
+#include <fstream>
 
 namespace uiiit {
 namespace qr {
@@ -119,6 +122,28 @@ TEST_F(TestQrUtils, test_fidelity_swapping) {
   //   print f(4,0.98)
   //
   ASSERT_FLOAT_EQ(0.279446282739145, fidelitySwapping(0.9, 0.5, 0.95, 4, 0.98));
+}
+
+TEST_F(TestQrUtils, DISABLED_print_fidelity_per_hops) {
+  constexpr double p1  = 1.0;
+  constexpr double p2  = 1.0;
+  constexpr double eta = 1.0;
+
+  const std::string myFilename("fidelity.dat");
+  std::ofstream     myOut(myFilename);
+  LOG(INFO) << "saving to " << myFilename;
+  for (std::size_t L = 1; L < 10; L++) {
+    myOut << L;
+    for (double myFidelityInit = 0.95; myFidelityInit < 0.991;
+         myFidelityInit += 0.01) {
+      myOut << ' ' << fidelitySwapping(p1, p2, eta, L, myFidelityInit);
+    }
+    myOut << '\n';
+  }
+  LOG(INFO) << "using Gnuplot plot with:\n"
+               "plot 'fidelity.dat' u 1:2 w lp title \"F=0.95\", '' u 1:3 w lp "
+               "title \"F=0.96\", '' u 1:4 w lp title \"F=0.97\", '' u 1:5 w "
+               "lp title \"F=0.98\", '' u 1:6 w lp title \"F=0.99\"";
 }
 
 } // namespace qr
