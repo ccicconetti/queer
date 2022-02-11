@@ -168,8 +168,8 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/num-apps-50-20000.dat"
 plot  \
-'../post/fidelity-100-15000.dat' u (1-$1):2 w lp title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
-'../post/fidelity-100-20000.dat' u (1-$1):2 w lp title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
-'../post/fidelity-50-15000.dat' u (1-$1):2 w lp title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
-'../post/fidelity-50-20000.dat' u (1-$1):2 w lp title "{/Symbol m} = 50, {/Symbol t} = 20 km"
+'../post/fidelity-100-15000.dat' u (1-$1):2 w lp pt 6 lt 1 title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
+'../post/fidelity-100-20000.dat' u (1-$1):2 w lp pt 7 lt 2 title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
+'../post/fidelity-50-15000.dat' u (1-$1):2 w lp pt 8 lt 3 title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
+'../post/fidelity-50-20000.dat' u (1-$1):2 w lp pt 9 lt 4 title "{/Symbol m} = 50, {/Symbol t} = 20 km"
 #    EOF

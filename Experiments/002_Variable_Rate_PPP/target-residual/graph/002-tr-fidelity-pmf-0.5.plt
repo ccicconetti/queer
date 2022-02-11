@@ -168,8 +168,8 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../data/out-0.5-50-15000.csv"
 plot \
-'../data/out-0.5-100-15000.csv' u (int($33/0.01)):(0.001) smooth freq w lp title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
-'../data/out-0.5-100-20000.csv' u (int($33/0.01)):(0.001) smooth freq w lp title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
-'../data/out-0.5-50-15000.csv' u (int($33/0.01)):(0.001) smooth freq w lp title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
-'../data/out-0.5-50-20000.csv' u (int($33/0.01)):(0.001) smooth freq w lp title "{/Symbol m} = 50, {/Symbol t} = 20 km"
+'../data/out-0.5-100-15000.csv' u (int($33/0.01)):(0.001) smooth freq w lp pt 6 lt 1 title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
+'../data/out-0.5-100-20000.csv' u (int($33/0.01)):(0.001) smooth freq w lp pt 7 lt 2 title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
+'../data/out-0.5-50-15000.csv' u (int($33/0.01)):(0.001) smooth freq w lp pt 8 lt 3 title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
+'../data/out-0.5-50-20000.csv' u (int($33/0.01)):(0.001) smooth freq w lp pt 9 lt 4 title "{/Symbol m} = 50, {/Symbol t} = 20 km"
 #    EOF
