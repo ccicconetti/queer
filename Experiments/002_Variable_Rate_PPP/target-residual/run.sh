@@ -24,7 +24,7 @@ for r in $residuals ; do
         --num-threads 100 \
         --output data/$output.csv \
         --seed-start 0 \
-        --seed-end 1000 \
+        --seed-end 10000 \
         --mu $m \
         --link-min-epr 1 \
         --link-max-epr 400 \
@@ -39,7 +39,7 @@ for r in $residuals ; do
         --q 0.5 \
         --quantum 10 \
         --k 4 \
-        --fidelity-init 0.99 \
+        --fidelity-init 0.95 \
         --fidelity-threshold 0 \
         --target-residual $r"
 
