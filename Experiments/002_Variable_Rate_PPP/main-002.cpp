@@ -83,6 +83,9 @@ struct Parameters {
   double      theFidelityThreshold;
   double      theTargetResidual;
 
+  // not part of the experiment
+  std::string theDotFile;
+
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
         "seed",
@@ -292,6 +295,12 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   }
   myNetwork->measurementProbability(myRaii.in().theQ);
 
+  // save to Graphviz
+  if (not myRaii.in().theDotFile.empty()) {
+    myNetwork->toDot(myRaii.in().theDotFile + "-" +
+                     std::to_string(myRaii.in().theSeed) + ".dot");
+  }
+
   std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
 
   if (myRaii.in().theNumApps > 0) {
@@ -453,6 +462,7 @@ int main(int argc, char* argv[]) {
   std::size_t myDistanceMin;
   std::size_t myDistanceMax;
   double      myTargetResidual;
+  std::string myDotFile;
 
   po::options_description myDesc("Allowed options");
   // clang-format off
@@ -461,6 +471,9 @@ int main(int argc, char* argv[]) {
     ("version,v", "print the version and quit")
     ("explain-output", "report the meaning of the columns in the output")
     ("print-header", "print the header of the CSV output file")
+    ("dot-file",
+     po::value<std::string>(&myDotFile)->default_value(""),
+     "Save the network to this Graphviz file.")
     ("num-threads",
      po::value<std::size_t>(&myNumThreads)->default_value(1),
      "Number of threads used.")
@@ -576,7 +589,8 @@ int main(int argc, char* argv[]) {
                                    myDistanceMin,
                                    myDistanceMax,
                                    myFidelityThreshold,
-                                   myTargetResidual});
+                                   myTargetResidual,
+                                   myDotFile});
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {
