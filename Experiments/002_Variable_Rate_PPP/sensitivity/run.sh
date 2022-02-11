@@ -24,7 +24,7 @@ for m in $mus ; do
     cmdbase="$MAIN \
       --num-threads 100 \
       --seed-start 0 \
-      --seed-end 1000 \
+      --seed-end 10000 \
       --mu $m \
       --link-min-epr 1 \
       --link-max-epr 400 \
