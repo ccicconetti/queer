@@ -29,7 +29,7 @@ set style circle radius graph 0.02
 set style ellipse size graph 0.05, 0.03 angle 0 units xy
 set dummy x, y
 set format x "% h" 
-set format y "% h"
+set format y "10^{%L}"
 set format x2 "% h" 
 set format y2 "% h" 
 set format z "% h" 
@@ -47,7 +47,7 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed left bottom vertical Left noreverse enhanced autotitle nobox
+set key fixed left top vertical Left noreverse enhanced autotitle nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
@@ -129,7 +129,7 @@ set x2label ""
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ 0.100000 : 1.00000 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback
-set ylabel "Average fidelity"
+set ylabel "Number of applications" 
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
@@ -145,6 +145,7 @@ set rlabel ""
 set rlabel  font "" textcolor lt -1 norotate
 set rrange [ * : * ] noreverse nowriteback
 unset logscale
+set logscale y 10
 unset jitter
 set zero 1e-08
 set lmargin  -1
@@ -168,8 +169,12 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/num-apps-50-20000.dat"
 plot  \
-'../post/fidelity-100-15000.dat' u (1-$1):2 w lp pt 6 lt 1 title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
-'../post/fidelity-100-20000.dat' u (1-$1):2 w lp pt 7 lt 2 title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
-'../post/fidelity-50-15000.dat' u (1-$1):2 w lp pt 8 lt 3 title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
-'../post/fidelity-50-20000.dat' u (1-$1):2 w lp pt 9 lt 4 title "{/Symbol m} = 50, {/Symbol t} = 20 km"
+'../post/num-apps-100-15000.dat' u (1-$1):2 w lp pt 6 lt 1 title "{/Symbol m} = 100, {/Symbol t} = 15 km",\
+'../post/num-apps-100-20000.dat' u (1-$1):2 w lp pt 7 lt 2 title "{/Symbol m} = 100, {/Symbol t} = 20 km",\
+'../post/num-apps-50-15000.dat' u (1-$1):2 w lp pt 8 lt 3 title "{/Symbol m} = 50, {/Symbol t} = 15 km",\
+'../post/num-apps-50-20000.dat' u (1-$1):2 w lp pt 9 lt 4 title "{/Symbol m} = 50, {/Symbol t} = 20 km",\
+'../post/num-apps-100-15000.dat' u (1-$1):2:3 w ye lt 1 notitle,\
+'../post/num-apps-100-20000.dat' u (1-$1):2:3 w ye lt 2 notitle,\
+'../post/num-apps-50-15000.dat' u (1-$1):2:3 w ye lt 3 notitle,\
+'../post/num-apps-50-20000.dat' u (1-$1):2:3 w ye lt 4 notitle
 #    EOF
