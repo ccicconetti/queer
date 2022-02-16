@@ -9,7 +9,7 @@ for m in ${!metrics[@]} ; do
   for v in ${!variables[@]} ; do
     metric=${metrics[$m]}
     variable=${variables[$v]}
-    plotfile=$metric-$variable.plt
+    plotfile=002-sens-$metric-$variable.plt
 
     if [ -r $plotfile ] ; then
       echo "skipping: $plotfile"
