@@ -3,7 +3,7 @@
 metrics=("netrate" "fidelity" "visits" "jain" "jitter")
 metrics_labels=("Net rate (EPR-pairs/s)" "Fidelity" "Average number of visits" "Jain's fairness index" "Max-min net rate (EPR-pairs/s)")
 variables=("p" "k" "d" "q")
-variables_labels=("Maximum number of peers/host [W]" "Maximum number of shortest paths per peer [k]" "Maximum distance of peers [D]" "Round size (Bell pairs/s) [{/Symbol f}]")
+variables_labels=("Maximum number of peers/host [W]" "Maximum number of shortest paths per peer [k]" "Maximum distance of peers [D]" "Round size (Bell pairs/s) [{/Symbol j}]")
 
 for m in ${!metrics[@]} ; do
   for v in ${!variables[@]} ; do
