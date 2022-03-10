@@ -3,7 +3,7 @@
 metrics=("netrate" "fidelity" "visits" "jain" "jitter")
 metrics_labels=("Net rate (EPR-pairs/s)" "Fidelity" "Average number of visits" "Jain's fairness index" "Max-min net rate (EPR-pairs/s)")
 variables=("p" "k" "d" "q")
-variables_labels=("Average number of peers/host" "Maximum number of shortest paths per peer [k]" "Maximum distance of peers" "Scheduler quantum (EPR-pairs/s)")
+variables_labels=("Maximum number of peers/host [W]" "Maximum number of shortest paths per peer [k]" "Maximum distance of peers [D]" "Round size (Bell pairs/s) [{/Symbol f}]")
 
 for m in ${!metrics[@]} ; do
   for v in ${!variables[@]} ; do
@@ -20,7 +20,7 @@ for m in ${!metrics[@]} ; do
     metric_label=${metrics_labels[$m]}
     variable_label=${variables_labels[$v]}
     cat << EOF > $plotfile
-set term x11 persist
+#set term x11 persist
 set grid
 set key top left
 set xlabel "$variable_label"

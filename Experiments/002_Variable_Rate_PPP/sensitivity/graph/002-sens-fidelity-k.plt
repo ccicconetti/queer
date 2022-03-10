@@ -1,4 +1,4 @@
-set term x11 persist
+#set term x11 persist
 set grid
 set key top left
 set xlabel "Maximum number of shortest paths per peer [k]"
