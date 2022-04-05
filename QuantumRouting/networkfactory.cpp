@@ -73,5 +73,20 @@ makeCapacityNetworkPpp(const double      aLinkMinEpr,
                            std::to_string(MANY_TRIES) + " tries");
 }
 
+std::unique_ptr<CapacityNetwork>
+makeCapacityNetworkPpp(const double      aLinkMinEpr,
+                       const double      aLinkMaxEpr,
+                       const std::size_t aSeed,
+                       std::ifstream&    aGraphMl) {
+  support::UniformRv myLinkEprRv(aLinkMinEpr, aLinkMaxEpr, aSeed, 0, 0);
+
+  const auto myEdges = findLinks(aGraphMl);
+  if (qr::bigraphConnected(myEdges)) {
+    return std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
+  }
+
+  throw std::runtime_error("The GraphML network is not fully connected");
+}
+
 } // namespace qr
 } // namespace uiiit

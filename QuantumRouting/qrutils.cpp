@@ -36,6 +36,8 @@ SOFTWARE.
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/depth_first_search.hpp>
+#include <boost/graph/graph_utility.hpp>
+#include <boost/graph/graphml.hpp>
 
 #include <cassert>
 #include <cmath>
@@ -71,6 +73,49 @@ findLinks(const std::vector<Coordinate>& aItems,
         ret.push_back({i, j});
       }
     }
+  }
+  return ret;
+}
+
+std::vector<std::pair<unsigned long, unsigned long>>
+findLinks(std::istream& aGraphMl) {
+  struct VertexData {
+    std::string theLabel;
+    double      theLongitude;
+    double      theLatitude;
+  };
+
+  struct EdgeData {
+    double theLinkSpeed;
+    int    theInvLinkSpeed;
+  };
+
+  using Graph = boost::adjacency_list<boost::listS,
+                                      boost::vecS,
+                                      boost::undirectedS,
+                                      VertexData,
+                                      EdgeData,
+                                      boost::no_property,
+                                      boost::listS>;
+
+  Graph myGraph;
+
+  boost::dynamic_properties myDp(boost::ignore_other_properties);
+  myDp.property("label", boost::get(&VertexData::theLabel, myGraph));
+  myDp.property("Latitude", boost::get(&VertexData::theLatitude, myGraph));
+  myDp.property("Longitude", boost::get(&VertexData::theLongitude, myGraph));
+  myDp.property("LinkSpeedRaw", boost::get(&EdgeData::theLinkSpeed, myGraph));
+
+  boost::read_graphml(aGraphMl, myGraph, myDp, 0);
+
+  if (VLOG_IS_ON(2)) {
+    boost::print_graph(myGraph, boost::get(&VertexData::theLabel, myGraph));
+  }
+
+  std::vector<std::pair<unsigned long, unsigned long>> ret;
+  const auto myEdges = boost::edges(myGraph);
+  for (auto it = myEdges.first; it != myEdges.second; ++it) {
+    ret.push_back({it->m_source, it->m_target});
   }
   return ret;
 }

@@ -31,12 +31,17 @@ SOFTWARE.
 
 #include "QuantumRouting/qrutils.h"
 
+#include "Details/examplenetwork.h"
+
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <glog/logging.h>
 
 #include <cmath>
 #include <fstream>
+#include <limits>
+#include <sstream>
 
 namespace uiiit {
 namespace qr {
@@ -78,6 +83,37 @@ TEST_F(TestQrUtils, test_find_links) {
   // random link generation
   ASSERT_EQ(0, findLinks(myItems, 1.5, 0, 0).size());
   ASSERT_EQ(4, findLinks(myItems, 1.5, 0.8, 0).size());
+}
+
+TEST_F(TestQrUtils, test_find_links_graphml) {
+  std::stringstream myStream;
+  myStream << exampleNetwork();
+
+  const auto myLinks = findLinks(myStream);
+  ASSERT_EQ(89, myLinks.size());
+
+  unsigned long myMin = std::numeric_limits<unsigned long>::max();
+  unsigned long myMax = 0;
+  for (const auto& myLink : myLinks) {
+    VLOG(2) << "(" << myLink.first << "," << myLink.second << ")";
+    myMin = std::min(myMin, myLink.first);
+    myMin = std::min(myMin, myLink.second);
+    myMax = std::max(myMax, myLink.first);
+    myMax = std::max(myMax, myLink.second);
+  }
+  EXPECT_EQ(0, myMin);
+  EXPECT_EQ(60, myMax);
+
+  for (const auto& myLink : myLinks) {
+    auto myFound = false;
+    for (const auto& myOther : myLinks) {
+      if (myLink.first == myOther.second and myLink.second == myOther.first) {
+        myFound = true;
+        break;
+      }
+    }
+    ASSERT_FALSE(myFound) << "(" << myLink.first << "," << myLink.second << ")";
+  }
 }
 
 TEST_F(TestQrUtils, test_bigraph_connected) {

@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "QuantumRouting/capacitynetwork.h"
 
+#include <iostream>
 #include <memory>
 
 namespace uiiit {
@@ -46,6 +47,12 @@ makeCapacityNetworkPpp(const double      aLinkMinEpr,
                        const double      aGridLength,
                        const double      aThreshold,
                        const double      aLinkProbability);
+
+std::unique_ptr<CapacityNetwork>
+makeCapacityNetworkGraphMl(const double      aLinkMinEpr,
+                           const double      aLinkMaxEpr,
+                           const std::size_t aSeed,
+                           std::ifstream&    aGraphMl);
 
 } // namespace qr
 } // namespace uiiit
