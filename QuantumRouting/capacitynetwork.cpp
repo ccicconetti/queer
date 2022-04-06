@@ -143,7 +143,16 @@ CapacityNetwork::CapacityNetwork(
     : Network()
     , theGraph()
     , theMeasurementProbability(1) {
+  std::set<std::string> myFound;
   for (const auto& myEdge : aEdges) {
+    if (myFound
+            .emplace(std::to_string(myEdge.first) + "-" +
+                     std::to_string(myEdge.second))
+            .second == false) {
+      VLOG(2) << "duplicate edge found: (" << myEdge.first << ','
+              << myEdge.second;
+      continue;
+    }
     const auto myWeight = aWeightRv();
     Utils<Graph>::addEdge(theGraph, myEdge.first, myEdge.second, myWeight);
     if (aMakeBidirectional) {
@@ -337,8 +346,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
                                  myCandidate.thePath,
                                  myCandidate.theGrossRate,
                                  myCopiedGraph)) {
-          // flow is admissible on the shortest path, we can break from the
-          // loop
+          // flow is admissible on the shortest path, break from loop
           myFoundOrDisconnected = true;
           myFlow.movePathRateFrom(myCandidate);
 

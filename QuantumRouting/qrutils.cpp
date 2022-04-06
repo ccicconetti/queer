@@ -42,6 +42,7 @@ SOFTWARE.
 #include <cassert>
 #include <cmath>
 #include <memory>
+#include <set>
 
 namespace uiiit {
 namespace qr {
@@ -113,9 +114,15 @@ findLinks(std::istream& aGraphMl) {
   }
 
   std::vector<std::pair<unsigned long, unsigned long>> ret;
-  const auto myEdges = boost::edges(myGraph);
+  const auto            myEdges = boost::edges(myGraph);
+  std::set<std::string> myFound;
   for (auto it = myEdges.first; it != myEdges.second; ++it) {
-    ret.push_back({it->m_source, it->m_target});
+    if (myFound
+            .emplace(std::to_string(it->m_source) +
+                     std::to_string(it->m_target))
+            .second) {
+      ret.push_back({it->m_source, it->m_target});
+    }
   }
   return ret;
 }

@@ -74,13 +74,16 @@ makeCapacityNetworkPpp(const double      aLinkMinEpr,
 }
 
 std::unique_ptr<CapacityNetwork>
-makeCapacityNetworkPpp(const double      aLinkMinEpr,
-                       const double      aLinkMaxEpr,
-                       const std::size_t aSeed,
-                       std::ifstream&    aGraphMl) {
+makeCapacityNetworkGraphMl(const double      aLinkMinEpr,
+                           const double      aLinkMaxEpr,
+                           const std::size_t aSeed,
+                           std::ifstream&    aGraphMl) {
   support::UniformRv myLinkEprRv(aLinkMinEpr, aLinkMaxEpr, aSeed, 0, 0);
 
   const auto myEdges = findLinks(aGraphMl);
+  for (const auto& myEdge : myEdges) {
+    VLOG(2) << '(' << myEdge.first << ',' << myEdge.second << ')';
+  }
   if (qr::bigraphConnected(myEdges)) {
     return std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
   }

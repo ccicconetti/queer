@@ -90,7 +90,7 @@ TEST_F(TestQrUtils, test_find_links_graphml) {
   myStream << exampleNetwork();
 
   const auto myLinks = findLinks(myStream);
-  ASSERT_EQ(89, myLinks.size());
+  ASSERT_EQ(75, myLinks.size());
 
   unsigned long myMin = std::numeric_limits<unsigned long>::max();
   unsigned long myMax = 0;
@@ -104,15 +104,13 @@ TEST_F(TestQrUtils, test_find_links_graphml) {
   EXPECT_EQ(0, myMin);
   EXPECT_EQ(60, myMax);
 
+  std::set<std::string> myFound;
   for (const auto& myLink : myLinks) {
-    auto myFound = false;
-    for (const auto& myOther : myLinks) {
-      if (myLink.first == myOther.second and myLink.second == myOther.first) {
-        myFound = true;
-        break;
-      }
-    }
-    ASSERT_FALSE(myFound) << "(" << myLink.first << "," << myLink.second << ")";
+    ASSERT_TRUE(myFound
+                    .emplace(std::to_string(myLink.first) + "-" +
+                             std::to_string(myLink.second))
+                    .second)
+        << "(" << myLink.first << "," << myLink.second << ")";
   }
 }
 
