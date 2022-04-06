@@ -42,6 +42,7 @@ SOFTWARE.
 #include "Support/tostring.h"
 #include "Support/versionutils.h"
 
+#include <algorithm>
 #include <boost/program_options.hpp>
 
 #include <fstream>
@@ -77,6 +78,7 @@ struct Parameters {
   double theQ;
   double theFidelityInit;
   double theSimDuration;
+  double theWarmup;
 
   // application flows
   double              theArrivalRate;
@@ -97,6 +99,7 @@ struct Parameters {
         "q",
         "fidelity-init",
         "sim-duration",
+        "warmup-duration",
         "arrival-rate",
         "flow-duration",
         "net-rate",
@@ -120,7 +123,8 @@ struct Parameters {
     myStream
         << ", and EPR generation rate of the list is drawn randomly from U["
         << theLinkMinEpr << ',' << theLinkMaxEpr << "]; simulation duration "
-        << theSimDuration << "; probability of correct BSM " << theQ
+        << theSimDuration << " (warm-up " << theWarmup
+        << "); probability of correct BSM " << theQ
         << " and fidelity of freshly generated pairs " << theFidelityInit
         << "; flows arrive with average rate " << theArrivalRate
         << " and they have an average duration " << theFlowDuration
@@ -138,7 +142,8 @@ struct Parameters {
              << theThreshold << ',' << theLinkProbability << ','
              << theLinkMinEpr << ',' << theLinkMaxEpr << ','
              << theGraphMlFilename << ',' << theQ << ',' << theFidelityInit
-             << ',' << theArrivalRate << ',' << theFlowDuration << ','
+             << ',' << theSimDuration << ',' << theWarmup << ','
+             << theArrivalRate << ',' << theFlowDuration << ','
              << v2s(theNetRates) << ',' << v2s(theFidelityThresholds);
     return myStream.str();
   }
@@ -168,17 +173,19 @@ struct Output {
         "min-out-degree",
         "max-out-degree",
         "capacity-tot",
+
         "capacity-res",
+        "num-active-flows",
         "avg-dijkstra-calls",
-        "sum-gross-rate",
-        "sum-net-rate",
+        "avg-gross-rate",
+        "avg-net-rate",
         "admission-rate",
         "avg-path-size",
         "avg-fidelity",
     });
     static const std::vector<std::string> myPerClassNames({
-        "sum-gross-rate",
-        "sum-net-rate",
+        "avg-gross-rate",
+        "avg-net-rate",
         "admission-rate",
         "avg-path-size",
     });
@@ -204,16 +211,17 @@ struct Output {
 
   // routing properties
   double theResidualCapacity = 0;
+  double theNumActiveFlows   = 0;
   double theAvgDijkstraCalls = 0;
-  double theSumGrossRate     = 0;
-  double theSumNetRate       = 0;
+  double theGrossRate        = 0;
+  double theNetRate          = 0;
   double theAdmissionRate    = 0;
   double theAvgPathSize      = 0;
   double theAvgFidelity      = 0;
 
   struct PerClass {
-    double theSumGrossRate  = 0;
-    double theSumNetRate    = 0;
+    double theGrossRate     = 0;
+    double theNetRate       = 0;
     double theAdmissionRate = 0;
     double theAvgPathSize   = 0;
   };
@@ -232,9 +240,10 @@ struct Output {
              << theMinOutDegree << "-" << theMaxOutDegree
              << " with total capacity " << theTotalCapacity
              << " EPR/s (residual " << theResidualCapacity
-             << " EPR/s); admission rate " << theAdmissionRate
-             << ", total EPR rate net " << theSumNetRate << " (gross "
-             << theSumGrossRate << "), with " << theAvgDijkstraCalls
+             << " EPR/s); number of active flows " << theNumActiveFlows
+             << ", admission rate " << theAdmissionRate
+             << ", average EPR rate net " << theNetRate << " (gross "
+             << theGrossRate << "), with " << theAvgDijkstraCalls
              << " Dijkstra calls on average, average path size "
              << theAvgPathSize
              << ", average fidelity of the end-to-end entangled pair "
@@ -247,10 +256,18 @@ struct Output {
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
              << theMaxOutDegree << ',' << theTotalCapacity << ','
-             << theResidualCapacity << ',' << theAvgDijkstraCalls << ','
-             << theSumGrossRate << ',' << theSumNetRate << ','
-             << theAdmissionRate << ',' << theAvgPathSize << ','
+             << theResidualCapacity << ',' << theNumActiveFlows << ','
+             << theAvgDijkstraCalls << ',' << theGrossRate << ',' << theNetRate
+             << ',' << theAdmissionRate << ',' << theAvgPathSize << ','
              << theAvgFidelity;
+    for (const auto& myPerClass : thePerClass) {
+      for (const auto& myPerClassEntry : myPerClass) {
+        myStream << ',' << myPerClassEntry.theGrossRate << ','
+                 << myPerClassEntry.theNetRate << ','
+                 << myPerClassEntry.theAdmissionRate << ','
+                 << myPerClassEntry.theAvgPathSize;
+      }
+    }
     return myStream.str();
   }
 };
@@ -259,23 +276,34 @@ using Data = us::ExperimentData<Parameters, Output>;
 
 void runExperiment(Data& aData, Parameters&& aParameters) {
   // fidelity computation parameters
-  // constexpr double p1  = 1.0;
-  // constexpr double p2  = 1.0;
-  // constexpr double eta = 1.0;
+  constexpr double p1  = 1.0;
+  constexpr double p2  = 1.0;
+  constexpr double eta = 1.0;
 
   Data::Raii myRaii(aData, std::move(aParameters));
 
   Output myOutput(myRaii.in().theNetRates, myRaii.in().theFidelityThresholds);
 
+  // consistency checks
+  if (myRaii.in().theArrivalRate <= 0) {
+    throw std::runtime_error("the arrival rate must be positive: " +
+                             std::to_string(myRaii.in().theArrivalRate));
+  }
+  if (myRaii.in().theFlowDuration <= 0) {
+    throw std::runtime_error("the flow duration must be positive: " +
+                             std::to_string(myRaii.in().theFlowDuration));
+  }
+
   // open the GraphML file with the network topology, if needed
   const auto myGraphMlStream =
       myRaii.in().theGraphMlFilename.empty() ?
           nullptr :
-          std::make_unique<std::ifstream>(myRaii.in().theGraphMlFilename);
+          std::make_unique<std::ifstream>(myRaii.in().theGraphMlFilename +
+                                          ".graphml");
   if (myGraphMlStream.get() != nullptr and
       not static_cast<bool>(*myGraphMlStream)) {
     throw std::runtime_error("cannot read from file: " +
-                             myRaii.in().theGraphMlFilename);
+                             myRaii.in().theGraphMlFilename + ".graphml");
   }
 
   // create network
@@ -295,6 +323,13 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
           qr::makeCapacityNetworkGraphMl(myLinkEprRv, *myGraphMlStream);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
+  if (myNetwork->numNodes() < 2) {
+    throw std::runtime_error("the network must have at least two nodes");
+  }
+
+  // simulated clock
+  double myNow = 0;
+
   // network properties
   assert(myNetwork.get() != nullptr);
   myOutput.theNumNodes      = myNetwork->numNodes();
@@ -305,78 +340,200 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
       myNetwork->outDegree();
 
-  // run simulation
-  us::SummaryStat myDijkstra;
-  us::SummaryStat myGrossRate;
-  us::SummaryStat myNetRate;
-  us::SummaryStat myAdmissionRate;
-  us::SummaryStat myPathSize;
-  us::SummaryStat myFidelity;
-  double          myNow = 0;
-
-  struct AdmittedFlow {
-    qr::CapacityNetwork::FlowDescriptor theDesc;
-    double                              theLeaveTime;
-    double                              theFidelityThresh;
+  // prepare statistics data structures
+  struct PerClassStat {
+    us::SummaryStat theGrossRate;
+    us::SummaryStat theNetRate;
+    us::SummaryStat theAdmissionRate;
+    us::SummaryStat thePathSize;
   };
+  us::SummaryWeightedStat myResidualCapacity(myNow, myRaii.in().theWarmup);
+  us::SummaryWeightedStat myNumActiveFlows(myNow, myRaii.in().theWarmup);
+  us::SummaryStat         myDijkstra;
+  us::SummaryStat         myGrossRate;
+  us::SummaryStat         myNetRate;
+  us::SummaryStat         myAdmissionRate;
+  us::SummaryStat         myPathSize;
+  us::SummaryStat         myFidelity;
+  std::vector<std::vector<std::shared_ptr<PerClassStat>>> myPerClassStats(
+      myRaii.in().theNetRates.size(),
+      std::vector<std::shared_ptr<PerClassStat>>(
+          myRaii.in().theFidelityThresholds.size(), nullptr));
+  for (auto& myElems : myPerClassStats) {
+    for (auto& myStat : myElems) {
+      myStat = std::make_shared<PerClassStat>();
+    }
+  }
+  myResidualCapacity(myNetwork->totalCapacity());
+  myNumActiveFlows(0);
 
-  std::list<AdmittedFlow> myFlows;
+  // flows admitted at any time
+  struct AdmittedFlow {
+    unsigned long              theSrc;
+    std::vector<unsigned long> thePath;
+    double                     theLeaveTime;
+    double                     theGrossRate;
+  };
+  std::list<AdmittedFlow> myAdmittedFlows;
+
+  // prepare random variables for flow generation
+  us::ExponentialRv myArrivalRv(
+      myRaii.in().theArrivalRate, myRaii.in().theSeed, 0, 0);
+  us::ExponentialRv myDurationRv(
+      1.0 / myRaii.in().theFlowDuration, myRaii.in().theSeed, 1, 0);
+  us::UniformIntRv<std::size_t> myNetRatesRv(
+      0, myRaii.in().theNetRates.size() - 1, myRaii.in().theSeed, 2, 0);
+  us::UniformIntRv<std::size_t> myFidelitiesRv(
+      0,
+      myRaii.in().theFidelityThresholds.size() - 1,
+      myRaii.in().theSeed,
+      3,
+      0);
+  us::UniformRv              mySrcDstRv(0, 1, myRaii.in().theSeed, 4, 0);
+  std::vector<unsigned long> myNodes(myNetwork->numNodes());
+  for (unsigned long i = 0; i < myNodes.size(); ++i) {
+    myNodes[i] = i;
+  }
+
+  // run simulation
+  double myNextArrival = 0;
   while (myNow <= myRaii.in().theSimDuration) {
-    // us::UniformRv                   myNetRateRv(myRaii.in().theMinNetRate,
-    //                           myRaii.in().theMaxNetRate,
-    //                           myRaii.in().theSeed,
-    //                           0,
-    //                           0);
-    // us::UniformIntRv<unsigned long> mySrcDstRv(
-    //     0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 0, 0);
-    // for (std::size_t i = 0; i < myRaii.in().theNumFlows; i++) {
-    //   unsigned long mySrc = 0;
-    //   unsigned long myDst = 0;
-    //   while (mySrc == myDst) {
-    //     mySrc = mySrcDstRv();
-    //     myDst = mySrcDstRv();
-    //   }
-    //   assert(mySrc != myDst);
+    const auto myEarliestLeave =
+        std::min_element(myAdmittedFlows.begin(),
+                         myAdmittedFlows.end(),
+                         [](const auto& aLhs, const auto& aRhs) {
+                           return aLhs.theLeaveTime < aRhs.theLeaveTime;
+                         });
 
-    //   myFlows.emplace_back(mySrc, myDst, myNetRateRv());
-    // }
+    if (myEarliestLeave == myAdmittedFlows.end() or
+        myNextArrival < myEarliestLeave->theLeaveTime) {
+      myNow = myNextArrival;
 
-    // route traffic flows
-    // myNetwork->route(myFlows, [&myRaii](const auto& aFlow) {
-    //   assert(not aFlow.thePath.empty());
-    //   return qr::fidelitySwapping(p1,
-    //                               p2,
-    //                               eta,
-    //                               aFlow.thePath.size() - 1,
-    //                               myRaii.in().theFidelityInit) >= 0; // XXX
-    // });
+      const auto mySrcDstNodes = us::sample(myNodes, 2, mySrcDstRv);
+      assert(mySrcDstNodes.size() == 2);
+      assert(mySrcDstNodes[0] != mySrcDstNodes[1]);
 
-    // traffic metrics
-    // myOutput.theResidualCapacity = myNetwork->totalCapacity();
-    // for (const auto& myFlow : myFlows) {
-    //   myDijkstra(myFlow.theDijsktra);
-    //   myGrossRate(myFlow.theGrossRate);
-    //   if (not myFlow.thePath.empty()) {
-    //     myNetRate(myFlow.theNetRate);
-    //     myAdmissionRate(1);
-    //     myPathSize(myFlow.thePath.size());
-    //     myFidelity(qr::fidelitySwapping(p1,
-    //                                     p2,
-    //                                     eta,
-    //                                     myFlow.thePath.size() - 1,
-    //                                     myRaii.in().theFidelityInit));
-    //   } else {
-    //     myAdmissionRate(0);
-    //   }
-    // }
+      const auto myNetRateId = myNetRatesRv();
+      assert(myNetRateId < myRaii.in().theNetRates.size());
+      std::vector<qr::CapacityNetwork::FlowDescriptor> myFlows(
+          {{mySrcDstNodes[0],
+            mySrcDstNodes[1],
+            myRaii.in().theNetRates[myNetRateId]}});
+
+      // try to admit the the new traffic flow
+      const auto myFidelityThresholdId = myFidelitiesRv();
+      assert(myFidelityThresholdId < myRaii.in().theFidelityThresholds.size());
+      myNetwork->route(
+          myFlows, [&myRaii, myFidelityThresholdId](const auto& aFlow) {
+            assert(not aFlow.thePath.empty());
+            return qr::fidelitySwapping(p1,
+                                        p2,
+                                        eta,
+                                        aFlow.thePath.size() - 1,
+                                        myRaii.in().theFidelityInit) >=
+                   myRaii.in().theFidelityThresholds[myFidelityThresholdId];
+          });
+      assert(myFlows.size() == 1);
+
+      // retrieve the per-class set of statistics
+      assert(myNetRateId < myPerClassStats.size());
+      assert(myFidelityThresholdId < myPerClassStats[myNetRateId].size());
+      auto& myPerClassStat =
+          myPerClassStats[myNetRateId][myFidelityThresholdId];
+      assert(myPerClassStat.get() != nullptr);
+
+      if (myFlows[0].thePath.empty()) {
+        VLOG(2) << "time " << myNow << " dropped  " << myFlows[0].toString()
+                << ", fidelity threshold "
+                << myRaii.in().theFidelityThresholds[myFidelityThresholdId];
+
+        // record global and per-class statistics
+        if (myNow >= myRaii.in().theWarmup) {
+          myDijkstra(myFlows[0].theDijsktra);
+          myAdmissionRate(0.0);
+          myPerClassStat->theAdmissionRate(1.0);
+        }
+
+      } else {
+        const auto myLeaveTime = myNow + myDurationRv();
+        VLOG(2) << "time " << myNow << " admitted " << myFlows[0].toString()
+                << ", fidelity threshold "
+                << myRaii.in().theFidelityThresholds[myFidelityThresholdId]
+                << ", will leave at " << myLeaveTime;
+        assert(myFlows[0].theGrossRate > 0);
+
+        myAdmittedFlows.emplace_back(AdmittedFlow{myFlows[0].theSrc,
+                                                  myFlows[0].thePath,
+                                                  myLeaveTime,
+                                                  myFlows[0].theGrossRate});
+
+        // time-weighted statistics
+        myResidualCapacity(myNetwork->totalCapacity());
+        myNumActiveFlows(myAdmittedFlows.size());
+
+        // time-independent statistics
+        if (myNow >= myRaii.in().theWarmup) {
+          // global statistics
+          myDijkstra(myFlows[0].theDijsktra);
+          myGrossRate(myFlows[0].theGrossRate);
+          myNetRate(myFlows[0].theNetRate);
+          myAdmissionRate(1.0);
+          myPathSize(myFlows[0].thePath.size());
+          myFidelity(qr::fidelitySwapping(p1,
+                                          p2,
+                                          eta,
+                                          myFlows[0].thePath.size() - 1,
+                                          myRaii.in().theFidelityInit));
+          // per-class statistics
+          myPerClassStat->theGrossRate(myFlows[0].theGrossRate);
+          myPerClassStat->theNetRate(myFlows[0].theNetRate);
+          myPerClassStat->theAdmissionRate(1.0);
+          myPerClassStat->thePathSize(myFlows[0].thePath.size());
+        }
+      }
+
+      myNextArrival = myNow + myArrivalRv();
+
+    } else {
+      assert(myEarliestLeave != myAdmittedFlows.end());
+      myNow = myEarliestLeave->theLeaveTime;
+      VLOG(3) << "time " << myNow << " an admitted flow leaves";
+
+      // restore the capacity of the path
+      myNetwork->addCapacityToPath(myEarliestLeave->theSrc,
+                                   myEarliestLeave->thePath,
+                                   myEarliestLeave->theGrossRate);
+
+      // remove the flow from the list of admitted/active ones
+      myAdmittedFlows.erase(myEarliestLeave);
+
+      // record statistics
+      myResidualCapacity(myNetwork->totalCapacity());
+      myNumActiveFlows(myAdmittedFlows.size());
+    }
   }
 
   myOutput.theAvgDijkstraCalls = myDijkstra.mean();
-  myOutput.theSumGrossRate     = myGrossRate.count() * myGrossRate.mean();
-  myOutput.theSumNetRate       = myNetRate.count() * myNetRate.mean();
+  myOutput.theGrossRate        = myGrossRate.mean();
+  myOutput.theNetRate          = myNetRate.mean();
   myOutput.theAdmissionRate    = myAdmissionRate.mean();
   myOutput.theAvgPathSize      = myPathSize.mean();
   myOutput.theAvgFidelity      = myFidelity.mean();
+
+  for (std::size_t i = 0; i < myPerClassStats.size(); i++) {
+    for (std::size_t j = 0; j < myPerClassStats[i].size(); j++) {
+      auto& myStat = myPerClassStats[i][j];
+      assert(myStat.get() != nullptr);
+      assert(i < myOutput.thePerClass.size());
+      assert(j < myOutput.thePerClass[i].size());
+
+      myOutput.thePerClass[i][j].theGrossRate = myStat->theGrossRate.mean();
+      myOutput.thePerClass[i][j].theNetRate   = myStat->theNetRate.mean();
+      myOutput.thePerClass[i][j].theAdmissionRate =
+          myStat->theAdmissionRate.mean();
+      myOutput.thePerClass[i][j].theAvgPathSize = myStat->thePathSize.mean();
+    }
+  }
 
   // save data
   VLOG(1) << "experiment finished\n"
@@ -439,6 +596,7 @@ int main(int argc, char* argv[]) {
   std::string myFidelityThresholdsStr;
   std::string myGraphMlFilename;
   double      mySimDuration;
+  double      myWarmupDuration;
   double      myArrivalRate;
   double      myFlowDuration;
 
@@ -477,6 +635,9 @@ int main(int argc, char* argv[]) {
     ("sim-duration",
      po::value<double>(&mySimDuration)->default_value(100),
      "Simulation duration, in time units.")
+    ("warmup-duration",
+     po::value<double>(&myWarmupDuration)->default_value(10),
+     "Simulation warm-up duration, in time units.")
     ("arrival-rate",
      po::value<double>(&myArrivalRate)->default_value(1),
      "Average arrival rates of new flows, in time units^-1.")
@@ -565,6 +726,7 @@ int main(int argc, char* argv[]) {
                                    myQ,
                                    myFidelityInit,
                                    mySimDuration,
+                                   myWarmupDuration,
                                    myArrivalRate,
                                    myFlowDuration,
                                    myNetRates,
