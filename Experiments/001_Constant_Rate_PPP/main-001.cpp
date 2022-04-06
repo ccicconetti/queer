@@ -211,9 +211,13 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   Output myOutput;
 
   // create network
-  const auto myNetwork =
-      qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
-                                 myRaii.in().theLinkMaxEpr,
+  us::UniformRv myLinkEprRv(myRaii.in().theLinkMinEpr,
+                            myRaii.in().theLinkMaxEpr,
+                            myRaii.in().theSeed,
+                            0,
+                            0);
+  const auto    myNetwork =
+      qr::makeCapacityNetworkPpp(myLinkEprRv,
                                  myRaii.in().theSeed,
                                  myRaii.in().theMu,
                                  myRaii.in().theGridLength,

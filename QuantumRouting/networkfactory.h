@@ -40,19 +40,16 @@ namespace uiiit {
 namespace qr {
 
 std::unique_ptr<CapacityNetwork>
-makeCapacityNetworkPpp(const double      aLinkMinEpr,
-                       const double      aLinkMaxEpr,
-                       const std::size_t aSeed,
-                       const double      aMu,
-                       const double      aGridLength,
-                       const double      aThreshold,
-                       const double      aLinkProbability);
+makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
+                       const std::size_t         aSeed,
+                       const double              aMu,
+                       const double              aGridLength,
+                       const double              aThreshold,
+                       const double              aLinkProbability);
 
 std::unique_ptr<CapacityNetwork>
-makeCapacityNetworkGraphMl(const double      aLinkMinEpr,
-                           const double      aLinkMaxEpr,
-                           const std::size_t aSeed,
-                           std::ifstream&    aGraphMl);
+makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,
+                           std::ifstream&            aGraphMl);
 
 } // namespace qr
 } // namespace uiiit

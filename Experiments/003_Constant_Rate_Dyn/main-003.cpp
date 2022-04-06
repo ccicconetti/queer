@@ -37,11 +37,14 @@ SOFTWARE.
 #include "Support/parallelbatch.h"
 #include "Support/queue.h"
 #include "Support/random.h"
+#include "Support/split.h"
 #include "Support/stat.h"
+#include "Support/tostring.h"
 #include "Support/versionutils.h"
 
 #include <boost/program_options.hpp>
 
+#include <fstream>
 #include <glog/logging.h>
 
 #include <cstdlib>
@@ -53,26 +56,31 @@ namespace po = boost::program_options;
 namespace qr = uiiit::qr;
 namespace us = uiiit::support;
 
+std::string v2s(const std::vector<double>& aValues) {
+  return toString(
+      aValues, "|", [](const double& x) { return std::to_string(x); });
+}
+
 struct Parameters {
   std::size_t theSeed;
 
   // scenario generation
-  double theMu;
-  double theGridLength;
-  double theThreshold;
-  double theLinkProbability;
-  double theLinkMinEpr;
-  double theLinkMaxEpr;
+  double              theMu;
+  double              theGridLength;
+  double              theThreshold;
+  double              theLinkProbability;
+  std::vector<double> theLinkEprs;
+  std::string         theGraphMlFilename;
 
   // system
   double theQ;
   double theFidelityInit;
 
   // application flows
-  std::size_t theNumFlows;
-  double      theMinNetRate;
-  double      theMaxNetRate;
-  double      theFidelityThreshold;
+  std::size_t         theNumFlows;
+  double              theMinNetRate;
+  double              theMaxNetRate;
+  std::vector<double> theFidelityThresholds;
 
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
@@ -81,8 +89,8 @@ struct Parameters {
         "grid-length",
         "threshold",
         "link-prob",
-        "link-min-epr",
-        "link-max-epr",
+        "link-epr",
+        "graphml-filename",
         "q",
         "fidelity-init",
         "num-flows",
@@ -95,23 +103,27 @@ struct Parameters {
 
   std::string toString() const {
     std::stringstream myStream;
+    if (theGraphMlFilename.empty()) {
+      myStream << "num nodes drawn from PPP with mu " << theMu
+               << " distributed on a flat square grid with edge size "
+               << theGridLength << " m, a link is generated with probability "
+               << theLinkProbability << " between any two nodes within "
+               << theThreshold << " m apart";
+    } else {
+      myStream << "topology read from " << theGraphMlFilename;
+    }
+
     myStream
-        << "num nodes drawn from PPP with mu " << theMu
-        << " distributed on a flat square grid with edge size " << theGridLength
-        << " m, a link is generated with probability " << theLinkProbability
-        << " between any two nodes within " << theThreshold
-        << " m apart, and the EPR generation rate of the list is drawn "
-           "randomly from U["
-        << theLinkMinEpr << ',' << theLinkMaxEpr
-        << "]; probability of correct BSM " << theQ
+        << "; the EPR generation rate of the list is drawn randomly from {"
+        << v2s(theLinkEprs) << "}; probability of correct BSM " << theQ
         << " and fidelity of freshly generated pairs " << theFidelityInit
         << "; there are " << theNumFlows
         << " application flows requesting admission, with minimum fidelity "
-        << theFidelityThreshold
+        << " drawn randomly from {" << v2s(theFidelityThresholds) << "}"
         << " and a net EPR requested rate drawn randomly from U["
         << theMinNetRate << ',' << theMaxNetRate << "]"
         << ", experiment seed " << theSeed;
-    ;
+
     return myStream.str();
   }
 
@@ -119,9 +131,10 @@ struct Parameters {
     std::stringstream myStream;
     myStream << theSeed << ',' << theMu << ',' << theGridLength << ','
              << theThreshold << ',' << theLinkProbability << ','
-             << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theQ << ','
-             << theFidelityInit << ',' << theNumFlows << ',' << theMinNetRate
-             << ',' << theMaxNetRate << ',' << theFidelityThreshold;
+             << v2s(theLinkEprs) << ',' << theGraphMlFilename << ',' << theQ
+             << ',' << theFidelityInit << ',' << theNumFlows << ','
+             << theMinNetRate << ',' << theMaxNetRate << ','
+             << v2s(theFidelityThresholds);
     return myStream.str();
   }
 };
@@ -210,15 +223,29 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   Output myOutput;
 
+  // open the GraphML file with the network topology, if needed
+  const auto myGraphMlStream =
+      myRaii.in().theGraphMlFilename.empty() ?
+          nullptr :
+          std::make_unique<std::ifstream>(myRaii.in().theGraphMlFilename);
+  if (myGraphMlStream.get() != nullptr and
+      not static_cast<bool>(*myGraphMlStream)) {
+    throw std::runtime_error("cannot read from file: " +
+                             myRaii.in().theGraphMlFilename);
+  }
+
   // create network
+  us::SetRv<std::vector<double>> myLinkEprRv(
+      myRaii.in().theLinkEprs, myRaii.in().theSeed, 0, 0);
   const auto myNetwork =
-      qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
-                                 myRaii.in().theLinkMaxEpr,
-                                 myRaii.in().theSeed,
-                                 myRaii.in().theMu,
-                                 myRaii.in().theGridLength,
-                                 myRaii.in().theThreshold,
-                                 myRaii.in().theLinkProbability);
+      myRaii.in().theGraphMlFilename.empty() ?
+          qr::makeCapacityNetworkPpp(myLinkEprRv,
+                                     myRaii.in().theSeed,
+                                     myRaii.in().theMu,
+                                     myRaii.in().theGridLength,
+                                     myRaii.in().theThreshold,
+                                     myRaii.in().theLinkProbability) :
+          qr::makeCapacityNetworkGraphMl(myLinkEprRv, *myGraphMlStream);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   // network properties
@@ -259,8 +286,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                 p2,
                                 eta,
                                 aFlow.thePath.size() - 1,
-                                myRaii.in().theFidelityInit) >=
-           myRaii.in().theFidelityThreshold;
+                                myRaii.in().theFidelityInit) >= 0; // XXX
   });
 
   // traffic metrics
@@ -340,8 +366,7 @@ int main(int argc, char* argv[]) {
   std::size_t mySeedEnd;
 
   double      myMu;
-  double      myLinkMinEpr;
-  double      myLinkMaxEpr;
+  std::string myLinkEprs;
   std::size_t myNumFlows;
   double      myMinNetRate;
   double      myMaxNetRate;
@@ -350,7 +375,8 @@ int main(int argc, char* argv[]) {
   double      myLinkProbability;
   double      myQ;
   double      myFidelityInit;
-  double      myFidelityThreshold;
+  std::string myFidelityThresholds;
+  std::string myGraphMlFilename;
 
   po::options_description myDesc("Allowed options");
   // clang-format off
@@ -375,12 +401,12 @@ int main(int argc, char* argv[]) {
     ("mu",
      po::value<double>(&myMu)->default_value(100),
      "Average number of nodes.")
-    ("link-min-epr",
-     po::value<double>(&myLinkMinEpr)->default_value(1),
-     "Min EPR rate of links.")
-    ("link-max-epr",
-     po::value<double>(&myLinkMaxEpr)->default_value(400),
-     "Max EPR rate of links.")
+    ("link-eprs",
+     po::value<std::string>(&myLinkEprs)->default_value("1"),
+     "Set of possible EPR rates of links: multiple values separated by |.")
+    ("graphml-file",
+     po::value<std::string>(&myGraphMlFilename)->default_value(""),
+     "Read from a GraphML file.")
     ("num-flows",
      po::value<std::size_t>(&myNumFlows)->default_value(100),
      "Number of flows.")
@@ -392,13 +418,13 @@ int main(int argc, char* argv[]) {
      "Max net rate requested, in EPR-pairs/s.")
     ("grid-size",
      po::value<double>(&myGridSize)->default_value(60000),
-     "Grid length, in km.")
+     "Grid length, in km (ignored with using a GraphML file).")
     ("threshold",
      po::value<double>(&myThreshold)->default_value(15000),
-     "Link creation threshold (Euclidean distance), in km.")
+     "Link creation threshold (Euclidean distance), in km (ignored with using a GraphML file).")
     ("link-probability",
      po::value<double>(&myLinkProbability)->default_value(1),
-     "Link creation probability.")
+     "Link creation probability (ignored with using a GraphML file).")
     ("q",
      po::value<double>(&myQ)->default_value(0.5),
      "Correct measurement probability.")
@@ -406,8 +432,8 @@ int main(int argc, char* argv[]) {
      po::value<double>(&myFidelityInit)->default_value(0.99),
      "Fidelity of local entanglement between adjacent nodes.")
     ("fidelity-threshold",
-     po::value<double>(&myFidelityThreshold)->default_value(0.95),
-     "Fidelity threshold.")
+     po::value<std::string>(&myFidelityThresholds)->default_value("0.95"),
+     "Set of possible fidelity thresholds: multiple values separated by |.")
     ;
   // clang-format on
 
@@ -430,6 +456,11 @@ int main(int argc, char* argv[]) {
       return EXIT_SUCCESS;
     }
 
+    if (myGraphMlFilename.find(",") != std::string::npos) {
+      throw std::runtime_error("the GraphML file name cannot contain ',': " +
+                               myGraphMlFilename);
+    }
+
     std::ofstream myFile(myOutputFilename,
                          myVarMap.count("append") == 1 ? std::ios::app :
                                                          std::ios::trunc);
@@ -442,19 +473,20 @@ int main(int argc, char* argv[]) {
 
     us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed < mySeedEnd; ++mySeed) {
-      myParameters.push(Parameters{mySeed,
-                                   myMu,
-                                   myGridSize,
-                                   myThreshold,
-                                   myLinkProbability,
-                                   myLinkMinEpr,
-                                   myLinkMaxEpr,
-                                   myQ,
-                                   myFidelityInit,
-                                   myNumFlows,
-                                   myMinNetRate,
-                                   myMaxNetRate,
-                                   myFidelityThreshold});
+      myParameters.push(Parameters{
+          mySeed,
+          myMu,
+          myGridSize,
+          myThreshold,
+          myLinkProbability,
+          us::split<std::vector<double>>(myLinkEprs, "|"),
+          myGraphMlFilename,
+          myQ,
+          myFidelityInit,
+          myNumFlows,
+          myMinNetRate,
+          myMaxNetRate,
+          us::split<std::vector<double>>(myFidelityThresholds, "|")});
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {

@@ -252,13 +252,18 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   const auto                           MANY_TRIES = 1000000u;
   std::unique_ptr<qr::CapacityNetwork> myNetwork  = nullptr;
   qr::CapacityNetwork::ReachableNodes  myReachableNodes;
+  us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
+                            myRaii.in().theLinkMaxEpr,
+                            myRaii.in().theSeed,
+                            0,
+                            0);
+
   for (std::size_t mySeedOffset = 0;
        myNetwork.get() == nullptr and mySeedOffset < (MANY_TRIES * 10000);
        mySeedOffset += 10000) {
     const auto mySeed = myRaii.in().theSeed + mySeedOffset;
     // create network
-    myNetwork = qr::makeCapacityNetworkPpp(myRaii.in().theLinkMinEpr,
-                                           myRaii.in().theLinkMaxEpr,
+    myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
                                            mySeed,
                                            myRaii.in().theMu,
                                            myRaii.in().theGridLength,

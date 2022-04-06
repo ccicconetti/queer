@@ -44,24 +44,22 @@ namespace uiiit {
 namespace qr {
 
 std::unique_ptr<CapacityNetwork>
-makeCapacityNetworkPpp(const double      aLinkMinEpr,
-                       const double      aLinkMaxEpr,
-                       const std::size_t aSeed,
-                       const double      aMu,
-                       const double      aGridLength,
-                       const double      aThreshold,
-                       const double      aLinkProbability) {
+makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
+                       const std::size_t         aSeed,
+                       const double              aMu,
+                       const double              aGridLength,
+                       const double              aThreshold,
+                       const double              aLinkProbability) {
   const auto MANY_TRIES = 1000000u;
 
-  support::UniformRv myLinkEprRv(aLinkMinEpr, aLinkMaxEpr, aSeed, 0, 0);
-  auto               myPppSeed = aSeed;
+  auto myPppSeed = aSeed;
   for (unsigned myTry = 0; myTry < MANY_TRIES; myTry++) {
     const auto myCoordinates =
         PoissonPointProcessGrid(aMu, myPppSeed, aGridLength, aGridLength)();
     const auto myEdges =
         findLinks(myCoordinates, aThreshold, aLinkProbability, aSeed);
     if (qr::bigraphConnected(myEdges)) {
-      return std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
+      return std::make_unique<qr::CapacityNetwork>(myEdges, aEprRv, true);
     } else {
       VLOG(1) << "graph with seed " << myPppSeed
               << " is not connected, trying again";
@@ -74,18 +72,14 @@ makeCapacityNetworkPpp(const double      aLinkMinEpr,
 }
 
 std::unique_ptr<CapacityNetwork>
-makeCapacityNetworkGraphMl(const double      aLinkMinEpr,
-                           const double      aLinkMaxEpr,
-                           const std::size_t aSeed,
-                           std::ifstream&    aGraphMl) {
-  support::UniformRv myLinkEprRv(aLinkMinEpr, aLinkMaxEpr, aSeed, 0, 0);
-
+makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,
+                           std::ifstream&            aGraphMl) {
   const auto myEdges = findLinks(aGraphMl);
   for (const auto& myEdge : myEdges) {
     VLOG(2) << '(' << myEdge.first << ',' << myEdge.second << ')';
   }
   if (qr::bigraphConnected(myEdges)) {
-    return std::make_unique<qr::CapacityNetwork>(myEdges, myLinkEprRv, true);
+    return std::make_unique<qr::CapacityNetwork>(myEdges, aEprRv, true);
   }
 
   throw std::runtime_error("The GraphML network is not fully connected");
