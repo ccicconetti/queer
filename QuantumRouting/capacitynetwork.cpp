@@ -561,6 +561,13 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
   }
 }
 
+void CapacityNetwork::addCapacityToPath(
+    const VertexDescriptor               aSrc,
+    const std::vector<VertexDescriptor>& aPath,
+    const double                         aCapacity) {
+  removeCapacityFromPath(aSrc, aPath, -aCapacity, theGraph);
+}
+
 bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
                                     const std::vector<VertexDescriptor>& aPath,
                                     const double aCapacity,
@@ -622,8 +629,14 @@ void CapacityNetwork::removeCapacityFromPath(
     EdgeDescriptor        myEdge;
     [[maybe_unused]] auto myFound = false;
     std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
-    assert(myFound);
-    assert(myWeights[myEdge] >= aCapacity);
+    if (not myFound) {
+      throw std::runtime_error("edge not in the graph: " + toString(myEdge));
+    }
+    if (myWeights[myEdge] < aCapacity) {
+      throw std::runtime_error(
+          "cannot remove capacity " + std::to_string(aCapacity) + " > " +
+          std::to_string(myWeights[myEdge]) + " for edge " + toString(myEdge));
+    }
     myWeights[myEdge] -= aCapacity;
 
     // move to the next edge

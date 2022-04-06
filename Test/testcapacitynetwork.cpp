@@ -429,5 +429,46 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   ASSERT_FLOAT_EQ(0, myNetwork.totalCapacity());
 }
 
+TEST_F(TestCapacityNetwork, test_add_capacity_to_edge) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+
+  // add one (admissible) flow
+  const auto myCapacityTot = myNetwork.totalCapacity();
+  std::vector<CapacityNetwork::FlowDescriptor> myFlows({
+      {0, 3, 1.0},
+  });
+  myNetwork.route(myFlows);
+  ASSERT_EQ(1, myFlows.size());
+  ASSERT_EQ(std::vector<unsigned long>({1, 2, 3}), myFlows[0].thePath);
+  ASSERT_FLOAT_EQ(4, myFlows[0].theGrossRate);
+  ASSERT_EQ(myCapacityTot - myFlows[0].thePath.size() * myFlows[0].theGrossRate,
+            myNetwork.totalCapacity());
+
+  // re-add the capacity along the path
+  myNetwork.addCapacityToPath(0, {1, 2, 3}, myFlows[0].theGrossRate);
+  ASSERT_EQ(myCapacityTot, myNetwork.totalCapacity());
+
+  // re-add an identical flow
+  std::vector<CapacityNetwork::FlowDescriptor> myOtherFlows({
+      {0, 3, 1.0},
+  });
+  myNetwork.route(myOtherFlows);
+
+  // add capacity partially
+  ASSERT_EQ(myFlows[0].thePath, myOtherFlows[0].thePath);
+  myNetwork.addCapacityToPath(2, {3}, myOtherFlows[0].theGrossRate);
+  ASSERT_EQ(myCapacityTot - 2 * myOtherFlows[0].theGrossRate,
+            myNetwork.totalCapacity());
+
+  // remove too much capacity
+  ASSERT_THROW(myNetwork.addCapacityToPath(2, {3}, -10), std::runtime_error);
+
+  // non-existing edge
+  ASSERT_THROW(myNetwork.addCapacityToPath(1, {0}, 1), std::runtime_error);
+
+  ASSERT_NO_THROW(myNetwork.addCapacityToPath(0, {1}, 1));
+}
+
 } // namespace qr
 } // namespace uiiit

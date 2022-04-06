@@ -263,6 +263,20 @@ class CapacityNetwork final : public Network
         return true;
       });
 
+  /**
+   * @brief Add capacity on all the edges along a given path from a source node.
+   *
+   * @param aSrc the source node
+   * @param aPath the path
+   * @param aCapacity the capacity to be added
+   *
+   * @throw std::runtime_error if one of the edges in the path does not exist in
+   * the graph
+   */
+  void addCapacityToPath(const VertexDescriptor               aSrc,
+                         const std::vector<VertexDescriptor>& aPath,
+                         const double                         aCapacity);
+
  private:
   struct HopsFinder {
     HopsFinder(const std::vector<VertexDescriptor>& aPredecessors,
