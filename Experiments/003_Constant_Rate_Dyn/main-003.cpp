@@ -260,12 +260,18 @@ struct Output {
              << theAvgDijkstraCalls << ',' << theGrossRate << ',' << theNetRate
              << ',' << theAdmissionRate << ',' << theAvgPathSize << ','
              << theAvgFidelity;
-    for (const auto& myPerClass : thePerClass) {
-      for (const auto& myPerClassEntry : myPerClass) {
-        myStream << ',' << myPerClassEntry.theGrossRate << ','
-                 << myPerClassEntry.theNetRate << ','
-                 << myPerClassEntry.theAdmissionRate << ','
-                 << myPerClassEntry.theAvgPathSize;
+    static const std::vector<std::function<double(const PerClass&)>> myGetters =
+        {
+            [](const auto& aPerClass) { return aPerClass.theGrossRate; },
+            [](const auto& aPerClass) { return aPerClass.theNetRate; },
+            [](const auto& aPerClass) { return aPerClass.theAdmissionRate; },
+            [](const auto& aPerClass) { return aPerClass.theAvgPathSize; },
+        };
+    for (const auto& myGetter : myGetters) {
+      for (const auto& myPerClass : thePerClass) {
+        for (const auto& myPerClassEntry : myPerClass) {
+          myStream << ',' << myGetter(myPerClassEntry);
+        }
       }
     }
     return myStream.str();
@@ -451,7 +457,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         if (myNow >= myRaii.in().theWarmup) {
           myDijkstra(myFlows[0].theDijsktra);
           myAdmissionRate(0.0);
-          myPerClassStat->theAdmissionRate(1.0);
+          myPerClassStat->theAdmissionRate(0.0);
         }
 
       } else {
@@ -513,6 +519,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     }
   }
 
+  myOutput.theResidualCapacity = myResidualCapacity.mean();
+  myOutput.theNumActiveFlows   = myNumActiveFlows.mean();
   myOutput.theAvgDijkstraCalls = myDijkstra.mean();
   myOutput.theGrossRate        = myGrossRate.mean();
   myOutput.theNetRate          = myNetRate.mean();
