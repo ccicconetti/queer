@@ -59,7 +59,7 @@ namespace us = uiiit::support;
 
 std::string v2s(const std::vector<double>& aValues) {
   return toString(
-      aValues, "|", [](const double& x) { return std::to_string(x); });
+      aValues, "@", [](const double& x) { return std::to_string(x); });
 }
 
 struct Parameters {
@@ -646,7 +646,7 @@ int main(int argc, char* argv[]) {
      "Average duration of an admitted flow, in time units.")
     ("net-epr-rates",
      po::value<std::string>(&myNetRatesStr)->default_value("1"),
-     "Set of possible net rates requested, in EPR-pairs/s: multiple values separated by |.")
+     "Set of possible net rates requested, in EPR-pairs/s: multiple values separated by @.")
     ("grid-size",
      po::value<double>(&myGridSize)->default_value(60000),
      "Grid length, in km (ignored with using a GraphML file).")
@@ -664,7 +664,7 @@ int main(int argc, char* argv[]) {
      "Fidelity of local entanglement between adjacent nodes.")
     ("fidelity-threshold",
      po::value<std::string>(&myFidelityThresholdsStr)->default_value("0.95"),
-     "Set of possible fidelity thresholds: multiple values separated by |.")
+     "Set of possible fidelity thresholds: multiple values separated by @.")
     ;
   // clang-format on
 
@@ -683,13 +683,13 @@ int main(int argc, char* argv[]) {
       return EXIT_SUCCESS;
     }
 
-    const auto myNetRates = us::split<std::vector<double>>(myNetRatesStr, "|");
+    const auto myNetRates = us::split<std::vector<double>>(myNetRatesStr, "@");
     if (myNetRates.empty()) {
       throw std::runtime_error("invalid empty set of net EPR rates");
     }
 
     const auto myFidelityThresholds =
-        us::split<std::vector<double>>(myFidelityThresholdsStr, "|");
+        us::split<std::vector<double>>(myFidelityThresholdsStr, "@");
     if (myFidelityThresholds.empty()) {
       throw std::runtime_error("invalid empty set of fidelity thresholds");
     }
