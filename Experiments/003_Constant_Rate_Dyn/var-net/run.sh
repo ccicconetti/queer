@@ -19,8 +19,8 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-maxlinkrates="20 40 60 80 100"
-numnodes="40 80 120 160 200"
+maxlinkrates="20 30 40 50 60 70 80 90 100"
+numnodes="40 60 80 100 120 140 160 180 200"
 rates="1 10"
 fidelities="0.7 0.9"
 
@@ -33,7 +33,7 @@ for m in $maxlinkrates ; do
           --output $output \
           --num-threads $CONCURRENCY \
           --seed-start 0 \
-          --seed-end 10000 \
+          --seed-end 100 \
           --mu $n \
           --link-min-epr 1 \
           --link-max-epr $m \
