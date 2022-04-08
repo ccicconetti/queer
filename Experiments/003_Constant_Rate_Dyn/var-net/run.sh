@@ -19,8 +19,8 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-maxlinkrates="50 100 150 200 250 300 350 400"
-numnodes="50 75 100 125 150 175 200"
+maxlinkrates="20 40 60 80 100"
+numnodes="40 80 120 160 200"
 rates="1 10"
 fidelities="0.7 0.9"
 
@@ -28,7 +28,7 @@ for m in $maxlinkrates ; do
   for n in $numnodes ; do
     for r in $rates ; do
       for f in $fidelities ; do
-        output=data/out-$m-$n.csv
+        output=data/out-$m-$n-$r-$f.csv
         cmd="$MAIN \
           --output $output \
           --num-threads $CONCURRENCY \
