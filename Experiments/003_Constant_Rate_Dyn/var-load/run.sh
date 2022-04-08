@@ -29,7 +29,7 @@ for g in $graphmls ; do
       --output $output \
       --num-threads $CONCURRENCY \
       --seed-start 0 \
-      --seed-end 640 \
+      --seed-end 10000 \
       --link-min-epr 1 \
       --link-max-epr 400 \
       --graphml-file $g \
