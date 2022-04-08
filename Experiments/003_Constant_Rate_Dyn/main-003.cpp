@@ -172,6 +172,7 @@ struct Output {
         "max-in-degree",
         "min-out-degree",
         "max-out-degree",
+        "diameter",
         "capacity-tot",
 
         "capacity-res",
@@ -207,6 +208,7 @@ struct Output {
   std::size_t theMaxInDegree   = 0;
   std::size_t theMinOutDegree  = 0;
   std::size_t theMaxOutDegree  = 0;
+  std::size_t theDiameter      = 0;
   double      theTotalCapacity = 0;
 
   // routing properties
@@ -237,8 +239,8 @@ struct Output {
     std::stringstream myStream;
     myStream << "G(" << theNumNodes << "," << theNumEdges << "), in-degree "
              << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
-             << theMinOutDegree << "-" << theMaxOutDegree
-             << " with total capacity " << theTotalCapacity
+             << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
+             << theDiameter << ", total capacity " << theTotalCapacity
              << " EPR/s (residual " << theResidualCapacity
              << " EPR/s); number of active flows " << theNumActiveFlows
              << ", admission rate " << theAdmissionRate
@@ -255,8 +257,8 @@ struct Output {
     std::stringstream myStream;
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
-             << theMaxOutDegree << ',' << theTotalCapacity << ','
-             << theResidualCapacity << ',' << theNumActiveFlows << ','
+             << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
+             << ',' << theResidualCapacity << ',' << theNumActiveFlows << ','
              << theAvgDijkstraCalls << ',' << theGrossRate << ',' << theNetRate
              << ',' << theAdmissionRate << ',' << theAvgPathSize << ','
              << theAvgFidelity;
@@ -345,6 +347,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myNetwork->inDegree();
   std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
       myNetwork->outDegree();
+  myNetwork->reachableNodes(0, 0, myOutput.theDiameter);
 
   // prepare statistics data structures
   struct PerClassStat {
