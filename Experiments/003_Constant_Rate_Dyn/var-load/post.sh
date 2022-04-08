@@ -20,8 +20,8 @@ if [ ! -d "post" ] ; then
   mkdir post 2> /dev/null
 fi
 
-columns=(23 24 25 29 32 33 34 35 40 41 42 43 44 45 46 47)
-names=("capacity" "residual" "num-active-flows" "admission-rate" "gross-rate-1-0.7" "gross-rate-1-0.9" "gross-rate-10-0.7" "gross-rate-10-0.9" "admission-rate-1-0.7" "admission-rate-1-0.9" "admission-rate-10-0.7" "admission-rate-10-0.9" "avg-path-size-1-0.7" "avg-path-size-1-0.9" "avg-path-size-10-0.7" "avg-path-size-10-0.9")
+columns=(24 25 26 30 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48)
+names=("capacity" "residual" "num-active-flows" "admission-rate" "gross-rate-1-0.7" "gross-rate-1-0.9" "gross-rate-10-0.7" "gross-rate-10-0.9" "net-rate-1-0.7" "net-rate-1-0.9" "net-rate-10-0.7" "net-rate-10-0.9" "admission-rate-1-0.7" "admission-rate-1-0.9" "admission-rate-10-0.7" "admission-rate-10-0.9" "avg-path-size-1-0.7" "avg-path-size-1-0.9" "avg-path-size-10-0.7" "avg-path-size-10-0.9")
 
 arrivalrates="1 5 10 50 100 500 1000"
 graphmls="garr"
