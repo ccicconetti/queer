@@ -78,12 +78,6 @@ struct TestGraphML : public ::testing::Test {
     }
   }
 
-  const std::string theFilename;
-};
-
-TEST_F(TestGraphML, test_read_graphml) {
-  createExampleNetworkFile();
-
   struct VertexData {
     std::string theLabel;
     double      theLongitude;
@@ -103,8 +97,13 @@ TEST_F(TestGraphML, test_read_graphml) {
                                       boost::no_property,
                                       boost::listS>;
 
-  Graph myGraph;
+  const std::string theFilename;
+};
 
+TEST_F(TestGraphML, test_read_graphml) {
+  createExampleNetworkFile();
+
+  Graph                     myGraph;
   boost::dynamic_properties myDp(boost::ignore_other_properties);
   myDp.property("label", boost::get(&VertexData::theLabel, myGraph));
   myDp.property("Latitude", boost::get(&VertexData::theLatitude, myGraph));
@@ -185,6 +184,64 @@ TEST_F(TestGraphML, test_read_graphml) {
               << toString(myHops, ",", [&myLabels](const auto& aValue) {
                    return myLabels[aValue];
                  });
+  }
+}
+
+TEST_F(TestGraphML, DISABLED_convert_to_dat) {
+  const auto myFilename = getenv("GRAPHML_FILE");
+  if (myFilename == nullptr) {
+    LOG(WARNING) << "environment variable GRAPHML_FILE not specified";
+    return;
+  }
+
+  Graph                     myGraph;
+  boost::dynamic_properties myDp(boost::ignore_other_properties);
+  myDp.property("label", boost::get(&VertexData::theLabel, myGraph));
+  myDp.property("Latitude", boost::get(&VertexData::theLatitude, myGraph));
+  myDp.property("Longitude", boost::get(&VertexData::theLongitude, myGraph));
+  myDp.property("LinkSpeedRaw", boost::get(&EdgeData::theLinkSpeed, myGraph));
+
+  std::ifstream myInfile(myFilename);
+  if (not myInfile) {
+    LOG(WARNING) << "cannot open file: " << myFilename;
+    return;
+  }
+
+  boost::read_graphml(myInfile, myGraph, myDp, 0);
+
+  EXPECT_EQ(61, boost::num_vertices(myGraph));
+  EXPECT_EQ(89, boost::num_edges(myGraph));
+
+  const auto  myVertices   = boost::vertices(myGraph);
+  const auto& myLabels     = boost::get(&VertexData::theLabel, myGraph);
+  const auto& myLatitudes  = boost::get(&VertexData::theLatitude, myGraph);
+  const auto& myLongitudes = boost::get(&VertexData::theLongitude, myGraph);
+  const auto  myEdges      = boost::edges(myGraph);
+
+  std::ofstream myOutVertices("vertices.dat");
+  assert(myOutVertices);
+  for (auto it = myVertices.first; it != myVertices.second; ++it) {
+    if (myLatitudes[*it] == 0.0 and myLongitudes[*it] == 0.0) {
+      continue;
+    }
+    myOutVertices << myLongitudes[*it] << ',' << myLatitudes[*it] << ','
+                  << myLabels[*it] << '\n';
+  }
+
+  std::ofstream myOutEdges("edges.dat");
+  assert(myOutEdges);
+  for (auto it = myEdges.first; it != myEdges.second; ++it) {
+    if ((myLatitudes[it->m_source] == 0.0 and
+         myLongitudes[it->m_source] == 0.0) or
+        (myLatitudes[it->m_target] == 0.0 and
+         myLongitudes[it->m_target] == 0.0)) {
+      continue;
+    }
+    myOutEdges << myLongitudes[it->m_source] << ',' << myLatitudes[it->m_source]
+               << '\n'
+               << myLongitudes[it->m_target] << ',' << myLatitudes[it->m_target]
+               << '\n'
+               << '\n';
   }
 }
 
