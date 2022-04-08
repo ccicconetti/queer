@@ -1,3 +1,6 @@
 #!/bin/bash
 
-wget -Ogarr.graphml http://www.topology-zoo.org/files/Garr201201.graphml
+if [ ! -r garr.graphml ] ; then
+  wget -Ogarr.graphml http://www.topology-zoo.org/files/Garr201201.graphml
+fi
+
