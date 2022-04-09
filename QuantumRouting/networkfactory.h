@@ -45,7 +45,8 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
                        const double              aMu,
                        const double              aGridLength,
                        const double              aThreshold,
-                       const double              aLinkProbability);
+                       const double              aLinkProbability,
+                       const std::string&        aDatFile = "");
 
 std::unique_ptr<CapacityNetwork>
 makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,

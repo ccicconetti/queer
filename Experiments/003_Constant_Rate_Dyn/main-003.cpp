@@ -86,6 +86,9 @@ struct Parameters {
   std::vector<double> theNetRates;
   std::vector<double> theFidelityThresholds;
 
+  // simulation
+  std::string theTopoFilename;
+
   static const std::vector<std::string>& names() {
     static std::vector<std::string> ret({
         "seed",
@@ -327,7 +330,9 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                      myRaii.in().theMu,
                                      myRaii.in().theGridLength,
                                      myRaii.in().theThreshold,
-                                     myRaii.in().theLinkProbability) :
+                                     myRaii.in().theLinkProbability,
+                                     myRaii.in().theTopoFilename + "-" +
+                                         std::to_string(myRaii.in().theSeed)) :
           qr::makeCapacityNetworkGraphMl(myLinkEprRv, *myGraphMlStream);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
@@ -610,6 +615,7 @@ int main(int argc, char* argv[]) {
   double      myWarmupDuration;
   double      myArrivalRate;
   double      myFlowDuration;
+  std::string myTopoFilename;
 
   po::options_description myDesc("Allowed options");
   // clang-format off
@@ -676,6 +682,9 @@ int main(int argc, char* argv[]) {
     ("fidelity-threshold",
      po::value<std::string>(&myFidelityThresholdsStr)->default_value("0.95"),
      "Set of possible fidelity thresholds: multiple values separated by @.")
+    ("topo-filename",
+     po::value<std::string>(&myTopoFilename)->default_value(""),
+     "Save the topology to files with the given base name.")
     ;
   // clang-format on
 
@@ -741,7 +750,8 @@ int main(int argc, char* argv[]) {
                                    myArrivalRate,
                                    myFlowDuration,
                                    myNetRates,
-                                   myFidelityThresholds});
+                                   myFidelityThresholds,
+                                   myTopoFilename});
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {

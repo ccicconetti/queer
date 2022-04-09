@@ -38,6 +38,7 @@ SOFTWARE.
 #include <glog/logging.h>
 
 #include <exception>
+#include <fstream>
 #include <stdexcept>
 
 namespace uiiit {
@@ -49,7 +50,8 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
                        const double              aMu,
                        const double              aGridLength,
                        const double              aThreshold,
-                       const double              aLinkProbability) {
+                       const double              aLinkProbability,
+                       const std::string&        aDatFile) {
   const auto MANY_TRIES = 1000000u;
 
   auto myPppSeed = aSeed;
@@ -59,6 +61,23 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
     const auto myEdges =
         findLinks(myCoordinates, aThreshold, aLinkProbability, aSeed);
     if (qr::bigraphConnected(myEdges)) {
+      if (not aDatFile.empty()) {
+        std::ofstream myOutVertices(aDatFile + "-vertices.dat");
+        for (std::size_t i = 0; i < myCoordinates.size(); i++) {
+          myOutVertices << std::get<0>(myCoordinates[i]) << ','
+                        << std::get<1>(myCoordinates[i]) << ',' << i << '\n';
+        }
+
+        std::ofstream myOutEdges(aDatFile + "-edges.dat");
+        for (const auto& myEdge : myEdges) {
+          myOutEdges << std::get<0>(myCoordinates[myEdge.first]) << ','
+                     << std::get<1>(myCoordinates[myEdge.first]) << '\n'
+                     << std::get<0>(myCoordinates[myEdge.second]) << ','
+                     << std::get<1>(myCoordinates[myEdge.second]) << '\n'
+                     << '\n';
+        }
+      }
+
       return std::make_unique<qr::CapacityNetwork>(myEdges, aEprRv, true);
     } else {
       VLOG(1) << "graph with seed " << myPppSeed
