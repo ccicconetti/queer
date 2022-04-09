@@ -318,12 +318,13 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   }
 
   // create network
-  us::UniformRv myLinkEprRv(myRaii.in().theLinkMinEpr,
+  us::UniformRv               myLinkEprRv(myRaii.in().theLinkMinEpr,
                             myRaii.in().theLinkMaxEpr,
                             myRaii.in().theSeed,
                             0,
                             0);
-  const auto    myNetwork =
+  std::vector<qr::Coordinate> myCoordinates;
+  const auto                  myNetwork =
       myRaii.in().theGraphMlFilename.empty() ?
           qr::makeCapacityNetworkPpp(myLinkEprRv,
                                      myRaii.in().theSeed,
@@ -331,13 +332,20 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                      myRaii.in().theGridLength,
                                      myRaii.in().theThreshold,
                                      myRaii.in().theLinkProbability,
-                                     myRaii.in().theTopoFilename + "-" +
-                                         std::to_string(myRaii.in().theSeed)) :
-          qr::makeCapacityNetworkGraphMl(myLinkEprRv, *myGraphMlStream);
+                                     myCoordinates) :
+          qr::makeCapacityNetworkGraphMl(
+              myLinkEprRv, *myGraphMlStream, myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
+  if (not myRaii.in().theTopoFilename.empty()) {
+    myNetwork->toGnuplot(myRaii.in().theTopoFilename + "-" +
+                             std::to_string(myRaii.in().theSeed),
+                         myCoordinates);
+  }
+
   if (myNetwork->numNodes() < 2) {
-    throw std::runtime_error("the network must have at least two nodes");
+    throw std::runtime_error("the network must have at least "
+                             "two nodes");
   }
 
   // simulated clock
@@ -390,7 +398,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   };
   std::list<AdmittedFlow> myAdmittedFlows;
 
-  // prepare random variables for flow generation
+  // prepare random variables for flow
+  // generation
   us::ExponentialRv myArrivalRv(
       myRaii.in().theArrivalRate, myRaii.in().theSeed, 0, 0);
   us::ExponentialRv myDurationRv(
@@ -434,7 +443,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
             mySrcDstNodes[1],
             myRaii.in().theNetRates[myNetRateId]}});
 
-      // try to admit the the new traffic flow
+      // try to admit the the new traffic
+      // flow
       const auto myFidelityThresholdId = myFidelitiesRv();
       assert(myFidelityThresholdId < myRaii.in().theFidelityThresholds.size());
       myNetwork->route(
@@ -449,7 +459,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
           });
       assert(myFlows.size() == 1);
 
-      // retrieve the per-class set of statistics
+      // retrieve the per-class set of
+      // statistics
       assert(myNetRateId < myPerClassStats.size());
       assert(myFidelityThresholdId < myPerClassStats[myNetRateId].size());
       auto& myPerClassStat =
@@ -461,7 +472,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                 << ", fidelity threshold "
                 << myRaii.in().theFidelityThresholds[myFidelityThresholdId];
 
-        // record global and per-class statistics
+        // record global and per-class
+        // statistics
         if (myNow >= myRaii.in().theWarmup) {
           myDijkstra(myFlows[0].theDijsktra);
           myAdmissionRate(0.0);
@@ -518,7 +530,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                    myEarliestLeave->thePath,
                                    myEarliestLeave->theGrossRate);
 
-      // remove the flow from the list of admitted/active ones
+      // remove the flow from the list of
+      // admitted/active ones
       myAdmittedFlows.erase(myEarliestLeave);
 
       // record statistics

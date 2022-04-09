@@ -51,37 +51,21 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
                        const double              aGridLength,
                        const double              aThreshold,
                        const double              aLinkProbability,
-                       const std::string&        aDatFile) {
+                       std::vector<Coordinate>&  aCoordinates) {
   const auto MANY_TRIES = 1000000u;
 
   auto myPppSeed = aSeed;
   for (unsigned myTry = 0; myTry < MANY_TRIES; myTry++) {
-    const auto myCoordinates =
+    auto myCoordinates =
         PoissonPointProcessGrid(aMu, myPppSeed, aGridLength, aGridLength)();
     const auto myEdges =
         findLinks(myCoordinates, aThreshold, aLinkProbability, aSeed);
     if (qr::bigraphConnected(myEdges)) {
-      if (not aDatFile.empty()) {
-        std::ofstream myOutVertices(aDatFile + "-vertices.dat");
-        for (std::size_t i = 0; i < myCoordinates.size(); i++) {
-          myOutVertices << std::get<0>(myCoordinates[i]) << ','
-                        << std::get<1>(myCoordinates[i]) << ',' << i << '\n';
-        }
-
-        std::ofstream myOutEdges(aDatFile + "-edges.dat");
-        for (const auto& myEdge : myEdges) {
-          myOutEdges << std::get<0>(myCoordinates[myEdge.first]) << ','
-                     << std::get<1>(myCoordinates[myEdge.first]) << '\n'
-                     << std::get<0>(myCoordinates[myEdge.second]) << ','
-                     << std::get<1>(myCoordinates[myEdge.second]) << '\n'
-                     << '\n';
-        }
-      }
-
+      myCoordinates.swap(aCoordinates);
       return std::make_unique<qr::CapacityNetwork>(myEdges, aEprRv, true);
+
     } else {
-      VLOG(1) << "graph with seed " << myPppSeed
-              << " is not connected, trying again";
+      VLOG(1) << "graph with seed " << myPppSeed << " not connected, try again";
       myPppSeed += 1000000;
     }
   }
@@ -92,8 +76,9 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
 
 std::unique_ptr<CapacityNetwork>
 makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,
-                           std::ifstream&            aGraphMl) {
-  const auto myEdges = findLinks(aGraphMl);
+                           std::ifstream&            aGraphMl,
+                           std::vector<Coordinate>&  aCoordinates) {
+  const auto myEdges = findLinks(aGraphMl, aCoordinates);
   for (const auto& myEdge : myEdges) {
     VLOG(2) << '(' << myEdge.first << ',' << myEdge.second << ')';
   }

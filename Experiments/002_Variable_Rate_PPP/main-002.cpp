@@ -263,12 +263,14 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
        mySeedOffset += 10000) {
     const auto mySeed = myRaii.in().theSeed + mySeedOffset;
     // create network
+    [[maybe_unused]] std::vector<qr::Coordinate> myCoordinates;
     myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
                                            mySeed,
                                            myRaii.in().theMu,
                                            myRaii.in().theGridLength,
                                            myRaii.in().theThreshold,
-                                           myRaii.in().theLinkProbability);
+                                           myRaii.in().theLinkProbability,
+                                           myCoordinates);
 
     // network properties
     assert(myNetwork.get() != nullptr);

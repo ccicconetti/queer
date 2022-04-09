@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include <boost/graph/detail/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 
@@ -581,6 +582,41 @@ std::vector<double> CapacityNetwork::nodeCapacities() const {
     ret[myNode] = myCapacity;
   }
   return ret;
+}
+
+void CapacityNetwork::toGnuplot(
+    const std::string&             aFilename,
+    const std::vector<Coordinate>& aCoordinates) const {
+  if (boost::num_vertices(theGraph) == 0 or aFilename.empty()) {
+    return;
+  }
+
+  if (boost::num_vertices(theGraph) != aCoordinates.size()) {
+    throw std::runtime_error("Invalid number of coordinates: expected " +
+                             std::to_string(boost::num_vertices(theGraph)) +
+                             ", got " + std::to_string(aCoordinates.size()));
+  }
+
+  const auto myCapacities = nodeCapacities();
+  assert(myCapacities.size() == boost::num_vertices(theGraph));
+
+  std::ofstream myOutVertices(aFilename + "-vertices.dat");
+  for (std::size_t i = 0; i < aCoordinates.size(); i++) {
+    myOutVertices << i << ',' << std::get<0>(aCoordinates[i]) << ','
+                  << std::get<1>(aCoordinates[i]) << ','
+                  << std::get<2>(aCoordinates[i]) << ',' << myCapacities[i]
+                  << '\n';
+  }
+
+  std::ofstream myOutEdges(aFilename + "-edges.dat");
+  for (const auto& myEdge :
+       boost::make_iterator_range(boost::edges(theGraph))) {
+    myOutEdges << std::get<0>(aCoordinates[myEdge.m_source]) << ','
+               << std::get<1>(aCoordinates[myEdge.m_source]) << '\n'
+               << std::get<0>(aCoordinates[myEdge.m_target]) << ','
+               << std::get<1>(aCoordinates[myEdge.m_target]) << '\n'
+               << '\n';
+  }
 }
 
 bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,

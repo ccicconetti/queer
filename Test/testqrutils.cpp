@@ -89,8 +89,10 @@ TEST_F(TestQrUtils, test_find_links_graphml) {
   std::stringstream myStream;
   myStream << exampleNetwork();
 
-  const auto myLinks = findLinks(myStream);
+  std::vector<Coordinate> myCoordinates;
+  const auto              myLinks = findLinks(myStream, myCoordinates);
   ASSERT_EQ(75, myLinks.size());
+  ASSERT_EQ(61, myCoordinates.size());
 
   unsigned long myMin = std::numeric_limits<unsigned long>::max();
   unsigned long myMax = 0;

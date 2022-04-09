@@ -32,6 +32,7 @@ SOFTWARE.
 #pragma once
 
 #include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/qrutils.h"
 
 #include <iostream>
 #include <memory>
@@ -46,11 +47,12 @@ makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
                        const double              aGridLength,
                        const double              aThreshold,
                        const double              aLinkProbability,
-                       const std::string&        aDatFile = "");
+                       std::vector<Coordinate>&  aCoordinates);
 
 std::unique_ptr<CapacityNetwork>
 makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,
-                           std::ifstream&            aGraphMl);
+                           std::ifstream&            aGraphMl,
+                           std::vector<Coordinate>&  aCoordinates);
 
 } // namespace qr
 } // namespace uiiit

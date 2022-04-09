@@ -216,13 +216,15 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                             myRaii.in().theSeed,
                             0,
                             0);
-  const auto    myNetwork =
+  [[maybe_unused]] std::vector<qr::Coordinate> myCoordinates;
+  const auto                                   myNetwork =
       qr::makeCapacityNetworkPpp(myLinkEprRv,
                                  myRaii.in().theSeed,
                                  myRaii.in().theMu,
                                  myRaii.in().theGridLength,
                                  myRaii.in().theThreshold,
-                                 myRaii.in().theLinkProbability);
+                                 myRaii.in().theLinkProbability,
+                                 myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   // network properties

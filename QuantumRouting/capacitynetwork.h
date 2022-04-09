@@ -32,6 +32,7 @@ SOFTWARE.
 #pragma once
 
 #include "QuantumRouting/network.h"
+#include "QuantumRouting/qrutils.h"
 #include "Support/random.h"
 
 #include <boost/graph/adjacency_list.hpp>
@@ -283,6 +284,16 @@ class CapacityNetwork final : public Network
    * @return std::vector<double> The capacity value for each node index.
    */
   std::vector<double> nodeCapacities() const;
+
+  /**
+   * @brief Save the nodes and vertices of the graph to two files that can be
+   * read by Gnuplot.
+   *
+   * @param aFilename The base filename. If empty, then do nothing.
+   * @param aCoordinates The coordinates to be printed for the nodes.
+   */
+  void toGnuplot(const std::string&             aFilename,
+                 const std::vector<Coordinate>& aCoordinates) const;
 
  private:
   struct HopsFinder {

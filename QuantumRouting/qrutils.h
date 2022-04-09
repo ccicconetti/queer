@@ -75,10 +75,12 @@ findLinks(const std::vector<Coordinate>& aItems,
  * @brief Return the links between vertices as read from a GraphML file.
  *
  * @param aGraphMl The stream containing the GraphML data.
+ * @param aCoordinates The coordinates of the nodes read.
+ *
  * @return the list of pairs of items detected (returned through their indices)
  */
 std::vector<std::pair<unsigned long, unsigned long>>
-findLinks(std::istream& aGraphMl);
+findLinks(std::istream& aGraphMl, std::vector<Coordinate>& aCoordinates);
 
 /**
  * @brief Detect if the bidirectional graph defined by the given edges is

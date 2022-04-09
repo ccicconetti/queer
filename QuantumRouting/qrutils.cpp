@@ -79,7 +79,7 @@ findLinks(const std::vector<Coordinate>& aItems,
 }
 
 std::vector<std::pair<unsigned long, unsigned long>>
-findLinks(std::istream& aGraphMl) {
+findLinks(std::istream& aGraphMl, std::vector<Coordinate>& aCoordinates) {
   struct VertexData {
     std::string theLabel;
     double      theLongitude;
@@ -113,15 +113,25 @@ findLinks(std::istream& aGraphMl) {
     boost::print_graph(myGraph, boost::get(&VertexData::theLabel, myGraph));
   }
 
+  // fill the coordinates
+  aCoordinates.resize(boost::num_vertices(myGraph));
+  const auto& myLongitudes = boost::get(&VertexData::theLongitude, myGraph);
+  const auto& myLatitudes  = boost::get(&VertexData::theLatitude, myGraph);
+  for (const auto& myVertex :
+       boost::make_iterator_range(boost::vertices(myGraph))) {
+    aCoordinates[myVertex] =
+        std::make_tuple(myLongitudes[myVertex], myLatitudes[myVertex], 0.0);
+  }
+
+  // fill the return value
   std::vector<std::pair<unsigned long, unsigned long>> ret;
-  const auto            myEdges = boost::edges(myGraph);
-  std::set<std::string> myFound;
-  for (auto it = myEdges.first; it != myEdges.second; ++it) {
+  std::set<std::string>                                myFound;
+  for (const auto& myEdge : boost::make_iterator_range(boost::edges(myGraph))) {
     if (myFound
-            .emplace(std::to_string(it->m_source) +
-                     std::to_string(it->m_target))
+            .emplace(std::to_string(myEdge.m_source) +
+                     std::to_string(myEdge.m_target))
             .second) {
-      ret.push_back({it->m_source, it->m_target});
+      ret.push_back({myEdge.m_source, myEdge.m_target});
     }
   }
   return ret;
