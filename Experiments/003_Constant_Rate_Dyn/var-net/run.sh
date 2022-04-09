@@ -37,6 +37,8 @@ for m in $maxlinkrates ; do
           --mu $n \
           --link-min-epr 1 \
           --link-max-epr $m \
+          --grid-size 100000 \
+          --threshold 15000 \
           --sim-duration 100 \
           --warmup-duration 10 \
           --arrival-rate 100 \
