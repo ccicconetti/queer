@@ -24,8 +24,8 @@ fi
 columns=(30 25 26 24 28 29 31 32)
 names=("admission-rate" "residual" "num-active-flows" "capacity" "gross-rate" "net-rate" "path-size" "fidelity")
 
-maxlinkrates="20 40 60 80 100"
-numnodes="40 80 120 160 200"
+maxlinkrates="20 30 40 50 60 70 80 90 100"
+numnodes="40 60 80 100 120 140 160 180 200"
 rates="1 10"
 fidelities="0.7 0.9"
 
