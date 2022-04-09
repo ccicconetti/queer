@@ -175,6 +175,5 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 x = 0.0
 ## Last datafile plotted: "topo-40-0-vertices.dat"
-#plot 'topo-200-0-vertices.dat' u 1:2 w points pt 7 lc rgb "blue" pointsize 1.5, '' u 1:2:3 w labels, 'topo-200-0-vertices.dat' w lines lc rgb "forest-green"
-plot 'topo-200-0-vertices.dat' u 1:2 w points pt 7 lc rgb "blue" pointsize 1.5, 'topo-200-0-vertices.dat' w lines lc rgb "forest-green"
+plot 'topo-200-0-vertices.dat' u 2:3:($5) w circles lc rgb "blue", 'topo-200-0-edges.dat' w lines lc rgb "forest-green"
 #    EOF
