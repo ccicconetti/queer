@@ -175,6 +175,5 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 x = 0.0
 ## Last datafile plotted: "garr-vertices.dat"
-#plot 'garr-vertices.dat' u 1:2 w points pt 7 lc rgb "blue" pointsize 1.5, '' u 1:2:3 w labels, 'garr-vertices.dat' w lines lc rgb "forest-green"
-plot 'garr-vertices.dat' u 1:2 w points pt 7 lc rgb "blue" pointsize 1.5, 'garr-vertices.dat' w lines lc rgb "forest-green"
+plot 'garr-0-vertices.dat' u 2:3:($5/10000) w circles lc rgb "blue", 'garr-0-edges.dat' w lines lc rgb "forest-green"
 #    EOF
