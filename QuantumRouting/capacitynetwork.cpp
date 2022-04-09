@@ -568,6 +568,21 @@ void CapacityNetwork::addCapacityToPath(
   removeCapacityFromPath(aSrc, aPath, -aCapacity, theGraph);
 }
 
+std::vector<double> CapacityNetwork::nodeCapacities() const {
+  std::vector<double> ret(boost::num_vertices(theGraph), 0);
+  for (const auto& myNode :
+       boost::make_iterator_range(boost::vertices(theGraph))) {
+    double myCapacity = 0;
+    for (const auto& myEdge :
+         boost::make_iterator_range(boost::out_edges(myNode, theGraph))) {
+      myCapacity += boost::get(boost::edge_weight, theGraph, myEdge);
+    }
+    assert(myNode < ret.size());
+    ret[myNode] = myCapacity;
+  }
+  return ret;
+}
+
 bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
                                     const std::vector<VertexDescriptor>& aPath,
                                     const double aCapacity,

@@ -276,6 +276,13 @@ class CapacityNetwork final : public Network
   void addCapacityToPath(const VertexDescriptor               aSrc,
                          const std::vector<VertexDescriptor>& aPath,
                          const double                         aCapacity);
+  /**
+   * @brief Return the capacity for each node, defined as the sum of the
+   * capacity of all its outgoing edges.
+   *
+   * @return std::vector<double> The capacity value for each node index.
+   */
+  std::vector<double> nodeCapacities() const;
 
  private:
   struct HopsFinder {

@@ -140,6 +140,8 @@ TEST_F(TestCapacityNetwork, test_graph_properties) {
   ASSERT_EQ(2, myNetwork.inDegree().second);
   ASSERT_EQ(0, myNetwork.outDegree().first);
   ASSERT_EQ(2, myNetwork.outDegree().second);
+
+  ASSERT_EQ(std::vector<double>({5, 4, 4, 0, 4}), myNetwork.nodeCapacities());
 }
 
 TEST_F(TestCapacityNetwork, test_reachable_nodes) {
