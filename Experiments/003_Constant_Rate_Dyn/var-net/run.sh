@@ -30,7 +30,7 @@ for p in $srcdstpolicies ; do
     for n in $numnodes ; do
       for r in $rates ; do
         for f in $fidelities ; do
-          output=data/out-$m-$n-$r-$f.csv
+          output=data/out-$p-$m-$n-$r-$f.csv
           cmd="$MAIN \
             --output $output \
             --num-threads $CONCURRENCY \
