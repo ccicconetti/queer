@@ -172,15 +172,15 @@ GNUTERM = "wxt"
 set multiplot layout 2,2
 set title "r = 1, F = 0.7"
 unset colorbox
-splot '../post/path-size-1-0.7.dat' u 1:2:3
+splot '../post/path-size-uniform-1-0.7.dat' u 1:2:3
 set title "r = 1, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/path-size-1-0.9.dat' u 1:2:3
+splot '../post/path-size-uniform-1-0.9.dat' u 1:2:3
 set title "r = 10, F = 0.7"
 unset colorbox
-splot '../post/path-size-10-0.7.dat' u 1:2:3
+splot '../post/path-size-uniform-10-0.7.dat' u 1:2:3
 set title "r = 10, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/path-size-10-0.9.dat' u 1:2:3
+splot '../post/path-size-uniform-10-0.9.dat' u 1:2:3
 unset multiplot
 #    EOF

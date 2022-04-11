@@ -105,10 +105,10 @@ set mrtics default
 set nomttics
 set xtics border in scale 1,0.5 mirror norotate  autojustify
 set xtics  norangelimit autofreq 
-set xtics 10
+set xtics 20
 set ytics border in scale 1,0.5 mirror norotate  autojustify
 set ytics  norangelimit autofreq 
-set ytics 20
+set ytics 50
 set ztics border in scale 1,0.5 nomirror norotate  autojustify
 set ztics  norangelimit autofreq 
 unset x2tics
@@ -169,18 +169,30 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-set multiplot layout 2,2
-set title "r = 1, F = 0.7"
+set multiplot layout 4,2
+set title "uniform, r = 1, F = 0.7"
 unset colorbox
-splot '../post/admission-rate-1-0.7.dat' u 1:2:3
-set title "r = 1, F = 0.9"
+splot '../post/admission-rate-uniform-1-0.7.dat' u 1:2:3
+set title "uniform, r = 1, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/admission-rate-1-0.9.dat' u 1:2:3
-set title "r = 10, F = 0.7"
+splot '../post/admission-rate-uniform-1-0.9.dat' u 1:2:3
+set title "uniform, r = 10, F = 0.7"
 unset colorbox
-splot '../post/admission-rate-10-0.7.dat' u 1:2:3
-set title "r = 10, F = 0.9"
+splot '../post/admission-rate-uniform-10-0.7.dat' u 1:2:3
+set title "uniform, r = 10, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/admission-rate-10-0.9.dat' u 1:2:3
+splot '../post/admission-rate-uniform-10-0.9.dat' u 1:2:3
+set title "weighted on capacity, r = 1, F = 0.7"
+unset colorbox
+splot '../post/admission-rate-nodecapacities-1-0.7.dat' u 1:2:3
+set title "weighted on capacity, r = 1, F = 0.9"
+set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
+splot '../post/admission-rate-nodecapacities-1-0.9.dat' u 1:2:3
+set title "weighted on capacity, r = 10, F = 0.7"
+unset colorbox
+splot '../post/admission-rate-nodecapacities-10-0.7.dat' u 1:2:3
+set title "weighted on capacity, r = 10, F = 0.9"
+set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
+splot '../post/admission-rate-nodecapacities-10-0.9.dat' u 1:2:3
 unset multiplot
 #    EOF
