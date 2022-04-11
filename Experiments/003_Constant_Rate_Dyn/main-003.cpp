@@ -72,6 +72,7 @@ struct Parameters {
   double      theLinkProbability;
   double      theLinkMinEpr;
   double      theLinkMaxEpr;
+  std::string theSrcDstPolicy;
   std::string theGraphMlFilename;
 
   // system
@@ -98,6 +99,7 @@ struct Parameters {
         "link-prob",
         "link-min-epr",
         "link-max-epr",
+        "src-dst-policy",
         "graphml-filename",
         "q",
         "fidelity-init",
@@ -124,6 +126,7 @@ struct Parameters {
     }
 
     myStream
+        << ", src/dst nodes are selected with policy " << theSrcDstPolicy
         << ", and EPR generation rate of the list is drawn randomly from U["
         << theLinkMinEpr << ',' << theLinkMaxEpr << "]; simulation duration "
         << theSimDuration << " (warm-up " << theWarmup
@@ -143,10 +146,10 @@ struct Parameters {
     std::stringstream myStream;
     myStream << theSeed << ',' << theMu << ',' << theGridLength << ','
              << theThreshold << ',' << theLinkProbability << ','
-             << theLinkMinEpr << ',' << theLinkMaxEpr << ','
-             << theGraphMlFilename << ',' << theQ << ',' << theFidelityInit
-             << ',' << theSimDuration << ',' << theWarmup << ','
-             << theArrivalRate << ',' << theFlowDuration << ','
+             << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theSrcDstPolicy
+             << ',' << theGraphMlFilename << ',' << theQ << ','
+             << theFidelityInit << ',' << theSimDuration << ',' << theWarmup
+             << ',' << theArrivalRate << ',' << theFlowDuration << ','
              << v2s(theNetRates) << ',' << v2s(theFidelityThresholds);
     return myStream.str();
   }
@@ -417,6 +420,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   for (unsigned long i = 0; i < myNodes.size(); ++i) {
     myNodes[i] = i;
   }
+  const auto myNodeCapacities = myNetwork->nodeCapacities();
+  assert(myNodeCapacities.size() == myNodes.size());
 
   // run simulation
   double myNextArrival = 0;
@@ -432,7 +437,16 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         myNextArrival < myEarliestLeave->theLeaveTime) {
       myNow = myNextArrival;
 
-      const auto mySrcDstNodes = us::sample(myNodes, 2, mySrcDstRv);
+      std::vector<unsigned long> mySrcDstNodes;
+      if (myRaii.in().theSrcDstPolicy == "uniform") {
+        mySrcDstNodes = us::sample(myNodes, 2, mySrcDstRv);
+      } else if (myRaii.in().theSrcDstPolicy == "nodecapacities") {
+        mySrcDstNodes =
+            us::sampleWeighted(myNodes, myNodeCapacities, 2, mySrcDstRv);
+      } else {
+        throw std::runtime_error("unknown src/dst policy: " +
+                                 myRaii.in().theSrcDstPolicy);
+      }
       assert(mySrcDstNodes.size() == 2);
       assert(mySrcDstNodes[0] != mySrcDstNodes[1]);
 
@@ -616,6 +630,7 @@ int main(int argc, char* argv[]) {
   double      myMu;
   double      myLinkMinEpr;
   double      myLinkMaxEpr;
+  std::string mySrcDstPolicy;
   std::string myNetRatesStr;
   double      myGridSize;
   double      myThreshold;
@@ -659,6 +674,9 @@ int main(int argc, char* argv[]) {
     ("link-max-epr",
      po::value<double>(&myLinkMaxEpr)->default_value(400),
      "Max EPR rate of links.")
+    ("src-dst-policy",
+     po::value<std::string>(&mySrcDstPolicy)->default_value("uniform"),
+     "Policy to select the src/dst nodes. One of {uniform, nodecapacities}.")
     ("graphml-file",
      po::value<std::string>(&myGraphMlFilename)->default_value(""),
      "Read from a GraphML file.")
@@ -755,6 +773,7 @@ int main(int argc, char* argv[]) {
                                    myLinkProbability,
                                    myLinkMinEpr,
                                    myLinkMaxEpr,
+                                   mySrcDstPolicy,
                                    myGraphMlFilename,
                                    myQ,
                                    myFidelityInit,
