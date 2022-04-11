@@ -43,16 +43,14 @@ set grid nopolar
 set grid xtics nomxtics ytics nomytics noztics nomztics nortics nomrtics \
  nox2tics nomx2tics noy2tics nomy2tics nocbtics nomcbtics
 set grid layerdefault   lt 0 linecolor 0 linewidth 0.500,  lt 0 linecolor 0 linewidth 0.500
-unset grid
 unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed right top vertical Right noreverse enhanced autotitle nobox
+set key fixed bottom right vertical Right noreverse enhanced autotitle nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
-unset key
 unset label
 unset arrow
 set style increment default
@@ -70,15 +68,16 @@ unset parametric
 unset decimalsign
 unset micro
 unset minussign
-set view map scale 1
+set view 60, 30, 1, 1
+set view azimuth 0
 set rgbmax 255
 set samples 100, 100
-set isosamples 100, 100
+set isosamples 10, 10
 set surface 
 unset contour
 set cntrlabel  format '%8.3g' font '' start 5 interval 20
 set mapping cartesian
-set datafile separator whitespace
+set datafile separator ","
 unset hidden3d
 set cntrparam order 4
 set cntrparam linear
@@ -86,8 +85,8 @@ set cntrparam levels auto 5
 set cntrparam points 5
 set size ratio 0 1,1
 set origin 0,0
-set style data pm3d
-set style function pm3d
+set style data points
+set style function lines
 unset xzeroaxis
 unset yzeroaxis
 unset zzeroaxis
@@ -105,10 +104,8 @@ set mrtics default
 set nomttics
 set xtics border in scale 1,0.5 mirror norotate  autojustify
 set xtics  norangelimit autofreq 
-set xtics 100
 set ytics border in scale 1,0.5 mirror norotate  autojustify
 set ytics  norangelimit autofreq 
-set ytics 40
 set ztics border in scale 1,0.5 nomirror norotate  autojustify
 set ztics  norangelimit autofreq 
 unset x2tics
@@ -117,7 +114,6 @@ set cbtics border in scale 1,0.5 mirror norotate  autojustify
 set cbtics  norangelimit autofreq 
 set rtics axis in scale 1,0.5 nomirror norotate  autojustify
 set rtics  norangelimit autofreq 
-set tics scale 0
 unset ttics
 set title "" 
 set title  font "" norotate
@@ -127,24 +123,24 @@ set timestamp  font "" norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel ""
+set xlabel "Capacity used"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ 100 : 500 ] noreverse nowriteback
-set x2range [ * : * ] noreverse nowriteback
-set ylabel ""
+set xrange [ * : * ] noreverse nowriteback
+set x2range [ 0.321556 : 0.687396 ] noreverse nowriteback
+set ylabel "Cumulative Density Function" 
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ 40 : 200 ] noreverse nowriteback
-set y2range [ * : * ] noreverse nowriteback
+set yrange [ * : * ] noreverse nowriteback
+set y2range [ -0.0890000 : 0.901000 ] noreverse nowriteback
 set zlabel "" 
 set zlabel  font "" textcolor lt -1 norotate
-set zrange [ 0 : 1 ] noreverse nowriteback
-set cblabel "Admission rate" 
+set zrange [ * : * ] noreverse nowriteback
+set cblabel "" 
 set cblabel  font "" textcolor lt -1 rotate
-set cbrange [ 0 : 1 ] noreverse nowriteback
+set cbrange [ * : * ] noreverse nowriteback
 set rlabel "" 
 set rlabel  font "" textcolor lt -1 norotate
 set rrange [ * : * ] noreverse nowriteback
@@ -156,13 +152,12 @@ set bmargin  -1
 set rmargin  -1
 set tmargin  -1
 set locale "en_US.UTF-8"
-set pm3d explicit at b
+set pm3d explicit at s
 set pm3d scansautomatic
 set pm3d interpolate 1,1 flush begin noftriangles noborder corners2color mean
 set pm3d nolighting
-set palette negative nops_allcF maxcolors 0 gamma 1.5 color model RGB 
-set palette rgbformulae 36, 35, 34
-set palette defined ( 0 "blue", 1 "cyan", 2 "red" )
+set palette positive nops_allcF maxcolors 0 gamma 1.5 color model RGB 
+set palette rgbformulae 7, 5, 15
 set colorbox default
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
 set style boxplot candles range  1.50 outliers pt 7 separation 1 labels auto unsorted
@@ -171,47 +166,12 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-set multiplot layout 2,3 margins 0.05, 0.9, 0.1, 0.9 spacing 0.05,0.15
-unset grid
-unset colorbox
-unset ylabel
-unset xlabel
-set ylabel "Average number of nodes"
-set title "uniform, r = 1, F = 0.7"
-splot '../post/admission-rate-uniform-1-0.7.dat' u 1:2:3
-set title "uniform, r = 10, F = 0.7"
-unset colorbox
-unset ylabel
-splot '../post/admission-rate-uniform-10-0.7.dat' u 1:2:3
-set title "uniform, r = 10, F = 0.9"
-set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-unset ylabel
-splot '../post/admission-rate-uniform-10-0.9.dat' u 1:2:3
-set title "weighted, r = 1, F = 0.7"
-unset colorbox
-set ylabel "Average number of nodes"
-splot '../post/admission-rate-nodecapacities-1-0.7.dat' u 1:2:3
-set title "weighted, r = 10, F = 0.7"
-unset colorbox
-set xlabel "Maximum number of EPR pairs/s/link"
-unset ylabel
-splot '../post/admission-rate-nodecapacities-10-0.7.dat' u 1:2:3
-unset xlabel
-set title "weighted, r = 10, F = 0.9"
-set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-unset ylabel
-splot '../post/admission-rate-nodecapacities-10-0.9.dat' u 1:2:3
-
-#unset title
-#set lmargin -1
-#set origin 0,5
-#set size 1,2
-#set style data points
-#set style function points
-#set border 0
-#unset tics
-#set ylabel "Average number of nodes"
-#plot [][0:1] -1
-
-unset multiplot
+## Last datafile plotted: "../data/out-uniform-300-120-1-0.7.csv"
+plot \
+'../data/out-uniform-300-120-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 4 lt 1 pointinterval 5 title "uniform, 300 EPR, 120 nodes",\
+'../data/out-uniform-100-120-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 8 lt 1 pointinterval 5 title "uniform, 100 EPR, 120 nodes",\
+'../data/out-uniform-300-40-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 6 lt 1 pointinterval 5 title "uniform, 300 EPR, 40 nodes",\
+'../data/out-nodecapacities-300-120-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 4 lt 2 pointinterval 5 title "weighted, 300 EPR, 120 nodes",\
+'../data/out-nodecapacities-100-120-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 8 lt 2 pointinterval 5 title "weighted, 100 EPR, 120 nodes",\
+'../data/out-nodecapacities-300-40-10-0.9.csv' u (1-$26/$25):(1) smooth cnorm w lp pt 6 lt 2 pointinterval 5 title "weighted, 300 EPR, 40 nodes"
 #    EOF
