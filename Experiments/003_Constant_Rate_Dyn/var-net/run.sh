@@ -19,7 +19,7 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-maxlinkrates="20 30 40 50 60 70 80 90 100"
+maxlinkrates="80 120 160 200 240 280 320 360 400"
 numnodes="40 60 80 100 120 140 160 180 200"
 rates="1 10"
 fidelities="0.7 0.9"
