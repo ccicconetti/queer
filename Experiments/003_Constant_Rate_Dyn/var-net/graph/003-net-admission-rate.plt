@@ -105,10 +105,10 @@ set mrtics default
 set nomttics
 set xtics border in scale 1,0.5 mirror norotate  autojustify
 set xtics  norangelimit autofreq 
-set xtics 20
+set xtics 100
 set ytics border in scale 1,0.5 mirror norotate  autojustify
 set ytics  norangelimit autofreq 
-set ytics 50
+set ytics 40
 set ztics border in scale 1,0.5 nomirror norotate  autojustify
 set ztics  norangelimit autofreq 
 unset x2tics
@@ -117,6 +117,7 @@ set cbtics border in scale 1,0.5 mirror norotate  autojustify
 set cbtics  norangelimit autofreq 
 set rtics axis in scale 1,0.5 nomirror norotate  autojustify
 set rtics  norangelimit autofreq 
+set tics scale 0
 unset ttics
 set title "" 
 set title  font "" norotate
@@ -126,17 +127,17 @@ set timestamp  font "" norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Maximum number of EPR pairs/s/link"
+set xlabel ""
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ * : * ] noreverse nowriteback
+set xrange [ 100 : 500 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback
-set ylabel "Average number of nodes"
+set ylabel ""
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ * : * ] noreverse nowriteback
+set yrange [ 40 : 200 ] noreverse nowriteback
 set y2range [ * : * ] noreverse nowriteback
 set zlabel "" 
 set zlabel  font "" textcolor lt -1 norotate
@@ -161,6 +162,7 @@ set pm3d interpolate 1,1 flush begin noftriangles noborder corners2color mean
 set pm3d nolighting
 set palette negative nops_allcF maxcolors 0 gamma 1.5 color model RGB 
 set palette rgbformulae 36, 35, 34
+set palette defined ( 0 "blue", 1 "cyan", 2 "red" )
 set colorbox default
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
 set style boxplot candles range  1.50 outliers pt 7 separation 1 labels auto unsorted
@@ -169,30 +171,47 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-set multiplot layout 4,2
-set title "uniform, r = 1, F = 0.7"
+set multiplot layout 2,3 margins 0.05, 0.9, 0.1, 0.9 spacing 0.05,0.15
+unset grid
 unset colorbox
+unset ylabel
+unset xlabel
+set ylabel "Average number of nodes"
+set title "uniform, r = 1, F = 0.7"
 splot '../post/admission-rate-uniform-1-0.7.dat' u 1:2:3
-set title "uniform, r = 1, F = 0.9"
-set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/admission-rate-uniform-1-0.9.dat' u 1:2:3
 set title "uniform, r = 10, F = 0.7"
 unset colorbox
+unset ylabel
 splot '../post/admission-rate-uniform-10-0.7.dat' u 1:2:3
 set title "uniform, r = 10, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
+unset ylabel
 splot '../post/admission-rate-uniform-10-0.9.dat' u 1:2:3
 set title "weighted on capacity, r = 1, F = 0.7"
 unset colorbox
+set ylabel "Average number of nodes"
 splot '../post/admission-rate-nodecapacities-1-0.7.dat' u 1:2:3
-set title "weighted on capacity, r = 1, F = 0.9"
-set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
-splot '../post/admission-rate-nodecapacities-1-0.9.dat' u 1:2:3
 set title "weighted on capacity, r = 10, F = 0.7"
 unset colorbox
+set xlabel "Maximum number of EPR pairs/s/link"
+unset ylabel
 splot '../post/admission-rate-nodecapacities-10-0.7.dat' u 1:2:3
+unset xlabel
 set title "weighted on capacity, r = 10, F = 0.9"
 set colorbox vertical origin screen 0.9, 0.2 size screen 0.05, 0.6 front  noinvert bdefault
+unset ylabel
 splot '../post/admission-rate-nodecapacities-10-0.9.dat' u 1:2:3
+
+#unset title
+#set lmargin -1
+#set origin 0,5
+#set size 1,2
+#set style data points
+#set style function points
+#set border 0
+#unset tics
+#set ylabel "Average number of nodes"
+#plot [][0:1] -1
+
 unset multiplot
 #    EOF
