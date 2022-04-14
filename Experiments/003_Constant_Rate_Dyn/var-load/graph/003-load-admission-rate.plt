@@ -172,6 +172,5 @@ plot  \
  '../post/admission-rate-1-0.7-garr.dat' u 1:2 w lp pt 4 lt 1 title "r = 1, F = 0.7", \
  '../post/admission-rate-1-0.9-garr.dat' u 1:2 w lp pt 5 lt 1 title "r = 1, F = 0.9", \
   '../post/admission-rate-10-0.7-garr.dat' u 1:2 w lp pt 6 lt 2 title "r = 10, F = 0.7", \
- '../post/admission-rate-10-0.9-garr.dat' u 1:2 w lp pt 7 lt 2 title "r = 10, F = 0.9", \
- '../post/admission-rate-garr.dat' u 1:2 w l lc 3 lt 3 lw 2 title "average"
+ '../post/admission-rate-10-0.9-garr.dat' u 1:2 w lp pt 7 lt 2 title "r = 10, F = 0.9"
 #    EOF
