@@ -1,0 +1,1 @@
+../../../Scripts/download-artifacts.sh
