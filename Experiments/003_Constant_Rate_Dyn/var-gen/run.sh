@@ -20,7 +20,7 @@ if [ ! -x $MAIN ] ; then
 fi
 
 qvalues="0.5 0.6 0.7 0.8 0.9 1"
-fidelities="0.9 0.95 0.99"
+fidelities="0.95 0.97 0.99 0.999"
 
 for q in $qvalues ; do
   for f in $fidelities ; do
