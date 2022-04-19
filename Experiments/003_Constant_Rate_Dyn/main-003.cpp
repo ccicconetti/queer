@@ -457,8 +457,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
             mySrcDstNodes[1],
             myRaii.in().theNetRates[myNetRateId]}});
 
-      // try to admit the the new traffic
-      // flow
+      // try to admit the new traffic flow
       const auto myFidelityThresholdId = myFidelitiesRv();
       assert(myFidelityThresholdId < myRaii.in().theFidelityThresholds.size());
       myNetwork->route(
