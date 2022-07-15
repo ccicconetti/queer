@@ -176,5 +176,6 @@ GNUTERM = "wxt"
 x = 0.0
 ## Last datafile plotted: "topo-40-0-vertices.dat"
 #plot 'topo-40-0-vertices.dat' u 1:2 w points pt 7 lc rgb "blue" pointsize 1.5, '' u 1:2:3 w labels, 'topo-40-0-vertices.dat' w lines lc rgb "forest-green"
+set title "PPP network (38 nodes)"
 plot 'topo-40-0-vertices.dat' u 2:3:($5) w circles lc rgb "blue", 'topo-40-0-edges.dat' w lines lc rgb "forest-green"
 #    EOF

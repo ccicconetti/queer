@@ -175,5 +175,6 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 x = 0.0
 ## Last datafile plotted: "topo-40-0-vertices.dat"
+set title "PPP network (206 nodes)"
 plot 'topo-200-0-vertices.dat' u 2:3:($5) w circles lc rgb "blue", 'topo-200-0-edges.dat' w lines lc rgb "forest-green"
 #    EOF

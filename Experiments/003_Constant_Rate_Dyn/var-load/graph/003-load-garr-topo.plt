@@ -175,5 +175,6 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 x = 0.0
 ## Last datafile plotted: "garr-vertices.dat"
+set title "GARR network"
 plot 'garr-0-vertices.dat' u 2:3:($5/10000) w circles lc rgb "blue", 'garr-0-edges.dat' w lines lc rgb "forest-green"
 #    EOF
