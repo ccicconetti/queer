@@ -1,4 +1,4 @@
-add_library(uiiitqr SHARED
+add_library(uiiitqr STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/capacitynetwork.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/networkfactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/poissonpointprocess.cpp

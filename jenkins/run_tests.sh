@@ -41,7 +41,7 @@ if [ -z ${NOBUILD} ] ; then
 fi
 
 ret=0
-for testunit in $(find . | grep 'Test/test') ; do
+for testunit in $(find . | grep 'Test/test' | grep -v ".cmake") ; do
 
   report=$(basename $testunit)
 

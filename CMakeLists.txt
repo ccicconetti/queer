@@ -58,6 +58,7 @@ add_subdirectory(yen)
 # unit tests
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
 if (${CMAKE_BUILD_TYPE_LOWER} STREQUAL "debug")
+  enable_testing()
   add_subdirectory(Test)
   set(skip_google_test TRUE)
   add_subdirectory(support/Test)

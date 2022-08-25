@@ -29,29 +29,37 @@ endif()
 
 include_directories(${CMAKE_BINARY_DIR}/googletest-src/googletest/include)
 
-add_library(testqrlib SHARED
-  ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
+include(GoogleTest)
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/testcapacitynetwork.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testgraphml.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testqrutils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testpoissonpointprocess.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testyen.cpp
+add_library(testqrservice STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/Details/examplenetwork.cpp
 )
 
-target_link_libraries(testqrlib
+set(LIBS
+  testqrservice
   uiiitqr
   uiiitsupport
-
   gtest
   ${Boost_LIBRARIES}
 )
 
-add_executable(testqr
-  ${CMAKE_CURRENT_SOURCE_DIR}/testmain.cpp
-)
+add_executable(testcapacitynetwork testmain.cpp testcapacitynetwork.cpp)
+target_link_libraries(testcapacitynetwork ${LIBS})
+gtest_discover_tests(testcapacitynetwork)
 
-target_link_libraries(testqr
-  testqrlib
-)
+add_executable(testgraphml testmain.cpp testgraphml.cpp)
+target_link_libraries(testgraphml ${LIBS})
+gtest_discover_tests(testgraphml)
+
+add_executable(testqrutils testmain.cpp testqrutils.cpp)
+target_link_libraries(testqrutils ${LIBS})
+gtest_discover_tests(testqrutils)
+
+add_executable(testpoissonpointprocess testmain.cpp testpoissonpointprocess.cpp)
+target_link_libraries(testpoissonpointprocess ${LIBS})
+gtest_discover_tests(testpoissonpointprocess)
+
+add_executable(testyen testmain.cpp testyen.cpp)
+target_link_libraries(testyen ${LIBS})
+gtest_discover_tests(testyen)
 
