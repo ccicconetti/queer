@@ -46,6 +46,7 @@ SOFTWARE.
 
 #include <glog/vlog_is_on.h>
 #include <limits>
+#include <numeric>
 #include <sstream>
 #include <stdexcept>
 
@@ -103,24 +104,29 @@ CapacityNetwork::AppDescriptor::AppDescriptor::Output::Output(const Path& aPath)
   }
 }
 
+double CapacityNetwork::AppDescriptor::accumulate(
+    const std::function<double(const AppDescriptor::Output&)>& aFn) const {
+  return std::accumulate(
+      theAllocated.begin(),
+      theAllocated.end(),
+      0.0,
+      [&aFn](auto aLhs, const auto& aRhs) {
+        return std::accumulate(
+            aRhs.second.begin(),
+            aRhs.second.end(),
+            aLhs,
+            [&aFn](const auto aInnerLhs, const auto& aInnerRhs) {
+              return aInnerLhs + aFn(aInnerRhs);
+            });
+      });
+}
+
 double CapacityNetwork::AppDescriptor::netRate() const {
-  double ret = 0;
-  for (const auto& elem : theAllocated) {
-    for (const auto& inner : elem.second) {
-      ret += inner.theNetRate;
-    }
-  }
-  return ret;
+  return accumulate([](const auto& aDesc) { return aDesc.theNetRate; });
 }
 
 double CapacityNetwork::AppDescriptor::grossRate() const {
-  double ret = 0;
-  for (const auto& elem : theAllocated) {
-    for (const auto& inner : elem.second) {
-      ret += inner.theGrossRate;
-    }
-  }
-  return ret;
+  return accumulate([](const auto& aDesc) { return aDesc.theGrossRate; });
 }
 
 std::string CapacityNetwork::AppDescriptor::toString() const {
@@ -546,12 +552,14 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
           myOutput.theHops.back(),
           std::vector<AppDescriptor::Output>({myOutput}));
 
-      for (auto& elem : it.first->second) {
-        if (elem.theHops == myOutput.theHops) {
-          elem.theNetRate += toNetRate(myAllocatedGross, elem.theHops.size());
-          elem.theGrossRate += myAllocatedGross;
-          break;
-        }
+      const auto jt = std::find_if(it.first->second.begin(),
+                                   it.first->second.end(),
+                                   [&myOutput](const auto& aElem) {
+                                     return myOutput.theHops == aElem.theHops;
+                                   });
+      if (jt != it.first->second.end()) {
+        jt->theNetRate += toNetRate(myAllocatedGross, jt->theHops.size());
+        jt->theGrossRate += myAllocatedGross;
       }
     }
 

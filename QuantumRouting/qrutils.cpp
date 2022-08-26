@@ -88,7 +88,6 @@ findLinks(std::istream& aGraphMl, std::vector<Coordinate>& aCoordinates) {
 
   struct EdgeData {
     double theLinkSpeed;
-    int    theInvLinkSpeed;
   };
 
   using Graph = boost::adjacency_list<boost::listS,

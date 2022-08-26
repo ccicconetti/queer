@@ -137,6 +137,10 @@ class CapacityNetwork final : public Network
     double      netRate() const;
     double      grossRate() const;
     std::string toString() const;
+
+   private:
+    double accumulate(
+        const std::function<double(const AppDescriptor::Output&)>& aFn) const;
   };
 
   using FlowCheckFunction = std::function<bool(const FlowDescriptor&)>;
