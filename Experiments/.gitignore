@@ -1,4 +1,7 @@
-*.pdf
-*.png
-*.eps
+main-[0-9][0-9][0-9]
+output.csv
+data
+post
 percentile.py
+*.pdf
+*.graphml
