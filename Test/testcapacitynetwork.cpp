@@ -333,23 +333,23 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
 
   // ill-formed requests
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {0}, 1},
+      {0, {0}, 1, 0},
   });
   ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {42}, 1},
+      {0, {42}, 1, 0},
   });
   ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 0},
+      {0, {1}, 0, 0},
   });
   ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, -1},
+      {0, {1}, -1, 0},
   });
   ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 1},
+      {0, {1}, 1, 0},
   });
   ASSERT_THROW(myNetwork.route(myApps, 0, 1), std::runtime_error);
   ASSERT_THROW(myNetwork.route(myApps, -1, 1), std::runtime_error);
@@ -357,8 +357,8 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
 
   // no route existing
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {3, {2, 0}, 1},
-      {2, {1}, 1},
+      {3, {2, 0}, 1, 0},
+      {2, {1}, 1, 0},
   });
   myNetwork.route(myApps, 1.4, 99);
   ASSERT_EQ(2, myApps.size());
@@ -369,8 +369,8 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
 
   // existing routes
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {2, 3}, 1},
-      {1, {3}, 1},
+      {0, {2, 3}, 1, 0},
+      {1, {3}, 1, 0},
   });
   myNetwork.route(myApps, 1.4, 99);
   ASSERT_EQ(2, myApps.size());
@@ -413,9 +413,9 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
 
   // consume the remaining capacity
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1, 2, 3, 4}, 1}, // only 0->1 is still available
-      {2, {0, 1, 3, 4}, 1}, // same for 2->3
-      {4, {0, 1, 2, 3}, 1}, // same for 4->3
+      {0, {1, 2, 3, 4}, 1, 0}, // only 0->1 is still available
+      {2, {0, 1, 3, 4}, 1, 0}, // same for 2->3
+      {4, {0, 1, 2, 3}, 1, 0}, // same for 4->3
   });
   myNetwork.route(myApps, 0.1, 99);
   ASSERT_EQ(3, myApps.size());

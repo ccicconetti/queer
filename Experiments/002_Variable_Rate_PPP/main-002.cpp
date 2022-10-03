@@ -334,14 +334,17 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                   myPeersSet.end(),
                   std::back_inserter(myPeersVector));
         const auto myPriority = 1.0;
-        mySingleRunApps.emplace_back(myHost, myPeersVector, myPriority);
+        mySingleRunApps.emplace_back(myHost,
+                                     myPeersVector,
+                                     myPriority,
+                                     myRaii.in().theFidelityThreshold);
       }
 
       // route applications
       myNetwork->route(mySingleRunApps,
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
                        myRaii.in().theK,
-                       [&myRaii](const auto& aPath) {
+                       [&myRaii](const auto&, const auto& aPath) {
                          assert(not aPath.empty());
                          return qr::fidelitySwapping(
                                     p1,

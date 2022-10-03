@@ -87,10 +87,12 @@ std::string CapacityNetwork::FlowDescriptor::toString() const {
 CapacityNetwork::AppDescriptor::AppDescriptor(
     const unsigned long               aHost,
     const std::vector<unsigned long>& aPeers,
-    const double                      aPriority) noexcept
+    const double                      aPriority,
+    const double                      aFidelityThreshold) noexcept
     : theHost(aHost)
     , thePeers(aPeers)
     , thePriority(aPriority)
+    , theFidelityThreshold(aFidelityThreshold)
     , theRemainingPaths()
     , theAllocated()
     , theVisits(0) {
@@ -441,7 +443,7 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
           myIndexMap,
           aK);
       for (auto& elem : myResult) {
-        const auto myValid = aCheckFunction(elem.second);
+        const auto myValid = aCheckFunction(myApp, elem.second);
         VLOG(2) << myApp.theHost << " -> " << myPeer << ": "
                 << (myValid ? "valid" : "invalid") << " path found ["
                 << elem.first << "] {"

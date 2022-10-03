@@ -111,13 +111,15 @@ class CapacityNetwork final : public Network
 
     AppDescriptor(const unsigned long               aHost,
                   const std::vector<unsigned long>& aPeers,
-                  const double                      aPriority) noexcept;
+                  const double                      aPriority,
+                  const double aFidelityThreshold) noexcept;
 
     // input
     const unsigned long theHost; //!< the vertex that hosts the computation
     const std::vector<unsigned long>
-                 thePeers;    //!< the possible entanglement peers
-    const double thePriority; //! weight
+                 thePeers;             //!< the possible entanglement peers
+    const double thePriority;          //! weight
+    const double theFidelityThreshold; //! fidelity threhold
 
     // working variables
     std::map<unsigned long, std::list<Path>> theRemainingPaths;
@@ -144,7 +146,8 @@ class CapacityNetwork final : public Network
   };
 
   using FlowCheckFunction = std::function<bool(const FlowDescriptor&)>;
-  using AppCheckFunction  = std::function<bool(const AppDescriptor::Path&)>;
+  using AppCheckFunction =
+      std::function<bool(const AppDescriptor&, const AppDescriptor::Path&)>;
 
   // vector of (src, dst)
   using EdgeVector = std::vector<std::pair<unsigned long, unsigned long>>;
@@ -264,7 +267,7 @@ class CapacityNetwork final : public Network
       std::vector<AppDescriptor>& aApps,
       const double                aQuantum,
       const std::size_t           aK,
-      const AppCheckFunction&     aCheckFunction = [](const auto&) {
+      const AppCheckFunction& aCheckFunction = [](const auto&, const auto&) {
         return true;
       });
 
