@@ -52,6 +52,7 @@ SOFTWARE.
 #include <cstdlib>
 #include <iostream>
 #include <iterator>
+#include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -175,26 +176,27 @@ struct Output {
   double      theTotalCapacity = 0;
 
   // routing stats
-  double      theResidualCapacity = 0;
-  std::size_t theNumApps          = 0;
+  double theResidualCapacity = 0;
   struct PerClass {
     // conf
     double thePriority          = 0;
     double theFidelityThreshold = 0;
 
     // stats
-    double theAvgVisits      = 0;
-    double theSumGrossRate   = 0;
-    double theSumNetRate     = 0;
-    double theAvgPathSize    = 0;
-    double theAvgFidelity    = 0;
-    double theFairnessJain   = 0;
-    double theFairnessJitter = 0;
+    std::size_t theNumApps        = 0;
+    double      theAvgVisits      = 0;
+    double      theSumGrossRate   = 0;
+    double      theSumNetRate     = 0;
+    double      theAvgPathSize    = 0;
+    double      theAvgFidelity    = 0;
+    double      theFairnessJain   = 0;
+    double      theFairnessJitter = 0;
 
     static const std::vector<std::string>& names() {
       static std::vector<std::string> ret({
           "priority",
           "fidelity-threshold",
+          "num-apps",
           "avg-visits",
           "sum-gross-rate",
           "sum-net-rate",
@@ -224,7 +226,6 @@ struct Output {
 
         // routing stats
         "capacity-res",
-        "num-apps",
     });
     std::vector<std::string>        ret(myStaticNames);
     for (const auto& myPerClassName : PerClass::names()) {
@@ -245,19 +246,19 @@ struct Output {
              << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
              << theDiameter << ", total capacity " << theTotalCapacity
              << " EPR-pairs/s (residual " << theResidualCapacity
-             << " EPR-pairs/s); " << theNumApps << " applications served; ";
-    for (const auto& myPerClassStat : thePerClassStats) {
-      myStream << "app class priority " << myPerClassStat.thePriority
-               << ", fidelity threshold " << myPerClassStat.theFidelityThreshold
-               << ": total EPR rate net " << myPerClassStat.theSumNetRate
-               << " (gross " << myPerClassStat.theSumGrossRate
-               << ") EPR-pairs/s, " << myPerClassStat.theAvgVisits
+             << " EPR-pairs/s);";
+    for (const auto& stat : thePerClassStats) {
+      myStream << "app class priority " << stat.thePriority
+               << ", fidelity threshold " << stat.theFidelityThreshold << ": "
+               << stat.theNumApps << " applications served,"
+               << " total EPR rate net " << stat.theSumNetRate << " (gross "
+               << stat.theSumGrossRate << ") EPR-pairs/s, " << stat.theAvgVisits
                << " visits on average, average path size "
-               << myPerClassStat.theAvgPathSize
+               << stat.theAvgPathSize
                << ", average fidelity of the end-to-end entangled pair "
-               << myPerClassStat.theAvgFidelity << ", Jain's fairness index "
-               << myPerClassStat.theFairnessJain << ", max rate - min rate "
-               << myPerClassStat.theFairnessJitter << " EPR-pairs/s";
+               << stat.theAvgFidelity << ", Jain's fairness index "
+               << stat.theFairnessJain << ", max rate - min rate "
+               << stat.theFairnessJitter << " EPR-pairs/s";
     }
     return myStream.str();
   }
@@ -267,18 +268,35 @@ struct Output {
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
              << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
-             << ',' << theResidualCapacity << ',' << theNumApps;
-    for (const auto& myPerClassStat : thePerClassStats) {
-      myStream << ',' << myPerClassStat.thePriority << ','
-               << myPerClassStat.theFidelityThreshold << ','
-               << myPerClassStat.theAvgVisits << ','
-               << myPerClassStat.theSumGrossRate << ','
-               << myPerClassStat.theSumNetRate << ','
-               << myPerClassStat.theAvgPathSize << ','
-               << myPerClassStat.theAvgFidelity << ','
-               << myPerClassStat.theFairnessJain << ','
-               << myPerClassStat.theFairnessJitter;
-    }
+             << ',' << theResidualCapacity;
+    struct Printer {
+      Printer(const std::vector<PerClass>& aStats)
+          : theStats(aStats) {
+        // noop
+      }
+      void
+      operator()(std::ostream&                                 aStream,
+                 const std::function<double(const PerClass&)>& aGetter) const {
+        for (const auto& stat : theStats) {
+          aStream << ',' << aGetter(stat);
+        }
+      }
+      const std::vector<PerClass>& theStats;
+    };
+    const Printer myPrinter(thePerClassStats);
+    myPrinter(myStream, [](const auto& elem) { return elem.thePriority; });
+    myPrinter(myStream,
+              [](const auto& elem) { return elem.theFidelityThreshold; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theNumApps; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theAvgVisits; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theSumGrossRate; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theSumNetRate; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theAvgPathSize; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theAvgFidelity; });
+    myPrinter(myStream, [](const auto& elem) { return elem.theFairnessJain; });
+    myPrinter(myStream,
+              [](const auto& elem) { return elem.theFairnessJitter; });
+
     return myStream.str();
   }
 };
@@ -442,8 +460,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
     // traffic metrics
     myOutput.theResidualCapacity = myNetwork->totalCapacity();
-    myOutput.theNumApps          = myApps.size();
     struct PerClassSummaryStats {
+      std::size_t         theNumApps = 0;
       us::SummaryStat     theVisits;
       us::SummaryStat     theGrossRate;
       us::SummaryStat     theNetRate;
@@ -481,6 +499,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       auto& stat = myPerClassSummaryStats[myClassFinder(
           myApp.thePriority, myApp.theFidelityThreshold)];
 
+      stat.theNumApps++;
+
       const auto myHostNetRate = myApp.netRate();
       stat.theNetRates.emplace_back(myHostNetRate);
       stat.theVisits(myApp.theVisits);
@@ -507,9 +527,22 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         stat.theFidelity(myHostFidelity.mean() * myHostFidelity.count());
       }
     }
+
+    assert(myApps.size() == std::accumulate(myPerClassSummaryStats.begin(),
+                                            myPerClassSummaryStats.end(),
+                                            std::size_t(0),
+                                            [](auto aSum, const auto& aElem) {
+                                              return aSum + aElem.theNumApps;
+                                            }));
     assert(myOutput.thePerClassStats.empty());
-    for (const auto& stats : myPerClassSummaryStats) {
+    assert(myPerClassSummaryStats.size() == myClassParams.size());
+
+    for (std::size_t i = 0; i < myPerClassSummaryStats.size(); i++) {
+      auto& stats = myPerClassSummaryStats[i];
       myOutput.thePerClassStats.emplace_back(Output::PerClass{
+          myClassParams[i].thePriority,
+          myClassParams[i].theFidelityThreshold,
+          stats.theNumApps,
           stats.theVisits.mean(),
           stats.theGrossRate.count() * stats.theGrossRate.mean(),
           stats.theNetRate.count() * stats.theNetRate.mean(),
