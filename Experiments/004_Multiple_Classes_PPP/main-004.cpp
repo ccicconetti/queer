@@ -548,8 +548,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
           stats.theNetRate.count() * stats.theNetRate.mean(),
           stats.thePathSize.mean(),
           stats.theFidelity.mean(),
-          us::jainFairnessIndex(stats.theNetRates),
-          stats.theNetRate.max() - stats.theNetRate.min()});
+          stats.theNetRates.empty() ? -1 :
+                                      us::jainFairnessIndex(stats.theNetRates),
+          stats.theNetRates.empty() ?
+              -1 :
+              (stats.theNetRate.max() - stats.theNetRate.min())});
     }
   }
 
