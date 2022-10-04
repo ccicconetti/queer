@@ -73,10 +73,11 @@ struct Parameters {
   double theLinkMaxEpr;
 
   // system
-  double      theQ;
-  double      theQuantum;
-  std::size_t theK;
-  double      theFidelityInit;
+  qr::AppRouteAlgo theAlgo;
+  double           theQ;
+  double           theQuantum;
+  std::size_t      theK;
+  double           theFidelityInit;
 
   // applications
   std::size_t         theNumApps;
@@ -101,6 +102,7 @@ struct Parameters {
         "link-min-epr",
         "link-max-epr",
 
+        "algorithm",
         "q",
         "quantum",
         "k",
@@ -128,7 +130,8 @@ struct Parameters {
              << " m apart, and the EPR generation rate of the list is drawn "
                 "randomly from U["
              << theLinkMinEpr << ',' << theLinkMaxEpr
-             << "]; probability of correct BSM " << theQ << ", quantum "
+             << "]; resource allocation algorithm " << qr::toString(theAlgo)
+             << ", probability of correct BSM " << theQ << ", quantum "
              << theQuantum << " EPR-pairs/s, max " << theK
              << " shortest paths per host/destination pair"
              << ", fidelity of freshly generated pairs " << theFidelityInit
@@ -154,10 +157,11 @@ struct Parameters {
     std::stringstream myStream;
     myStream << theSeed << ',' << theMu << ',' << theGridLength << ','
              << theThreshold << ',' << theLinkProbability << ','
-             << theLinkMinEpr << ',' << theLinkMaxEpr << ',' << theQ << ','
-             << theQuantum << ',' << theK << ',' << theFidelityInit << ','
-             << theNumApps << ',' << theNumPeersMin << ',' << theNumPeersMax
-             << ',' << theDistanceMin << ',' << theDistanceMax << ','
+             << theLinkMinEpr << ',' << theLinkMaxEpr << ','
+             << qr::toString(theAlgo) << ',' << theQ << ',' << theQuantum << ','
+             << theK << ',' << theFidelityInit << ',' << theNumApps << ','
+             << theNumPeersMin << ',' << theNumPeersMax << ',' << theDistanceMin
+             << ',' << theDistanceMax << ','
              << ::toStringStd(theFidelityThresholds, "@") << ','
              << ::toStringStd(thePriorities, "@") << ',' << theTargetResidual;
     return myStream.str();
@@ -438,6 +442,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
       // route applications
       myNetwork->route(mySingleRunApps,
+                       myRaii.in().theAlgo,
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
                        myRaii.in().theK,
                        [&myRaii](const auto& aApp, const auto& aPath) {
@@ -612,6 +617,7 @@ int main(int argc, char* argv[]) {
   double      myGridSize;
   double      myThreshold;
   double      myLinkProbability;
+  std::string myAlgorithm;
   double      myQ;
   double      myQuantum;
   std::size_t myK;
@@ -681,6 +687,9 @@ int main(int argc, char* argv[]) {
     ("link-probability",
      po::value<double>(&myLinkProbability)->default_value(1),
      "Link creation probability.")
+    ("algorithm",
+     po::value<std::string>(&myAlgorithm)->default_value(qr::toString(qr::AppRouteAlgo::Drr)),
+     (std::string("Algorithm to be used, one of: ") + toString(qr::allAppRouteAlgos(), ", ", [](const auto& aAlgo) { return toString(aAlgo); })).c_str())
     ("q",
      po::value<double>(&myQ)->default_value(0.5),
      "Correct measurement probability.")
@@ -748,6 +757,7 @@ int main(int argc, char* argv[]) {
                                    myLinkProbability,
                                    myLinkMinEpr,
                                    myLinkMaxEpr,
+                                   qr::appRouteAlgofromString(myAlgorithm),
                                    myQ,
                                    myQuantum,
                                    myK,

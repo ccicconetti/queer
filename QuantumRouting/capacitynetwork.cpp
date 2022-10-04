@@ -53,6 +53,44 @@ SOFTWARE.
 namespace uiiit {
 namespace qr {
 
+std::vector<AppRouteAlgo> allAppRouteAlgos() {
+  static const std::vector<AppRouteAlgo> myAlgos({
+      AppRouteAlgo::Random,
+      AppRouteAlgo::BestFit,
+      AppRouteAlgo::Drr,
+  });
+  return myAlgos;
+}
+
+std::string toString(const AppRouteAlgo aAlgo) {
+  switch (aAlgo) {
+    case AppRouteAlgo::Random:
+      return "random";
+    case AppRouteAlgo::BestFit:
+      return "best-fit";
+    case AppRouteAlgo::Drr:
+      return "drr";
+    default:; /* fall-through */
+  }
+  return "unknown";
+}
+
+AppRouteAlgo appRouteAlgofromString(const std::string& aAlgo) {
+  if (aAlgo == "random") {
+    return AppRouteAlgo::Random;
+  } else if (aAlgo == "best-fit") {
+    return AppRouteAlgo::BestFit;
+  } else if (aAlgo == "drr") {
+    return AppRouteAlgo::Drr;
+  }
+  throw std::runtime_error(
+      "invalid app route algorithm: " + aAlgo + " (valid options are: " +
+      ::toString(allAppRouteAlgos(),
+                 ",",
+                 [](const auto& aAlgo) { return toString(aAlgo); }) +
+      ")");
+}
+
 CapacityNetwork::FlowDescriptor::FlowDescriptor(const unsigned long aSrc,
                                                 const unsigned long aDst,
                                                 const double aNetRate) noexcept
@@ -382,19 +420,12 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
 }
 
 void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
+                            const AppRouteAlgo          aAlgo,
                             const double                aQuantum,
                             const std::size_t           aK,
                             const AppCheckFunction&     aCheckFunction) {
-  if (aK == 0) {
-    throw std::runtime_error("invalid k: cannot be null");
-  }
-  if (aQuantum <= 0) {
-    throw std::runtime_error("invalid non-positive quantum value: " +
-                             std::to_string(aQuantum));
-  }
-  const auto V = boost::num_vertices(theGraph);
-
   // pre-condition checks
+  const auto V = boost::num_vertices(theGraph);
   for (const auto& myApp : aApps) {
     assert(myApp.theRemainingPaths.empty());
     assert(myApp.theAllocated.empty());
@@ -418,6 +449,193 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
       throw std::runtime_error("invalid nonpositive priority for app: " +
                                std::to_string(myApp.thePriority));
     }
+  }
+
+  if (aAlgo == AppRouteAlgo::Drr) {
+    routeDrr(aApps, aQuantum, aK, aCheckFunction);
+  } else {
+    // XXX unimplemented
+  }
+}
+
+void CapacityNetwork::addCapacityToPath(
+    const VertexDescriptor               aSrc,
+    const std::vector<VertexDescriptor>& aPath,
+    const double                         aCapacity) {
+  removeCapacityFromPath(aSrc, aPath, -aCapacity, theGraph);
+}
+
+std::vector<double> CapacityNetwork::nodeCapacities() const {
+  std::vector<double> ret(boost::num_vertices(theGraph), 0);
+  for (const auto& myNode :
+       boost::make_iterator_range(boost::vertices(theGraph))) {
+    double myCapacity = 0;
+    for (const auto& myEdge :
+         boost::make_iterator_range(boost::out_edges(myNode, theGraph))) {
+      myCapacity += boost::get(boost::edge_weight, theGraph, myEdge);
+    }
+    assert(myNode < ret.size());
+    ret[myNode] = myCapacity;
+  }
+  return ret;
+}
+
+void CapacityNetwork::toGnuplot(
+    const std::string&             aFilename,
+    const std::vector<Coordinate>& aCoordinates) const {
+  if (boost::num_vertices(theGraph) == 0 or aFilename.empty()) {
+    return;
+  }
+
+  if (boost::num_vertices(theGraph) != aCoordinates.size()) {
+    throw std::runtime_error("Invalid number of coordinates: expected " +
+                             std::to_string(boost::num_vertices(theGraph)) +
+                             ", got " + std::to_string(aCoordinates.size()));
+  }
+
+  const auto myCapacities = nodeCapacities();
+  assert(myCapacities.size() == boost::num_vertices(theGraph));
+
+  std::ofstream myOutVertices(aFilename + "-vertices.dat");
+  for (std::size_t i = 0; i < aCoordinates.size(); i++) {
+    myOutVertices << i << ',' << std::get<0>(aCoordinates[i]) << ','
+                  << std::get<1>(aCoordinates[i]) << ','
+                  << std::get<2>(aCoordinates[i]) << ',' << myCapacities[i]
+                  << '\n';
+  }
+
+  std::ofstream myOutEdges(aFilename + "-edges.dat");
+  for (const auto& myEdge :
+       boost::make_iterator_range(boost::edges(theGraph))) {
+    myOutEdges << std::get<0>(aCoordinates[myEdge.m_source]) << ','
+               << std::get<1>(aCoordinates[myEdge.m_source]) << '\n'
+               << std::get<0>(aCoordinates[myEdge.m_target]) << ','
+               << std::get<1>(aCoordinates[myEdge.m_target]) << '\n'
+               << '\n';
+  }
+}
+
+bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
+                                    const std::vector<VertexDescriptor>& aPath,
+                                    const double aCapacity,
+                                    const Graph& aGraph) {
+  auto mySrc = aSrc;
+  for (std::size_t i = 0; i < aPath.size(); i++) {
+    auto myDst = aPath[i];
+
+    EdgeDescriptor        myEdge;
+    [[maybe_unused]] auto myFound = false;
+    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
+    assert(myFound);
+    if (boost::get(boost::edge_weight, aGraph, myEdge) < aCapacity) {
+      return false;
+    }
+
+    // move to the next edge
+    mySrc = myDst;
+  }
+  return true;
+}
+
+void CapacityNetwork::removeSmallestCapacityEdge(
+    const VertexDescriptor               aSrc,
+    const std::vector<VertexDescriptor>& aPath,
+    Graph&                               aGraph) {
+  auto           mySrc = aSrc;
+  EdgeDescriptor mySmallestCapacityEdge;
+  double         mySmallestCapacity = std::numeric_limits<double>::max();
+  for (std::size_t i = 0; i < aPath.size(); i++) {
+    auto myDst = aPath[i];
+
+    EdgeDescriptor        myEdge;
+    [[maybe_unused]] auto myFound = false;
+    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
+    assert(myFound);
+    const auto myCapacity = boost::get(boost::edge_weight, aGraph, myEdge);
+    if (myCapacity < mySmallestCapacity) {
+      mySmallestCapacity     = myCapacity;
+      mySmallestCapacityEdge = myEdge;
+    }
+
+    // move to the next edge
+    mySrc = myDst;
+  }
+  boost::remove_edge(mySmallestCapacityEdge, aGraph);
+}
+
+void CapacityNetwork::removeCapacityFromPath(
+    const VertexDescriptor               aSrc,
+    const std::vector<VertexDescriptor>& aPath,
+    const double                         aCapacity,
+    Graph&                               aGraph) {
+  auto mySrc     = aSrc;
+  auto myWeights = boost::get(boost::edge_weight, aGraph);
+  for (std::size_t i = 0; i < aPath.size(); i++) {
+    auto myDst = aPath[i];
+
+    EdgeDescriptor        myEdge;
+    [[maybe_unused]] auto myFound = false;
+    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
+    if (not myFound) {
+      throw std::runtime_error("edge not in the graph: " + ::toString(myEdge));
+    }
+    if (myWeights[myEdge] < aCapacity) {
+      throw std::runtime_error("cannot remove capacity " +
+                               std::to_string(aCapacity) + " > " +
+                               std::to_string(myWeights[myEdge]) +
+                               " for edge " + ::toString(myEdge));
+    }
+    myWeights[myEdge] -= aCapacity;
+
+    // move to the next edge
+    mySrc = myDst;
+  }
+}
+
+std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
+    const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
+        aPropFunctor) const {
+  auto        myRange = boost::vertices(theGraph);
+  std::size_t myMin   = std::numeric_limits<std::size_t>::max();
+  std::size_t myMax   = 0;
+  for (auto it = myRange.first; it != myRange.second; ++it) {
+    const auto myCur = aPropFunctor(*it, theGraph);
+    if (myCur < myMin) {
+      myMin = myCur;
+    }
+    if (myCur > myMax) {
+      myMax = myCur;
+    }
+  }
+  return {myMin, myMax};
+}
+
+double CapacityNetwork::toGrossRate(const double      aNetRate,
+                                    const std::size_t aNumEdges) const {
+  if (aNumEdges <= 1) {
+    return aNetRate;
+  }
+  return aNetRate / std::pow(theMeasurementProbability, aNumEdges - 1);
+}
+
+double CapacityNetwork::toNetRate(const double      aGrossRate,
+                                  const std::size_t aNumEdges) const {
+  if (aNumEdges <= 1) {
+    return aGrossRate;
+  }
+  return aGrossRate * std::pow(theMeasurementProbability, aNumEdges - 1);
+}
+
+void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
+                               const double                aQuantum,
+                               const std::size_t           aK,
+                               const AppCheckFunction&     aCheckFunction) {
+  if (aK == 0) {
+    throw std::runtime_error("invalid k: cannot be null");
+  }
+  if (aQuantum <= 0) {
+    throw std::runtime_error("invalid non-positive quantum value: " +
+                             std::to_string(aQuantum));
   }
 
   // determine the quantum per application
@@ -570,173 +788,6 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
       myCurAppIt = myActiveApps.begin();
     }
   }
-}
-
-void CapacityNetwork::addCapacityToPath(
-    const VertexDescriptor               aSrc,
-    const std::vector<VertexDescriptor>& aPath,
-    const double                         aCapacity) {
-  removeCapacityFromPath(aSrc, aPath, -aCapacity, theGraph);
-}
-
-std::vector<double> CapacityNetwork::nodeCapacities() const {
-  std::vector<double> ret(boost::num_vertices(theGraph), 0);
-  for (const auto& myNode :
-       boost::make_iterator_range(boost::vertices(theGraph))) {
-    double myCapacity = 0;
-    for (const auto& myEdge :
-         boost::make_iterator_range(boost::out_edges(myNode, theGraph))) {
-      myCapacity += boost::get(boost::edge_weight, theGraph, myEdge);
-    }
-    assert(myNode < ret.size());
-    ret[myNode] = myCapacity;
-  }
-  return ret;
-}
-
-void CapacityNetwork::toGnuplot(
-    const std::string&             aFilename,
-    const std::vector<Coordinate>& aCoordinates) const {
-  if (boost::num_vertices(theGraph) == 0 or aFilename.empty()) {
-    return;
-  }
-
-  if (boost::num_vertices(theGraph) != aCoordinates.size()) {
-    throw std::runtime_error("Invalid number of coordinates: expected " +
-                             std::to_string(boost::num_vertices(theGraph)) +
-                             ", got " + std::to_string(aCoordinates.size()));
-  }
-
-  const auto myCapacities = nodeCapacities();
-  assert(myCapacities.size() == boost::num_vertices(theGraph));
-
-  std::ofstream myOutVertices(aFilename + "-vertices.dat");
-  for (std::size_t i = 0; i < aCoordinates.size(); i++) {
-    myOutVertices << i << ',' << std::get<0>(aCoordinates[i]) << ','
-                  << std::get<1>(aCoordinates[i]) << ','
-                  << std::get<2>(aCoordinates[i]) << ',' << myCapacities[i]
-                  << '\n';
-  }
-
-  std::ofstream myOutEdges(aFilename + "-edges.dat");
-  for (const auto& myEdge :
-       boost::make_iterator_range(boost::edges(theGraph))) {
-    myOutEdges << std::get<0>(aCoordinates[myEdge.m_source]) << ','
-               << std::get<1>(aCoordinates[myEdge.m_source]) << '\n'
-               << std::get<0>(aCoordinates[myEdge.m_target]) << ','
-               << std::get<1>(aCoordinates[myEdge.m_target]) << '\n'
-               << '\n';
-  }
-}
-
-bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
-                                    const std::vector<VertexDescriptor>& aPath,
-                                    const double aCapacity,
-                                    const Graph& aGraph) {
-  auto mySrc = aSrc;
-  for (std::size_t i = 0; i < aPath.size(); i++) {
-    auto myDst = aPath[i];
-
-    EdgeDescriptor        myEdge;
-    [[maybe_unused]] auto myFound = false;
-    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
-    assert(myFound);
-    if (boost::get(boost::edge_weight, aGraph, myEdge) < aCapacity) {
-      return false;
-    }
-
-    // move to the next edge
-    mySrc = myDst;
-  }
-  return true;
-}
-
-void CapacityNetwork::removeSmallestCapacityEdge(
-    const VertexDescriptor               aSrc,
-    const std::vector<VertexDescriptor>& aPath,
-    Graph&                               aGraph) {
-  auto           mySrc = aSrc;
-  EdgeDescriptor mySmallestCapacityEdge;
-  double         mySmallestCapacity = std::numeric_limits<double>::max();
-  for (std::size_t i = 0; i < aPath.size(); i++) {
-    auto myDst = aPath[i];
-
-    EdgeDescriptor        myEdge;
-    [[maybe_unused]] auto myFound = false;
-    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
-    assert(myFound);
-    const auto myCapacity = boost::get(boost::edge_weight, aGraph, myEdge);
-    if (myCapacity < mySmallestCapacity) {
-      mySmallestCapacity     = myCapacity;
-      mySmallestCapacityEdge = myEdge;
-    }
-
-    // move to the next edge
-    mySrc = myDst;
-  }
-  boost::remove_edge(mySmallestCapacityEdge, aGraph);
-}
-
-void CapacityNetwork::removeCapacityFromPath(
-    const VertexDescriptor               aSrc,
-    const std::vector<VertexDescriptor>& aPath,
-    const double                         aCapacity,
-    Graph&                               aGraph) {
-  auto mySrc     = aSrc;
-  auto myWeights = boost::get(boost::edge_weight, aGraph);
-  for (std::size_t i = 0; i < aPath.size(); i++) {
-    auto myDst = aPath[i];
-
-    EdgeDescriptor        myEdge;
-    [[maybe_unused]] auto myFound = false;
-    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
-    if (not myFound) {
-      throw std::runtime_error("edge not in the graph: " + toString(myEdge));
-    }
-    if (myWeights[myEdge] < aCapacity) {
-      throw std::runtime_error(
-          "cannot remove capacity " + std::to_string(aCapacity) + " > " +
-          std::to_string(myWeights[myEdge]) + " for edge " + toString(myEdge));
-    }
-    myWeights[myEdge] -= aCapacity;
-
-    // move to the next edge
-    mySrc = myDst;
-  }
-}
-
-std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
-    const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
-        aPropFunctor) const {
-  auto        myRange = boost::vertices(theGraph);
-  std::size_t myMin   = std::numeric_limits<std::size_t>::max();
-  std::size_t myMax   = 0;
-  for (auto it = myRange.first; it != myRange.second; ++it) {
-    const auto myCur = aPropFunctor(*it, theGraph);
-    if (myCur < myMin) {
-      myMin = myCur;
-    }
-    if (myCur > myMax) {
-      myMax = myCur;
-    }
-  }
-  return {myMin, myMax};
-}
-
-double CapacityNetwork::toGrossRate(const double      aNetRate,
-                                    const std::size_t aNumEdges) const {
-  if (aNumEdges <= 1) {
-    return aNetRate;
-  }
-  return aNetRate / std::pow(theMeasurementProbability, aNumEdges - 1);
-}
-
-double CapacityNetwork::toNetRate(const double      aGrossRate,
-                                  const std::size_t aNumEdges) const {
-  if (aNumEdges <= 1) {
-    return aGrossRate;
-  }
-  return aGrossRate * std::pow(theMeasurementProbability, aNumEdges - 1);
 }
 
 } // namespace qr

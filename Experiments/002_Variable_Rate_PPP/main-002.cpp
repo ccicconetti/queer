@@ -342,6 +342,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
       // route applications
       myNetwork->route(mySingleRunApps,
+                       qr::AppRouteAlgo::Drr,
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
                        myRaii.in().theK,
                        [&myRaii](const auto&, const auto& aPath) {

@@ -335,32 +335,39 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {0, {0}, 1, 0},
   });
-  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
+               std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {0, {42}, 1, 0},
   });
-  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
+               std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {0, {1}, 0, 0},
   });
-  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
+               std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {0, {1}, -1, 0},
   });
-  ASSERT_THROW(myNetwork.route(myApps, 1, 1), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
+               std::runtime_error);
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {0, {1}, 1, 0},
   });
-  ASSERT_THROW(myNetwork.route(myApps, 0, 1), std::runtime_error);
-  ASSERT_THROW(myNetwork.route(myApps, -1, 1), std::runtime_error);
-  ASSERT_THROW(myNetwork.route(myApps, 1, 0), std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 0, 1),
+               std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, -1, 1),
+               std::runtime_error);
+  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 0),
+               std::runtime_error);
 
   // no route existing
   myApps = std::vector<CapacityNetwork::AppDescriptor>({
       {3, {2, 0}, 1, 0},
       {2, {1}, 1, 0},
   });
-  myNetwork.route(myApps, 1.4, 99);
+  myNetwork.route(myApps, AppRouteAlgo::Drr, 1.4, 99);
   ASSERT_EQ(2, myApps.size());
   ASSERT_EQ(0, myApps[0].theAllocated.size());
   ASSERT_FLOAT_EQ(0, myApps[0].grossRate());
@@ -372,7 +379,7 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
       {0, {2, 3}, 1, 0},
       {1, {3}, 1, 0},
   });
-  myNetwork.route(myApps, 1.4, 99);
+  myNetwork.route(myApps, AppRouteAlgo::Drr, 1.4, 99);
   ASSERT_EQ(2, myApps.size());
   ASSERT_TRUE(myApps[0].theRemainingPaths.empty());
   ASSERT_EQ(8, myApps[0].theVisits);
@@ -417,7 +424,7 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
       {2, {0, 1, 3, 4}, 1, 0}, // same for 2->3
       {4, {0, 1, 2, 3}, 1, 0}, // same for 4->3
   });
-  myNetwork.route(myApps, 0.1, 99);
+  myNetwork.route(myApps, AppRouteAlgo::Drr, 0.1, 99);
   ASSERT_EQ(3, myApps.size());
   ASSERT_EQ(1, myApps[0].theAllocated.size());
   ASSERT_EQ(1, myApps[1].theAllocated.size());
