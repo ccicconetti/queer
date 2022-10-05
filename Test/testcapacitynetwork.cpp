@@ -45,6 +45,8 @@ SOFTWARE.
   myNetwork.route(myApps, AppRouteAlgo::Drr, q, myRouteRv, k)
 #define ROUTE_RND(k)                                                           \
   myNetwork.route(myApps, AppRouteAlgo::Random, -1, myRouteRv, k)
+#define ROUTE_BFT(k)                                                           \
+  myNetwork.route(myApps, AppRouteAlgo::BestFit, -1, myRouteRv, k)
 
 namespace uiiit {
 namespace qr {
@@ -103,6 +105,14 @@ struct TestCapacityNetwork : public ::testing::Test {
     });
   }
 };
+
+TEST_F(TestCapacityNetwork, test_app_route_algo) {
+  for (const auto& myAlgo : allAppRouteAlgos()) {
+    ASSERT_EQ(myAlgo, appRouteAlgofromString(toString(myAlgo)));
+  }
+  ASSERT_EQ("unknown", toString(static_cast<AppRouteAlgo>(999)));
+  ASSERT_THROW(appRouteAlgofromString("not-existing-algo"), std::runtime_error);
+}
 
 TEST_F(TestCapacityNetwork, test_random_weights) {
   support::UniformRv myRv(0, 100, std::time(nullptr), 0, 0);
@@ -490,6 +500,51 @@ TEST_F(TestCapacityNetwork, test_route_apps_rnd) {
   }
   ASSERT_EQ(2, myAllocations[0].size());
   ASSERT_EQ(2, myAllocations[1].size());
+}
+
+TEST_F(TestCapacityNetwork, test_route_apps_bft) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+  support::UniformRv myRouteRv(0, 1, 42, 0, 0);
+
+  Apps myApps = Apps({
+      {0, {3}, 1, 0},
+      {1, {2, 3}, 1, 0},
+      {2, {3}, 1, 0},
+  });
+  ROUTE_BFT(99);
+
+  ASSERT_EQ(3, myApps.size());
+  for (const auto& myApp : myApps) {
+    ASSERT_TRUE(myApp.theRemainingPaths.empty());
+  }
+  LOG(INFO) << myApps[0].toString();
+  LOG(INFO) << myApps[1].toString();
+  LOG(INFO) << myApps[2].toString();
+
+  ASSERT_EQ(3, myApps[0].theVisits);
+  ASSERT_EQ(1, myApps[0].theAllocated.size());
+  ASSERT_EQ(1, myApps[0].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({4, 3}),
+            myApps[0].theAllocated[3][0].theHops);
+  ASSERT_FLOAT_EQ(0.5, myApps[0].netRate());
+  ASSERT_FLOAT_EQ(1, myApps[0].grossRate());
+
+  ASSERT_EQ(3, myApps[1].theVisits);
+  ASSERT_EQ(1, myApps[1].theAllocated.size());
+  ASSERT_EQ(1, myApps[1].theAllocated[2].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({2}),
+            myApps[1].theAllocated[2][0].theHops);
+  ASSERT_FLOAT_EQ(4, myApps[1].netRate());
+  ASSERT_FLOAT_EQ(4, myApps[1].grossRate());
+
+  ASSERT_EQ(2, myApps[2].theVisits);
+  ASSERT_EQ(1, myApps[2].theAllocated.size());
+  ASSERT_EQ(1, myApps[2].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({3}),
+            myApps[2].theAllocated[3][0].theHops);
+  ASSERT_FLOAT_EQ(4, myApps[2].netRate());
+  ASSERT_FLOAT_EQ(4, myApps[2].grossRate());
 }
 
 TEST_F(TestCapacityNetwork, test_add_capacity_to_edge) {

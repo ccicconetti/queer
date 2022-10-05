@@ -124,6 +124,8 @@ class CapacityNetwork final : public Network
                   const double                      aPriority,
                   const double aFidelityThreshold) noexcept;
 
+    bool operator<(const AppDescriptor& aOther) const;
+
     // input
     const unsigned long theHost; //!< the vertex that hosts the computation
     const std::vector<unsigned long> thePeers;    //!< entanglement peers

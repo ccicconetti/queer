@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "yen/yen_ksp.hpp"
 
+#include <algorithm>
 #include <boost/graph/detail/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/filtered_graph.hpp>
@@ -67,7 +68,7 @@ std::string toString(const AppRouteAlgo aAlgo) {
     case AppRouteAlgo::Random:
       return "random";
     case AppRouteAlgo::BestFit:
-      return "best-fit";
+      return "bestfit";
     case AppRouteAlgo::Drr:
       return "drr";
     default:; /* fall-through */
@@ -78,7 +79,7 @@ std::string toString(const AppRouteAlgo aAlgo) {
 AppRouteAlgo appRouteAlgofromString(const std::string& aAlgo) {
   if (aAlgo == "random") {
     return AppRouteAlgo::Random;
-  } else if (aAlgo == "best-fit") {
+  } else if (aAlgo == "bestfit") {
     return AppRouteAlgo::BestFit;
   } else if (aAlgo == "drr") {
     return AppRouteAlgo::Drr;
@@ -135,6 +136,14 @@ CapacityNetwork::AppDescriptor::AppDescriptor(
     , theAllocated()
     , theVisits(0) {
   // noop
+}
+
+bool CapacityNetwork::AppDescriptor::operator<(
+    const AppDescriptor& aOther) const {
+  return not theRemainingPaths.empty() and
+         (aOther.theRemainingPaths.empty() or
+          theRemainingPaths.begin()->first <
+              aOther.theRemainingPaths.begin()->first);
 }
 
 CapacityNetwork::AppDescriptor::AppDescriptor::Output::Output(const Path& aPath)
@@ -685,7 +694,6 @@ void CapacityNetwork::routeRandom(std::vector<AppDescriptor>& aApps,
   while (not myAppIndices.empty()) {
     const auto myRndNdx = support::choice(myAppIndices, aRv);
     auto&      myCurApp = aApps[myRndNdx];
-    myCurApp.theVisits++;
     schedule(myCurApp, myInfinite);
     if (myCurApp.theRemainingPaths.empty()) {
       auto it = std::find(myAppIndices.begin(), myAppIndices.end(), myRndNdx);
@@ -696,6 +704,16 @@ void CapacityNetwork::routeRandom(std::vector<AppDescriptor>& aApps,
 }
 
 void CapacityNetwork::routeBestFit(std::vector<AppDescriptor>& aApps) {
+  // iterate until there are no more applications with remaining paths
+  // at each iteration select an app with minimum path length
+  auto myInfinite = std::numeric_limits<double>::max();
+  while (true) {
+    auto it = std::min_element(aApps.begin(), aApps.end());
+    if (it->theRemainingPaths.empty()) {
+      break;
+    }
+    schedule(*it, myInfinite);
+  }
 }
 
 void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
@@ -732,7 +750,6 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
 
     // loop until there are valid paths and capacity to be allocated
     while (not myCurApp.theRemainingPaths.empty() and myResidualCapacity > 0) {
-      ++myCurApp.theVisits;
       schedule(myCurApp, myResidualCapacity);
     }
 
@@ -755,6 +772,9 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
 }
 
 bool CapacityNetwork::schedule(AppDescriptor& aApp, double& aResidualCapacity) {
+  // one more visit to this application
+  aApp.theVisits++;
+
   // select the first of the shortest paths of the current app
   const auto& myCandidate = aApp.theRemainingPaths.begin()->second.front();
   VLOG(2) << "host " << aApp.theHost << ", path {"
