@@ -56,6 +56,7 @@ SOFTWARE.
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 namespace po = boost::program_options;
 namespace qr = uiiit::qr;
@@ -645,7 +646,7 @@ int main(int argc, char* argv[]) {
      "Save the network to this Graphviz file.")
     ("num-threads",
      po::value<std::size_t>(&myNumThreads)->default_value(1),
-     "Number of threads used.")
+     "Number of threads used. If 0, then use the hardware concurrency value.")
     ("output",
      po::value<std::string>(&myOutputFilename)->default_value("output.csv"),
      "Output file name.")
@@ -738,6 +739,11 @@ int main(int argc, char* argv[]) {
 
     if (explainOrPrint(myVarMap, myPriorities, myFidelityThresholds)) {
       return EXIT_SUCCESS;
+    }
+
+    if (myNumThreads == 0) {
+      myNumThreads = std::thread::hardware_concurrency();
+      VLOG(1) << "using " << myNumThreads << " threads";
     }
 
     std::ofstream myFile(myOutputFilename,
