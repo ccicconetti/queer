@@ -360,9 +360,7 @@ class CapacityNetwork final : public Network
   double toNetRate(const double aGrossRate, const std::size_t aNumEdges) const;
 
   //! Resource allocation of apps using DRR.
-  void routeDrr(std::vector<AppDescriptor>& aApps,
-                const double                aQuantum,
-                const AppCheckFunction&     aCheckFunction);
+  void routeDrr(std::vector<AppDescriptor>& aApps, const double aQuantum);
 
  private:
   Graph  theGraph;

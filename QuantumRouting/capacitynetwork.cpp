@@ -424,6 +424,7 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
                             const double                aQuantum,
                             const std::size_t           aK,
                             const AppCheckFunction&     aCheckFunction) {
+  // check arguments
   if (aK == 0) {
     throw std::runtime_error("invalid k: cannot be null");
   }
@@ -487,7 +488,7 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
   }
 
   if (aAlgo == AppRouteAlgo::Drr) {
-    routeDrr(aApps, aQuantum, aCheckFunction);
+    routeDrr(aApps, aQuantum);
   } else {
     // XXX unimplemented
   }
@@ -662,8 +663,7 @@ double CapacityNetwork::toNetRate(const double      aGrossRate,
 }
 
 void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
-                               const double                aQuantum,
-                               const AppCheckFunction&     aCheckFunction) {
+                               const double                aQuantum) {
   if (aQuantum <= 0) {
     throw std::runtime_error("invalid non-positive quantum value: " +
                              std::to_string(aQuantum));
