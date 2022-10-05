@@ -10,6 +10,10 @@ if [ "$SEED_END" == "" ] ; then
   SEED_END=5000
 fi
 
+if [ "$NUM_THREADS" == "" ] ; then
+  NUM_THREADS=0
+fi
+
 if [[ "$DRY" == "" && ! -d "data" ]] ; then
   mkdir data 2> /dev/null
 fi
@@ -40,7 +44,7 @@ for n in $numapps ; do
 
   output=out-$t-$a-$n
   cmd="$MAIN \
-    --num-threads 0 \
+    --num-threads $NUM_THREADS \
     --seed-start $SEED_START \
     --seed-end $SEED_END  \
     --mu $mu \
