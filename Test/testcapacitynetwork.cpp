@@ -41,10 +41,17 @@ SOFTWARE.
 #include <set>
 #include <stdexcept>
 
+#define ROUTE_DRR(q, k)                                                        \
+  myNetwork.route(myApps, AppRouteAlgo::Drr, q, myRouteRv, k)
+#define ROUTE_RND(k)                                                           \
+  myNetwork.route(myApps, AppRouteAlgo::Random, -1, myRouteRv, k)
+
 namespace uiiit {
 namespace qr {
 
 struct TestCapacityNetwork : public ::testing::Test {
+  using Apps = std::vector<CapacityNetwork::AppDescriptor>;
+
   CapacityNetwork::EdgeVector exampleEdges() {
     return CapacityNetwork::EdgeVector({
         {0, 1},
@@ -326,54 +333,34 @@ TEST_F(TestCapacityNetwork, test_route_flows_another) {
   ASSERT_EQ(std::vector<unsigned long>({4, 3}), myFlows[0].thePath);
 }
 
-TEST_F(TestCapacityNetwork, test_route_apps) {
+TEST_F(TestCapacityNetwork, test_route_apps_drr) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
   myNetwork.measurementProbability(0.5);
-  std::vector<CapacityNetwork::AppDescriptor> myApps;
+  support::UniformRv myRouteRv(0, 1, 42, 0, 0);
+  Apps               myApps;
 
   // ill-formed requests
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {0}, 1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {42}, 1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 0, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, -1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 0, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, -1, 1),
-               std::runtime_error);
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
-      {0, {1}, 1, 0},
-  });
-  ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 0),
-               std::runtime_error);
+  myApps = Apps({{0, {0}, 1, 0}});
+  ASSERT_THROW(ROUTE_DRR(1, 1), std::runtime_error);
+  myApps = Apps({{0, {42}, 1, 0}});
+  ASSERT_THROW(ROUTE_DRR(1, 1), std::runtime_error);
+  myApps = Apps({{0, {1}, 0, 0}});
+  ASSERT_THROW(ROUTE_DRR(1, 1), std::runtime_error);
+  myApps = Apps({{0, {1}, -1, 0}});
+  ASSERT_THROW(ROUTE_DRR(1, 1), std::runtime_error);
+  myApps = Apps({{0, {1}, 1, 0}});
+  ASSERT_THROW(ROUTE_DRR(0, 1), std::runtime_error);
+  myApps = Apps({{0, {1}, 1, 0}});
+  ASSERT_THROW(ROUTE_DRR(-1, 1), std::runtime_error);
+  myApps = Apps({{0, {1}, 1, 0}});
+  ASSERT_THROW(ROUTE_DRR(1, 0), std::runtime_error);
 
   // no route existing
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+  myApps = Apps({
       {3, {2, 0}, 1, 0},
       {2, {1}, 1, 0},
   });
-  myNetwork.route(myApps, AppRouteAlgo::Drr, 1.4, 99);
+  ROUTE_DRR(1.4, 99);
   ASSERT_EQ(2, myApps.size());
   ASSERT_EQ(0, myApps[0].theAllocated.size());
   ASSERT_FLOAT_EQ(0, myApps[0].grossRate());
@@ -381,11 +368,11 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   ASSERT_FLOAT_EQ(0, myApps[1].grossRate());
 
   // existing routes
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+  myApps = Apps({
       {0, {2, 3}, 1, 0},
       {1, {3}, 1, 0},
   });
-  myNetwork.route(myApps, AppRouteAlgo::Drr, 1.4, 99);
+  ROUTE_DRR(1.4, 99);
   ASSERT_EQ(2, myApps.size());
   ASSERT_TRUE(myApps[0].theRemainingPaths.empty());
   ASSERT_EQ(8, myApps[0].theVisits);
@@ -425,12 +412,12 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   ASSERT_FLOAT_EQ(3, std::get<2>(myWeights[2]));
 
   // consume the remaining capacity
-  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+  myApps = Apps({
       {0, {1, 2, 3, 4}, 1, 0}, // only 0->1 is still available
       {2, {0, 1, 3, 4}, 1, 0}, // same for 2->3
       {4, {0, 1, 2, 3}, 1, 0}, // same for 4->3
   });
-  myNetwork.route(myApps, AppRouteAlgo::Drr, 0.1, 99);
+  ROUTE_DRR(0.1, 99);
   ASSERT_EQ(3, myApps.size());
   ASSERT_EQ(1, myApps[0].theAllocated.size());
   ASSERT_EQ(1, myApps[1].theAllocated.size());
@@ -442,6 +429,67 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   ASSERT_EQ(64, myApps[1].theVisits);
   ASSERT_EQ(92, myApps[2].theVisits);
   ASSERT_FLOAT_EQ(0, myNetwork.totalCapacity());
+}
+
+TEST_F(TestCapacityNetwork, test_route_apps_rnd) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+  support::UniformRv myRouteRv(0, 1, 42, 0, 0);
+
+  Apps myApps = Apps({
+      {0, {2, 3}, 1, 0},
+      {1, {3}, 1, 0},
+  });
+  ROUTE_RND(99);
+
+  ASSERT_EQ(2, myApps.size());
+  for (const auto& myApp : myApps) {
+    ASSERT_TRUE(myApp.theRemainingPaths.empty());
+  }
+  LOG(INFO) << myApps[0].toString();
+  LOG(INFO) << myApps[1].toString();
+
+  ASSERT_EQ(4, myApps[0].theVisits);
+  ASSERT_EQ(1, myApps[0].theAllocated.size());
+  ASSERT_EQ(1, myApps[0].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({4, 3}),
+            myApps[0].theAllocated[3][0].theHops);
+  ASSERT_FLOAT_EQ(0.5, myApps[0].netRate());
+  ASSERT_FLOAT_EQ(1, myApps[0].grossRate());
+
+  ASSERT_EQ(2, myApps[1].theVisits);
+  ASSERT_EQ(1, myApps[1].theAllocated.size());
+  ASSERT_EQ(1, myApps[1].theAllocated[3].size());
+  ASSERT_EQ(CapacityNetwork::AppDescriptor::Hops({2, 3}),
+            myApps[1].theAllocated[3][0].theHops);
+  ASSERT_FLOAT_EQ(2, myApps[1].netRate());
+  ASSERT_FLOAT_EQ(4, myApps[1].grossRate());
+
+  // look for a different allocation
+  std::map<unsigned long, std::set<std::string>> myAllocations;
+  for (std::size_t mySeed = 0; mySeed < 100; mySeed++) {
+    CapacityNetwork myAnotherNetwork(exampleEdgeWeights());
+    myAnotherNetwork.measurementProbability(0.5);
+    support::UniformRv myAnotherRouteRv(0, 1, mySeed, 0, 0);
+    myApps = Apps({
+        {0, {2, 3}, 1, 0},
+        {1, {3}, 1, 0},
+    });
+    myAnotherNetwork.route(
+        myApps, AppRouteAlgo::Random, -1, myAnotherRouteRv, 99);
+    for (unsigned long i = 0; i < myApps.size(); i++) {
+      myAllocations[i].insert(myApps[i].toString());
+    }
+  }
+
+  for (const auto& elem : myAllocations) {
+    VLOG(1) << "app " << elem.first;
+    for (const auto& alloc : elem.second) {
+      VLOG(2) << "\t" << alloc;
+    }
+  }
+  ASSERT_EQ(2, myAllocations[0].size());
+  ASSERT_EQ(2, myAllocations[1].size());
 }
 
 TEST_F(TestCapacityNetwork, test_add_capacity_to_edge) {

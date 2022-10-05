@@ -341,9 +341,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       }
 
       // route applications
+      us::UniformRv myRouteRv(0, 1, myRaii.in().theSeed, 3, 0); // unused
       myNetwork->route(mySingleRunApps,
                        qr::AppRouteAlgo::Drr,
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
+                       myRouteRv,
                        myRaii.in().theK,
                        [&myRaii](const auto&, const auto& aPath) {
                          assert(not aPath.empty());

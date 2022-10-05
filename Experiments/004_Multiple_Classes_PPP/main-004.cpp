@@ -441,9 +441,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       }
 
       // route applications
+      us::UniformRv myRouteRv(0, 1, myRaii.in().theSeed, 3, 0);
       myNetwork->route(mySingleRunApps,
                        myRaii.in().theAlgo,
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
+                       myRouteRv,
                        myRaii.in().theK,
                        [&myRaii](const auto& aApp, const auto& aPath) {
                          assert(not aPath.empty());

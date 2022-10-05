@@ -264,6 +264,7 @@ class CapacityNetwork final : public Network
    * @param aApps the applications to be routed
    * @param aAlgo the algorithm to be used for resource allocation
    * @param aQuantum  the allocation quantum to be used (only used with DRR)
+   * @param aRv a U[0,1] random variable (only used with Random)
    * @param aK the maximum number of paths to be found for each app and peer
    * @param aCheckFunction the flow is considered feasible only if this
    * function returns true, otherwise it is inadmissible; the default is to
@@ -283,6 +284,7 @@ class CapacityNetwork final : public Network
       std::vector<AppDescriptor>& aApps,
       const AppRouteAlgo          aAlgo,
       const double                aQuantum,
+      support::RealRvInterface&   aRv,
       const std::size_t           aK,
       const AppCheckFunction& aCheckFunction = [](const auto&, const auto&) {
         return true;
@@ -364,12 +366,15 @@ class CapacityNetwork final : public Network
   //! \return the net rate for a given path length, in num of edges.
   double toNetRate(const double aGrossRate, const std::size_t aNumEdges) const;
 
+  //! Resource allocation of apps using random.
+  void routeRandom(std::vector<AppDescriptor>& aApps,
+                   support::RealRvInterface&   aRv);
+
+  //! Resource allocation of apps using best-fit.
+  void routeBestFit(std::vector<AppDescriptor>& aApps);
+
   //! Resource allocation of apps using DRR.
   void routeDrr(std::vector<AppDescriptor>& aApps, const double aQuantum);
-
-  //! Resource allocation of apps using random/best-fit.
-  void routeRandomOrBestFit(std::vector<AppDescriptor>& aApps,
-                            const AppRouteAlgo          aAlgo);
 
   /**
    * @brief Schedule one app.

@@ -178,8 +178,8 @@ std::string CapacityNetwork::AppDescriptor::toString() const {
                   [](const auto& aPeer) { return std::to_string(aPeer); })
            << "}, prio " << thePriority << ", " << theRemainingPaths.size()
            << " remaining paths, " << theAllocated.size()
-           << " paths allocated with totale capacity " << netRate()
-           << " (gross " << grossRate() << "), " << theVisits << " visits made";
+           << " paths allocated with total capacity " << netRate() << " (gross "
+           << grossRate() << "), " << theVisits << " visits made";
   return myStream.str();
 }
 
@@ -422,6 +422,7 @@ void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
 void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
                             const AppRouteAlgo          aAlgo,
                             const double                aQuantum,
+                            support::RealRvInterface&   aRv,
                             const std::size_t           aK,
                             const AppCheckFunction&     aCheckFunction) {
   // check arguments
@@ -487,10 +488,16 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
     }
   }
 
-  if (aAlgo == AppRouteAlgo::Drr) {
+  // allocate resources based on the specific algorithm used
+  if (aAlgo == AppRouteAlgo::Random) {
+    routeRandom(aApps, aRv);
+  } else if (aAlgo == AppRouteAlgo::BestFit) {
+    routeBestFit(aApps);
+  } else if (aAlgo == AppRouteAlgo::Drr) {
     routeDrr(aApps, aQuantum);
   } else {
-    // XXX unimplemented
+    throw std::runtime_error("allocation strategy not implemented: " +
+                             toString(aAlgo));
   }
 }
 
@@ -662,6 +669,35 @@ double CapacityNetwork::toNetRate(const double      aGrossRate,
   return aGrossRate * std::pow(theMeasurementProbability, aNumEdges - 1);
 }
 
+void CapacityNetwork::routeRandom(std::vector<AppDescriptor>& aApps,
+                                  support::RealRvInterface&   aRv) {
+  // create a structure that contains all apps with remaining paths
+  std::list<std::size_t> myAppIndices;
+  for (std::size_t ndx = 0; ndx < aApps.size(); ndx++) {
+    if (not aApps[ndx].theRemainingPaths.empty()) {
+      myAppIndices.emplace_back(ndx);
+    }
+  }
+
+  // iterate by choosing one application at random, which is then
+  // removed from list of indices if there are no more remaining paths
+  auto myInfinite = std::numeric_limits<double>::max();
+  while (not myAppIndices.empty()) {
+    const auto myRndNdx = support::choice(myAppIndices, aRv);
+    auto&      myCurApp = aApps[myRndNdx];
+    myCurApp.theVisits++;
+    schedule(myCurApp, myInfinite);
+    if (myCurApp.theRemainingPaths.empty()) {
+      auto it = std::find(myAppIndices.begin(), myAppIndices.end(), myRndNdx);
+      assert(it != myAppIndices.end());
+      myAppIndices.erase(it);
+    }
+  }
+}
+
+void CapacityNetwork::routeBestFit(std::vector<AppDescriptor>& aApps) {
+}
+
 void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
                                const double                aQuantum) {
   if (aQuantum <= 0) {
@@ -716,11 +752,6 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
       myCurAppIt = myActiveApps.begin();
     }
   }
-}
-
-void CapacityNetwork::routeRandomOrBestFit(std::vector<AppDescriptor>& aApps,
-                                           const AppRouteAlgo          aAlgo) {
-  assert(aAlgo == AppRouteAlgo::Random or aAlgo == AppRouteAlgo::BestFit);
 }
 
 bool CapacityNetwork::schedule(AppDescriptor& aApp, double& aResidualCapacity) {
