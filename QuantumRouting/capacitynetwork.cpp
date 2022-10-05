@@ -424,6 +424,10 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
                             const double                aQuantum,
                             const std::size_t           aK,
                             const AppCheckFunction&     aCheckFunction) {
+  if (aK == 0) {
+    throw std::runtime_error("invalid k: cannot be null");
+  }
+
   // pre-condition checks
   const auto V = boost::num_vertices(theGraph);
   for (const auto& myApp : aApps) {
@@ -451,8 +455,39 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
     }
   }
 
+  // for each app, find k-shortest paths towards each peer with Yen's algorithm
+  auto myIndexMap = boost::get(boost::vertex_index, theGraph);
+  for (auto& myApp : aApps) {
+    for (const auto& myPeer : myApp.thePeers) {
+      auto myResult = boost::yen_ksp(
+          theGraph,
+          myApp.theHost,
+          myPeer,
+          boost::make_static_property_map<Graph::edge_descriptor>(1),
+          myIndexMap,
+          aK);
+      for (auto& elem : myResult) {
+        const auto myValid = aCheckFunction(myApp, elem.second);
+        VLOG(2) << myApp.theHost << " -> " << myPeer << ": "
+                << (myValid ? "valid" : "invalid") << " path found ["
+                << elem.first << "] {"
+                << ::toString(elem.second,
+                              ",",
+                              [](const auto& aEdge) {
+                                return std::to_string(aEdge.m_target);
+                              })
+                << "}";
+        if (myValid) {
+          auto myRes = myApp.theRemainingPaths.emplace(
+              elem.first, std::list<AppDescriptor::Path>());
+          myRes.first->second.emplace_back(std::move(elem.second));
+        }
+      }
+    }
+  }
+
   if (aAlgo == AppRouteAlgo::Drr) {
-    routeDrr(aApps, aQuantum, aK, aCheckFunction);
+    routeDrr(aApps, aQuantum, aCheckFunction);
   } else {
     // XXX unimplemented
   }
@@ -628,11 +663,7 @@ double CapacityNetwork::toNetRate(const double      aGrossRate,
 
 void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
                                const double                aQuantum,
-                               const std::size_t           aK,
                                const AppCheckFunction&     aCheckFunction) {
-  if (aK == 0) {
-    throw std::runtime_error("invalid k: cannot be null");
-  }
   if (aQuantum <= 0) {
     throw std::runtime_error("invalid non-positive quantum value: " +
                              std::to_string(aQuantum));
@@ -648,39 +679,7 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
     myQuanta[i] = aQuantum * aApps[i].thePriority / mySumPriorities;
   }
 
-  // for each app, find k-shortest paths towards each peer using Yen's
-  // algorithm
-  auto myIndexMap = boost::get(boost::vertex_index, theGraph);
-  for (auto& myApp : aApps) {
-    for (const auto& myPeer : myApp.thePeers) {
-      auto myResult = boost::yen_ksp(
-          theGraph,
-          myApp.theHost,
-          myPeer,
-          boost::make_static_property_map<Graph::edge_descriptor>(1),
-          myIndexMap,
-          aK);
-      for (auto& elem : myResult) {
-        const auto myValid = aCheckFunction(myApp, elem.second);
-        VLOG(2) << myApp.theHost << " -> " << myPeer << ": "
-                << (myValid ? "valid" : "invalid") << " path found ["
-                << elem.first << "] {"
-                << ::toString(elem.second,
-                              ",",
-                              [](const auto& aEdge) {
-                                return std::to_string(aEdge.m_target);
-                              })
-                << "}";
-        if (myValid) {
-          auto myRes = myApp.theRemainingPaths.emplace(
-              elem.first, std::list<AppDescriptor::Path>());
-          myRes.first->second.emplace_back(std::move(elem.second));
-        }
-      }
-    }
-  }
-
-  // do the allocation using weighted round-robin
+  // do the allocation using deficit round robin
   std::list<std::size_t> myActiveApps;
   for (std::size_t i = 0; i < aApps.size(); i++) {
     // only add apps with at least one path
