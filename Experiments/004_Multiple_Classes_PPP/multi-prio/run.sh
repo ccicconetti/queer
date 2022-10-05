@@ -2,6 +2,14 @@
 
 MAIN=../main-004
 
+if [ "$SEED_START" == "" ] ; then
+  SEED_START=0
+fi
+
+if [ "$SEED_END" == "" ] ; then
+  SEED_END=5000
+fi
+
 if [[ "$DRY" == "" && ! -d "data" ]] ; then
   mkdir data 2> /dev/null
 fi
@@ -33,8 +41,8 @@ for n in $numapps ; do
   output=out-$t-$a-$n
   cmd="$MAIN \
     --num-threads 0 \
-    --seed-start 0 \
-    --seed-end 5000 \
+    --seed-start $SEED_START \
+    --seed-end $SEED_END  \
     --mu $mu \
     --link-min-epr 1 \
     --link-max-epr 400 \
