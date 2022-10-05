@@ -126,13 +126,12 @@ class CapacityNetwork final : public Network
 
     // input
     const unsigned long theHost; //!< the vertex that hosts the computation
-    const std::vector<unsigned long>
-                 thePeers;             //!< the possible entanglement peers
-    const double thePriority;          //! weight
-    const double theFidelityThreshold; //! fidelity threhold
+    const std::vector<unsigned long> thePeers;    //!< entanglement peers
+    const double                     thePriority; //!< priority weight
+    const double theFidelityThreshold;            //!< fidelity threshold
 
     // working variables
-    std::map<unsigned long, std::list<Path>> theRemainingPaths;
+    std::map<unsigned long, std::list<Path>> theRemainingPaths; //!< key: length
 
     // output
     struct Output {
@@ -142,9 +141,8 @@ class CapacityNetwork final : public Network
       double theNetRate   = 0; //!< in EPR-pairs/s
       double theGrossRate = 0; //!< in EPR-pairs/s
     };
-    std::map<unsigned long, std::vector<Output>>
-                theAllocated; //!< key: destination
-    std::size_t theVisits;    //!< number of visits
+    std::map<unsigned long, std::vector<Output>> theAllocated; //!< key: peer
+    std::size_t theVisits; //!< number of visits
 
     double      netRate() const;
     double      grossRate() const;
@@ -265,7 +263,7 @@ class CapacityNetwork final : public Network
    *
    * @param aApps the applications to be routed
    * @param aAlgo the algorithm to be used for resource allocation
-   * @param aQuantum  the allocation quantum to be used
+   * @param aQuantum  the allocation quantum to be used (only used with DRR)
    * @param aK the maximum number of paths to be found for each app and peer
    * @param aCheckFunction the flow is considered feasible only if this
    * function returns true, otherwise it is inadmissible; the default is to
@@ -273,6 +271,13 @@ class CapacityNetwork final : public Network
    *
    * @throw std::runtime_error if aFlows contain an ill-formed request, in which
    * case we guarantee that the internal state is not changed
+   *
+   * Resource allocation strategies:
+   * - DRR: applications are assigned resources in round-robin order, using a
+   *   quantum that is proportional to their priority weight
+   * - Random: applications are assigned resources in random order
+   * - BestFit: applicatations are assigned resources in a greedy manner, i.e.,
+   *   in decreasing order of their path length
    */
   void route(
       std::vector<AppDescriptor>& aApps,
@@ -361,6 +366,21 @@ class CapacityNetwork final : public Network
 
   //! Resource allocation of apps using DRR.
   void routeDrr(std::vector<AppDescriptor>& aApps, const double aQuantum);
+
+  //! Resource allocation of apps using random/best-fit.
+  void routeRandomOrBestFit(std::vector<AppDescriptor>& aApps,
+                            const AppRouteAlgo          aAlgo);
+
+  /**
+   * @brief Schedule one app.
+   *
+   * @param aApp the application to be allocated resources
+   * @param aResidualCapacity the maximum amount of gross capacity assigned to
+   * this application, which is updated after the return of this call
+   * @return true if the application is allocated resources
+   * @return false otherwise
+   */
+  bool schedule(AppDescriptor& aApp, double& aResidualCapacity);
 
  private:
   Graph  theGraph;

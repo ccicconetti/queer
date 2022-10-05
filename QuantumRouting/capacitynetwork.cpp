@@ -679,7 +679,7 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
     myQuanta[i] = aQuantum * aApps[i].thePriority / mySumPriorities;
   }
 
-  // do the allocation using deficit round robin
+  // create an active list initialized with all (feasible) applications
   std::list<std::size_t> myActiveApps;
   for (std::size_t i = 0; i < aApps.size(); i++) {
     // only add apps with at least one path
@@ -687,6 +687,8 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
       myActiveApps.emplace_back(i);
     }
   }
+
+  // do the allocation using deficit round robin
   auto myCurAppIt = myActiveApps.begin();
   while (not myActiveApps.empty()) {
     auto  myResidualCapacity = myQuanta[*myCurAppIt];
@@ -695,98 +697,110 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
     // loop until there are valid paths and capacity to be allocated
     while (not myCurApp.theRemainingPaths.empty() and myResidualCapacity > 0) {
       ++myCurApp.theVisits;
-
-      // select the first of the shortest paths of the current app
-      const auto& myCandidate =
-          myCurApp.theRemainingPaths.begin()->second.front();
-      VLOG(2) << "host " << myCurApp.theHost << ", path {"
-              << ::toString(myCandidate,
-                            ",",
-                            [](const auto& aEdge) {
-                              return std::to_string(aEdge.m_target);
-                            })
-              << "}";
-
-      // check that all the edges still exist and find that with less capacity
-      auto   myValidPath   = true;
-      double myMinCapacity = std::numeric_limits<double>::max();
-      for (const auto& elem : myCandidate) {
-        EdgeDescriptor myEdge;
-        bool           myFound;
-        std::tie(myEdge, myFound) =
-            boost::edge(elem.m_source, elem.m_target, theGraph);
-        if (not myFound) {
-          myValidPath = false;
-          break;
-        }
-        myMinCapacity = std::min(
-            myMinCapacity, boost::get(boost::edge_weight, theGraph, myEdge));
-      }
-
-      // remove the path if it is not available anymore
-      if (not myValidPath) {
-        myCurApp.theRemainingPaths.begin()->second.pop_front();
-        if (myCurApp.theRemainingPaths.begin()->second.empty()) {
-          // no more same-length paths, remove entry from theRemainingPaths
-          myCurApp.theRemainingPaths.erase(myCurApp.theRemainingPaths.begin());
-          if (myCurApp.theRemainingPaths.empty()) {
-            // no more feasible paths at all: remove this app from active set
-            VLOG(2) << "removing app host " << myCurApp.theHost;
-            myCurAppIt = myActiveApps.erase(myCurAppIt);
-          }
-        }
-        continue;
-      }
-
-      // set rate allocated
-      const auto myAllocatedGross = std::min(myMinCapacity, myResidualCapacity);
-      myResidualCapacity -= myAllocatedGross;
-
-      // remove the gross capacity from all edges along the path
-      // if the capacity becomes zero, remove the edge, too
-      for (const auto& elem : myCandidate) {
-        assert(boost::get(boost::edge_weight, theGraph, elem) >=
-               myAllocatedGross);
-        auto& myWeight = boost::get(boost::edge_weight, theGraph, elem) -=
-            myAllocatedGross;
-        if (myWeight == 0) {
-          VLOG(2) << "removing edge (" << elem.m_source << "," << elem.m_target
-                  << ")";
-          boost::remove_edge(elem, theGraph);
-        }
-      }
-
-      // add the allocation to the path
-      AppDescriptor::Output myOutput(myCandidate);
-      VLOG(2) << "allocated gross capacity " << myAllocatedGross
-              << " EPR-pairs/s for host " << myCurApp.theHost << " towards "
-              << myOutput.theHops.back() << " along path {"
-              << ::toString(
-                     myOutput.theHops,
-                     ",",
-                     [](const auto& aHop) { return std::to_string(aHop); })
-              << "}, residual capacity " << myResidualCapacity;
-      assert(not myOutput.theHops.empty());
-      auto it = myCurApp.theAllocated.emplace(
-          myOutput.theHops.back(),
-          std::vector<AppDescriptor::Output>({myOutput}));
-
-      const auto jt = std::find_if(it.first->second.begin(),
-                                   it.first->second.end(),
-                                   [&myOutput](const auto& aElem) {
-                                     return myOutput.theHops == aElem.theHops;
-                                   });
-      if (jt != it.first->second.end()) {
-        jt->theNetRate += toNetRate(myAllocatedGross, jt->theHops.size());
-        jt->theGrossRate += myAllocatedGross;
-      }
+      schedule(myCurApp, myResidualCapacity);
     }
 
-    // move to the next app (wrap-around at the end)
-    if (++myCurAppIt == myActiveApps.end()) {
+    // check if there are feasible paths remaining for this app:
+    // - yes: move to the next app in the active list
+    // - no: remove this app from active list
+    // in both cases it is possible that myCurAppIt reaches the end of the list
+    if (not myCurApp.theRemainingPaths.empty()) {
+      ++myCurAppIt;
+    } else {
+      VLOG(2) << "remove from active list app w/ host " << myCurApp.theHost;
+      myCurAppIt = myActiveApps.erase(myCurAppIt);
+    }
+
+    //  wrap-around at the end of the active list
+    if (myCurAppIt == myActiveApps.end()) {
       myCurAppIt = myActiveApps.begin();
     }
   }
+}
+
+void CapacityNetwork::routeRandomOrBestFit(std::vector<AppDescriptor>& aApps,
+                                           const AppRouteAlgo          aAlgo) {
+  assert(aAlgo == AppRouteAlgo::Random or aAlgo == AppRouteAlgo::BestFit);
+}
+
+bool CapacityNetwork::schedule(AppDescriptor& aApp, double& aResidualCapacity) {
+  // select the first of the shortest paths of the current app
+  const auto& myCandidate = aApp.theRemainingPaths.begin()->second.front();
+  VLOG(2) << "host " << aApp.theHost << ", path {"
+          << ::toString(myCandidate,
+                        ",",
+                        [](const auto& aEdge) {
+                          return std::to_string(aEdge.m_target);
+                        })
+          << "}";
+
+  // check that all the edges still exist and find that with less capacity
+  auto   myValidPath   = true;
+  double myMinCapacity = std::numeric_limits<double>::max();
+  for (const auto& elem : myCandidate) {
+    EdgeDescriptor myEdge;
+    bool           myFound;
+    std::tie(myEdge, myFound) =
+        boost::edge(elem.m_source, elem.m_target, theGraph);
+    if (not myFound) {
+      myValidPath = false;
+      break;
+    }
+    myMinCapacity = std::min(myMinCapacity,
+                             boost::get(boost::edge_weight, theGraph, myEdge));
+  }
+
+  // remove the path if it is not available anymore and return early
+  if (not myValidPath) {
+    aApp.theRemainingPaths.begin()->second.pop_front();
+    if (aApp.theRemainingPaths.begin()->second.empty()) {
+      // no more same-length paths, remove entry from theRemainingPaths
+      aApp.theRemainingPaths.erase(aApp.theRemainingPaths.begin());
+    }
+    return false;
+  }
+
+  // set rate allocated
+  const auto myAllocatedGross = std::min(myMinCapacity, aResidualCapacity);
+  aResidualCapacity -= myAllocatedGross;
+
+  // remove the gross capacity from all edges along the path
+  // if the capacity becomes zero, remove the edge, too
+  for (const auto& elem : myCandidate) {
+    assert(boost::get(boost::edge_weight, theGraph, elem) >= myAllocatedGross);
+    auto& myWeight = boost::get(boost::edge_weight, theGraph, elem) -=
+        myAllocatedGross;
+    if (myWeight == 0) {
+      VLOG(2) << "removing edge (" << elem.m_source << "," << elem.m_target
+              << ")";
+      boost::remove_edge(elem, theGraph);
+    }
+  }
+
+  // add the allocation to the path
+  AppDescriptor::Output myOutput(myCandidate);
+  VLOG(2) << "allocated gross capacity " << myAllocatedGross
+          << " EPR-pairs/s for host " << aApp.theHost << " towards "
+          << myOutput.theHops.back() << " along path {"
+          << ::toString(myOutput.theHops,
+                        ",",
+                        [](const auto& aHop) { return std::to_string(aHop); })
+          << "}, residual capacity " << aResidualCapacity;
+  assert(not myOutput.theHops.empty());
+  auto it = aApp.theAllocated.emplace(
+      myOutput.theHops.back(), std::vector<AppDescriptor::Output>({myOutput}));
+
+  const auto jt = std::find_if(it.first->second.begin(),
+                               it.first->second.end(),
+                               [&myOutput](const auto& aElem) {
+                                 return myOutput.theHops == aElem.theHops;
+                               });
+  if (jt != it.first->second.end()) {
+    jt->theNetRate += toNetRate(myAllocatedGross, jt->theHops.size());
+    jt->theGrossRate += myAllocatedGross;
+  }
+
+  return true;
 }
 
 } // namespace qr

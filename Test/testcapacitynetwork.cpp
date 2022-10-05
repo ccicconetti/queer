@@ -357,8 +357,14 @@ TEST_F(TestCapacityNetwork, test_route_apps) {
   });
   ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 0, 1),
                std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1}, 1, 0},
+  });
   ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, -1, 1),
                std::runtime_error);
+  myApps = std::vector<CapacityNetwork::AppDescriptor>({
+      {0, {1}, 1, 0},
+  });
   ASSERT_THROW(myNetwork.route(myApps, AppRouteAlgo::Drr, 1, 0),
                std::runtime_error);
 
