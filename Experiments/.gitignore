@@ -5,3 +5,4 @@ post
 percentile.py
 *.pdf
 *.graphml
+collect.sh
