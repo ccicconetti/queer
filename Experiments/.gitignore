@@ -4,5 +4,6 @@ data
 post
 percentile.py
 *.pdf
+*.png
 *.graphml
 collect.sh
