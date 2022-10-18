@@ -55,6 +55,10 @@ add_executable(testqrutils testmain.cpp testqrutils.cpp)
 target_link_libraries(testqrutils ${LIBS})
 gtest_discover_tests(testqrutils)
 
+add_executable(testpeerassignment testmain.cpp testpeerassignment.cpp)
+target_link_libraries(testpeerassignment ${LIBS})
+gtest_discover_tests(testpeerassignment)
+
 add_executable(testpoissonpointprocess testmain.cpp testpoissonpointprocess.cpp)
 target_link_libraries(testpoissonpointprocess ${LIBS})
 gtest_discover_tests(testpoissonpointprocess)
