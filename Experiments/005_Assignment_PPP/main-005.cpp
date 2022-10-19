@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include "QuantumRouting/capacitynetwork.h"
 #include "QuantumRouting/networkfactory.h"
+#include "QuantumRouting/peerassignment.h"
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
 #include "Support/fairness.h"
@@ -81,14 +82,12 @@ struct Parameters {
   double           theFidelityInit;
 
   // applications
-  std::size_t         theNumApps;
-  std::size_t         theNumPeersMin;
-  std::size_t         theNumPeersMax;
-  std::size_t         theDistanceMin;
-  std::size_t         theDistanceMax;
-  std::vector<double> thePriorities;
-  std::vector<double> theFidelityThresholds;
-  double              theTargetResidual;
+  std::size_t            theNumApps;
+  std::size_t            theNumPeers;
+  qr::PeerAssignmentAlgo thePeerAssignmentAlgo;
+  std::vector<double>    thePriorities;
+  std::vector<double>    theFidelityThresholds;
+  double                 theTargetResidual;
 
   // not part of the experiment
   std::string theDotFile;
@@ -110,10 +109,8 @@ struct Parameters {
         "fidelity-init",
 
         "num-apps",
-        "num-peers-min",
-        "num-peers-max",
-        "distance-min",
-        "distance-max",
+        "num-peers",
+        "peer-assign-algo",
         "priorities",
         "fidelity-thresholds",
         "target-residual",
@@ -136,11 +133,9 @@ struct Parameters {
              << theQuantum << " EPR-pairs/s, max " << theK
              << " shortest paths per host/destination pair"
              << ", fidelity of freshly generated pairs " << theFidelityInit
-             << "; there are " << theNumApps
-             << " applications, with number of peers drawn from U["
-             << theNumPeersMin << "," << theNumPeersMax
-             << "] from nodes with distance drawn from U[" << theDistanceMin
-             << "," << theDistanceMax << "], with priority in {"
+             << "; there are " << theNumApps << " applications, with "
+             << theNumPeers << " peers selected according using "
+             << qr::toString(thePeerAssignmentAlgo) << ", with priority in {"
              << ::toStringStd(thePriorities, ",")
              << "} and minimum fidelity in {"
              << ::toStringStd(theFidelityThresholds, ",") << "}";
@@ -161,8 +156,7 @@ struct Parameters {
              << theLinkMinEpr << ',' << theLinkMaxEpr << ','
              << qr::toString(theAlgo) << ',' << theQ << ',' << theQuantum << ','
              << theK << ',' << theFidelityInit << ',' << theNumApps << ','
-             << theNumPeersMin << ',' << theNumPeersMax << ',' << theDistanceMin
-             << ',' << theDistanceMax << ','
+             << theNumPeers << ',' << qr::toString(thePeerAssignmentAlgo) << ','
              << ::toStringStd(theFidelityThresholds, "@") << ','
              << ::toStringStd(thePriorities, "@") << ',' << theTargetResidual;
     return myStream.str();
@@ -328,61 +322,34 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   constexpr double p2  = 1.0;
   constexpr double eta = 1.0;
 
-  Data::Raii myRaii(aData, std::move(aParameters));
+  Data::Raii myRaii(aData, std::move(aParameters)); // experiment input
+  Output     myOutput;                              // experiment output
 
-  Output myOutput;
-
-  const auto                           MANY_TRIES = 1000000u;
-  std::unique_ptr<qr::CapacityNetwork> myNetwork  = nullptr;
-  qr::CapacityNetwork::ReachableNodes  myReachableNodes;
-  us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
+  // create network
+  us::UniformRv myLinkEprRv(myRaii.in().theLinkMinEpr,
                             myRaii.in().theLinkMaxEpr,
                             myRaii.in().theSeed,
                             1,
                             0);
-
-  for (std::size_t mySeedOffset = 0;
-       myNetwork.get() == nullptr and mySeedOffset < (MANY_TRIES * 10000);
-       mySeedOffset += 10000) {
-    const auto mySeed = myRaii.in().theSeed + mySeedOffset;
-    // create network
-    std::vector<qr::Coordinate> myCoordinates;
-    myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
-                                           mySeed,
-                                           myRaii.in().theMu,
-                                           myRaii.in().theGridLength,
-                                           myRaii.in().theThreshold,
-                                           myRaii.in().theLinkProbability,
-                                           myCoordinates);
-
-    // network properties
-    assert(myNetwork.get() != nullptr);
-    myOutput.theNumNodes      = myNetwork->numNodes();
-    myOutput.theNumEdges      = myNetwork->numEdges();
-    myOutput.theTotalCapacity = myNetwork->totalCapacity();
-    std::tie(myOutput.theMinInDegree, myOutput.theMaxInDegree) =
-        myNetwork->inDegree();
-    std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
-        myNetwork->outDegree();
-
-    myReachableNodes = myNetwork->reachableNodes(myRaii.in().theDistanceMin,
-                                                 myRaii.in().theDistanceMax,
-                                                 myOutput.theDiameter);
-    const std::size_t myNumPossibleHosts =
-        std::count_if(myReachableNodes.begin(),
-                      myReachableNodes.end(),
-                      [](const auto& elem) { return not elem.second.empty(); });
-    if (myNumPossibleHosts == 0) {
-      VLOG(1) << "graph does not have possible hosts (seed " << mySeed
-              << "), trying again";
-      myNetwork.reset();
-    }
-  }
-  if (myNetwork.get() == nullptr) {
-    throw std::runtime_error("Could not find a connected network after " +
-                             std::to_string(MANY_TRIES) + " tries");
-  }
+  [[maybe_unused]] std::vector<qr::Coordinate> myCoordinates;
+  auto myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
+                                              myRaii.in().theSeed,
+                                              myRaii.in().theMu,
+                                              myRaii.in().theGridLength,
+                                              myRaii.in().theThreshold,
+                                              myRaii.in().theLinkProbability,
+                                              myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
+
+  // save the network properties
+  assert(myNetwork.get() != nullptr);
+  myOutput.theNumNodes      = myNetwork->numNodes();
+  myOutput.theNumEdges      = myNetwork->numEdges();
+  myOutput.theTotalCapacity = myNetwork->totalCapacity();
+  std::tie(myOutput.theMinInDegree, myOutput.theMaxInDegree) =
+      myNetwork->inDegree();
+  std::tie(myOutput.theMinOutDegree, myOutput.theMaxOutDegree) =
+      myNetwork->outDegree();
 
   // save to Graphviz, if needed
   if (not myRaii.in().theDotFile.empty()) {
@@ -410,14 +377,15 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     // create all the random variables related to the applications
     us::UniformIntRv<unsigned long> myHostRv(
         0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 2, 0);
-    us::UniformIntRv<unsigned long> myNumPeersRv(myRaii.in().theNumPeersMin,
-                                                 myRaii.in().theNumPeersMax,
-                                                 myRaii.in().theSeed,
-                                                 2,
-                                                 1);
-    us::UniformRv myPeerSampleRv(0, 1, myRaii.in().theSeed, 2, 2);
+    us::UniformRv myPeerAssignmentRv(0, 1, myRaii.in().theSeed, 2, 1);
     us::UniformIntRv<unsigned long> myClassRv(
-        0, myClassParams.size() - 1, myRaii.in().theSeed, 2, 3);
+        0, myClassParams.size() - 1, myRaii.in().theSeed, 2, 2);
+
+    // create the object for peer assignment
+    auto myPeerAssignment = qr::makePeerAssignment(
+        *myNetwork, myRaii.in().thePeerAssignmentAlgo, myPeerAssignmentRv);
+    assert(myPeerAssignment.get() != nullptr);
+    assert(myPeerAssignment->algo() == myRaii.in().thePeerAssignmentAlgo);
 
     // main loop:
     // at each iteration theNumApps applications are created and routed
@@ -425,24 +393,19 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     // otherwise it continues until it is reached
     std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
     do {
-      // create applications
-      std::vector<qr::CapacityNetwork::AppDescriptor> mySingleRunApps;
+      // create applications, with assign QoS class parameters but no peers
+      std::vector<qr::PeerAssignment::AppDescriptor> mySingleRunInApps;
       for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
-        const auto myHost = myHostRv();
-        const auto it     = myReachableNodes.find(myHost);
-        assert(it != myReachableNodes.end());
-        const auto myPeersSet =
-            us::sample(it->second, myNumPeersRv(), myPeerSampleRv);
-        std::vector<unsigned long> myPeersVector;
-        std::copy(myPeersSet.begin(),
-                  myPeersSet.end(),
-                  std::back_inserter(myPeersVector));
+        const auto myHost       = myHostRv();
         const auto myClassParam = myClassParams[myClassRv()];
-        mySingleRunApps.emplace_back(myHost,
-                                     myPeersVector,
-                                     myClassParam.thePriority,
-                                     myClassParam.theFidelityThreshold);
+        mySingleRunInApps.emplace_back(myHost,
+                                       myClassParam.thePriority,
+                                       myClassParam.theFidelityThreshold);
       }
+
+      // assign peers to the applications
+      auto mySingleRunApps =
+          myPeerAssignment->assign(mySingleRunInApps, myRaii.in().theNumPeers);
 
       // route applications
       us::UniformRv myRouteRv(0, 1, myRaii.in().theSeed, 3, 0);
@@ -642,10 +605,8 @@ int main(int argc, char* argv[]) {
   double      myFidelityInit;
   std::string myPrioritiesStr;
   std::string myFidelityThresholdStr;
-  std::size_t myNumPeersMin;
-  std::size_t myNumPeersMax;
-  std::size_t myDistanceMin;
-  std::size_t myDistanceMax;
+  std::size_t myNumPeers;
+  std::string myPeerAssignmentAlgo;
   double      myTargetResidual;
   std::string myDotFile;
 
@@ -684,18 +645,12 @@ int main(int argc, char* argv[]) {
     ("num-apps",
      po::value<std::size_t>(&myNumApps)->default_value(100),
      "Number of applications added at each iteration.")
-    ("num-peers-min",
-     po::value<std::size_t>(&myNumPeersMin)->default_value(1),
-     "Minimum number of peers per app.")
-    ("num-peers-max",
-     po::value<std::size_t>(&myNumPeersMax)->default_value(1),
-     "Maximum number of peers per app.")
-    ("distance-min",
-     po::value<std::size_t>(&myDistanceMin)->default_value(1),
-     "Minimum distance of peer from host, in hops.")
-    ("distance-max",
-     po::value<std::size_t>(&myDistanceMax)->default_value(2),
-     "Maximum distance of peer from host, in hops.")
+    ("num-peers",
+     po::value<std::size_t>(&myNumPeers)->default_value(1),
+     "Number of peers per app.")
+    ("algorithm",
+     po::value<std::string>(&myPeerAssignmentAlgo)->default_value(qr::toString(qr::PeerAssignmentAlgo::Gap)),
+     (std::string("Algorithm to be used, one of: ") + toString(qr::allPeerAssignmentAlgos(), ", ", [](const auto& aAlgo) { return toString(aAlgo); })).c_str())
     ("grid-size",
      po::value<double>(&myGridSize)->default_value(60000),
      "Grid length, in km.")
@@ -773,27 +728,26 @@ int main(int argc, char* argv[]) {
 
     us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed < mySeedEnd; ++mySeed) {
-      myParameters.push(Parameters{mySeed,
-                                   myMu,
-                                   myGridSize,
-                                   myThreshold,
-                                   myLinkProbability,
-                                   myLinkMinEpr,
-                                   myLinkMaxEpr,
-                                   qr::appRouteAlgofromString(myAlgorithm),
-                                   myQ,
-                                   myQuantum,
-                                   myK,
-                                   myFidelityInit,
-                                   myNumApps,
-                                   myNumPeersMin,
-                                   myNumPeersMax,
-                                   myDistanceMin,
-                                   myDistanceMax,
-                                   myPriorities,
-                                   myFidelityThresholds,
-                                   myTargetResidual,
-                                   myDotFile});
+      myParameters.push(
+          Parameters{mySeed,
+                     myMu,
+                     myGridSize,
+                     myThreshold,
+                     myLinkProbability,
+                     myLinkMinEpr,
+                     myLinkMaxEpr,
+                     qr::appRouteAlgofromString(myAlgorithm),
+                     myQ,
+                     myQuantum,
+                     myK,
+                     myFidelityInit,
+                     myNumApps,
+                     myNumPeers,
+                     qr::peerAssignmentAlgofromString(myPeerAssignmentAlgo),
+                     myPriorities,
+                     myFidelityThresholds,
+                     myTargetResidual,
+                     myDotFile});
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {

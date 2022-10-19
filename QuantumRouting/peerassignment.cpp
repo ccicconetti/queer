@@ -76,5 +76,79 @@ PeerAssignmentAlgo peerAssignmentAlgofromString(const std::string& aAlgo) {
       ")");
 }
 
+std::unique_ptr<PeerAssignment>
+makePeerAssignment(const CapacityNetwork&    aNetwork,
+                   const PeerAssignmentAlgo  aAlgo,
+                   support::RealRvInterface& aRv) {
+  switch (aAlgo) {
+    case PeerAssignmentAlgo::Random:
+      return std::make_unique<PeerAssignmentRandom>(aNetwork, aRv);
+    case PeerAssignmentAlgo::ShortestPath:
+      return std::make_unique<PeerAssignmentShortestPath>(aNetwork);
+    case PeerAssignmentAlgo::Gap:
+      return std::make_unique<PeerAssignmentGap>(aNetwork);
+    default:; /* fall-through */
+  }
+  throw std::runtime_error("invalid peer assignment algorithm: " +
+                           toString(aAlgo));
+}
+
+PeerAssignment::PeerAssignment(const CapacityNetwork&   aNetwork,
+                               const PeerAssignmentAlgo aAlgo)
+    : theNetwork(aNetwork)
+    , theAlgo(aAlgo) {
+  // noop
+}
+
+PeerAssignment::AppDescriptor::AppDescriptor(
+    const unsigned long aHost,
+    const double        aPriority,
+    const double        aFidelityThreshold) noexcept
+    : theHost(aHost)
+    , thePriority(aPriority)
+    , theFidelityThreshold(aFidelityThreshold) {
+  // noop
+}
+
+PeerAssignmentRandom::PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
+                                           support::RealRvInterface& aRv)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::Random)
+    , theRv(aRv) {
+  // noop
+}
+
+std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
+    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
+    [[maybe_unused]] const unsigned long               aNumPeers) {
+  (void)theRv;
+  std::vector<CapacityNetwork::AppDescriptor> ret;
+  return ret;
+}
+
+PeerAssignmentShortestPath::PeerAssignmentShortestPath(
+    const CapacityNetwork& aNetwork)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::ShortestPath) {
+  // noop
+}
+
+std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
+    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
+    [[maybe_unused]] const unsigned long               aNumPeers) {
+  std::vector<CapacityNetwork::AppDescriptor> ret;
+  return ret;
+}
+
+PeerAssignmentGap::PeerAssignmentGap(const CapacityNetwork& aNetwork)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::Gap) {
+  // noop
+}
+
+std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentGap::assign(
+    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
+    [[maybe_unused]] const unsigned long               aNumPeers) {
+  std::vector<CapacityNetwork::AppDescriptor> ret;
+  return ret;
+}
+
 } // namespace qr
 } // namespace uiiit

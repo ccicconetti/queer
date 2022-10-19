@@ -31,11 +31,20 @@ SOFTWARE.
 
 #pragma once
 
+#include "QuantumRouting/capacitynetwork.h"
+#include "Support/macros.h"
+#include "Support/random.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace uiiit {
 namespace qr {
+
+//
+// peer assignment algorithms
+//
 
 enum class PeerAssignmentAlgo : unsigned int {
   Random       = 0,
@@ -46,6 +55,112 @@ enum class PeerAssignmentAlgo : unsigned int {
 std::vector<PeerAssignmentAlgo> allPeerAssignmentAlgos();
 std::string                     toString(const PeerAssignmentAlgo aAlgo);
 PeerAssignmentAlgo peerAssignmentAlgofromString(const std::string& aAlgo);
+
+//
+// factory free function to create peer assignment instances
+//
+
+class PeerAssignment;
+/**
+ * @brief Construct a peer assignment instance bound to a given quantum network.
+ *
+ * @param aNetwork The reference quantum network for peer assignment.
+ * @param aAlgo The assignment algorithm to be used.
+ * @param aRv A random variable that might be used by the algorithm.
+ * @return std::unique_ptr<PeerAssignment> The peer assignment object.
+ * @throw std::runtime_error if aAlgo is not known.
+ */
+std::unique_ptr<PeerAssignment>
+makePeerAssignment(const CapacityNetwork&    aNetwork,
+                   const PeerAssignmentAlgo  aAlgo,
+                   support::RealRvInterface& aRv);
+
+//
+// peer assignment classes
+//
+
+class PeerAssignment
+{
+ public:
+  struct AppDescriptor {
+    AppDescriptor(const unsigned long aHost,
+                  const double        aPriority,
+                  const double        aFidelityThreshold) noexcept;
+
+    const unsigned long theHost;     //!< the vertex that hosts the computation
+    const double        thePriority; //!< priority weight
+    const double        theFidelityThreshold; //!< fidelity threshold
+  };
+
+  virtual ~PeerAssignment() = default;
+
+  /**
+   * @brief Assign peers to the given apps. Pure virtual function.
+   *
+   * @param aApps The input applications.
+   * @param aNumPeers The number of peers to be selected for each app.
+   * @return std::vector<CapacityNetwork::AppDescriptor>
+   */
+  virtual std::vector<CapacityNetwork::AppDescriptor>
+  assign(const std::vector<AppDescriptor>& aApps,
+         const unsigned long               aNumPeers) = 0;
+
+  //! @return The assignment algoritm.
+  PeerAssignmentAlgo algo() const noexcept {
+    return theAlgo;
+  }
+
+ protected:
+  /**
+   * @brief Construct a new Peer Assignment bound to a given quantum network.
+   *
+   * @param aNetwork The reference quantum network for peer assignment.
+   * @param aAlgo The assignment algorithm to be used.
+   */
+  PeerAssignment(const CapacityNetwork&   aNetwork,
+                 const PeerAssignmentAlgo aAlgo);
+
+ protected:
+  const CapacityNetwork&   theNetwork;
+  const PeerAssignmentAlgo theAlgo;
+};
+
+class PeerAssignmentRandom final : public PeerAssignment
+{
+ public:
+  PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
+                       support::RealRvInterface& aRv);
+
+  //! Assign peers choosing at random.
+  std::vector<CapacityNetwork::AppDescriptor>
+  assign(const std::vector<AppDescriptor>& aApps,
+         const unsigned long               aNumPeers) override;
+
+ private:
+  support::RealRvInterface& theRv;
+};
+
+class PeerAssignmentShortestPath final : public PeerAssignment
+{
+ public:
+  PeerAssignmentShortestPath(const CapacityNetwork& aNetwork);
+
+  //! Pick peers from closest peers.
+  std::vector<CapacityNetwork::AppDescriptor>
+  assign(const std::vector<AppDescriptor>& aApps,
+         const unsigned long               aNumPeers) override;
+};
+
+class PeerAssignmentGap final : public PeerAssignment
+{
+ public:
+  PeerAssignmentGap(const CapacityNetwork& aNetwork);
+
+  //! Assign peers as the result of a generalized assignment problem.
+  std::vector<CapacityNetwork::AppDescriptor>
+  assign(const std::vector<AppDescriptor>& aApps,
+         const unsigned long               aNumPeers) override;
+};
 
 } // namespace qr
 } // namespace uiiit
