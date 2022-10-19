@@ -66,7 +66,7 @@ class PeerAssignment;
  *
  * @param aNetwork The reference quantum network for peer assignment.
  * @param aAlgo The assignment algorithm to be used.
- * @param aRv A random variable that might be used by the algorithm.
+ * @param aRv A random variable in [0,1] that might be used by the algorithm.
  * @return std::unique_ptr<PeerAssignment> The peer assignment object.
  * @throw std::runtime_error if aAlgo is not known.
  */
@@ -99,11 +99,13 @@ class PeerAssignment
    *
    * @param aApps The input applications.
    * @param aNumPeers The number of peers to be selected for each app.
+   * @param aCandidatePeers The nodes that it is possible to select as peers.
    * @return std::vector<CapacityNetwork::AppDescriptor>
    */
   virtual std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
-         const unsigned long               aNumPeers) = 0;
+         const unsigned long               aNumPeers,
+         const std::vector<unsigned long>& aCandidatePeers) = 0;
 
   //! @return The assignment algoritm.
   PeerAssignmentAlgo algo() const noexcept {
@@ -134,7 +136,8 @@ class PeerAssignmentRandom final : public PeerAssignment
   //! Assign peers choosing at random.
   std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
-         const unsigned long               aNumPeers) override;
+         const unsigned long               aNumPeers,
+         const std::vector<unsigned long>& aCandidatePeers) override;
 
  private:
   support::RealRvInterface& theRv;
@@ -148,7 +151,8 @@ class PeerAssignmentShortestPath final : public PeerAssignment
   //! Pick peers from closest peers.
   std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
-         const unsigned long               aNumPeers) override;
+         const unsigned long               aNumPeers,
+         const std::vector<unsigned long>& aCandidatePeers) override;
 };
 
 class PeerAssignmentGap final : public PeerAssignment
@@ -159,7 +163,8 @@ class PeerAssignmentGap final : public PeerAssignment
   //! Assign peers as the result of a generalized assignment problem.
   std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
-         const unsigned long               aNumPeers) override;
+         const unsigned long               aNumPeers,
+         const std::vector<unsigned long>& aCandidatePeers) override;
 };
 
 } // namespace qr

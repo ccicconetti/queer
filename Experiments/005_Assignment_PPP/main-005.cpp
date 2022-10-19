@@ -80,6 +80,8 @@ struct Parameters {
   double           theQuantum;
   std::size_t      theK;
   double           theFidelityInit;
+  double           theFracEndUsers;
+  double           theFracDataCenters;
 
   // applications
   std::size_t            theNumApps;
@@ -107,6 +109,8 @@ struct Parameters {
         "quantum",
         "k",
         "fidelity-init",
+        "frac-end-users",
+        "frac-data-centers",
 
         "num-apps",
         "num-peers",
@@ -133,8 +137,12 @@ struct Parameters {
              << theQuantum << " EPR-pairs/s, max " << theK
              << " shortest paths per host/destination pair"
              << ", fidelity of freshly generated pairs " << theFidelityInit
-             << "; there are " << theNumApps << " applications, with "
-             << theNumPeers << " peers selected according using "
+             << "; " << static_cast<int>(std::round(theFracEndUsers * 100))
+             << "\% nodes are end-users, "
+             << static_cast<int>(std::round(theFracDataCenters * 100))
+             << "\% nodes are data centers; there are " << theNumApps
+             << " applications, with " << theNumPeers
+             << " peers selected according using "
              << qr::toString(thePeerAssignmentAlgo) << ", with priority in {"
              << ::toStringStd(thePriorities, ",")
              << "} and minimum fidelity in {"
@@ -155,8 +163,9 @@ struct Parameters {
              << theThreshold << ',' << theLinkProbability << ','
              << theLinkMinEpr << ',' << theLinkMaxEpr << ','
              << qr::toString(theAlgo) << ',' << theQ << ',' << theQuantum << ','
-             << theK << ',' << theFidelityInit << ',' << theNumApps << ','
-             << theNumPeers << ',' << qr::toString(thePeerAssignmentAlgo) << ','
+             << theK << ',' << theFidelityInit << ',' << theFracEndUsers << ','
+             << theFracDataCenters << ',' << theNumApps << ',' << theNumPeers
+             << ',' << qr::toString(thePeerAssignmentAlgo) << ','
              << ::toStringStd(theFidelityThresholds, "@") << ','
              << ::toStringStd(thePriorities, "@") << ',' << theTargetResidual;
     return myStream.str();
@@ -341,6 +350,45 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                               myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
+  // select the end users (candidate hosts) and data centers (candidate peers)
+  struct Rounder {
+    Rounder(const unsigned long aN)
+        : theN(aN) {
+      // noop
+    }
+    unsigned long operator()(const double aFrac) {
+      return std::max((unsigned long)1,
+                      static_cast<unsigned long>(std::round(theN * aFrac)));
+    }
+    const unsigned long theN;
+  };
+  Rounder    myRounder(myNetwork->numNodes());
+  const auto myNumEndUsers    = myRounder(myRaii.in().theFracEndUsers);
+  const auto myNumDataCenters = myRounder(myRaii.in().theFracDataCenters);
+  if (myNumEndUsers + myNumDataCenters > myNetwork->numNodes()) {
+    throw std::runtime_error("the network is too small: there are only " +
+                             std::to_string(myNetwork->numNodes()) +
+                             " nodes, so it is not possible to have " +
+                             std::to_string(myNumEndUsers) + " end users and " +
+                             std::to_string(myNumDataCenters) +
+                             " data centers");
+  }
+
+  std::vector<unsigned long> myCurNodes(myNetwork->numNodes());
+  std::iota(myCurNodes.begin(), myCurNodes.end(), 0);
+  us::UniformRv myCandidateNodesRv(0, 1, myRaii.in().theSeed, 1, 1);
+  auto          myCandidateHosts =
+      us::sample(myCurNodes, myNumEndUsers, myCandidateNodesRv);
+  std::vector<unsigned long> myCandidateDataCenters;
+  for (unsigned long i = 0; i < myNetwork->numNodes(); i++) {
+    if (std::find(myCandidateHosts.begin(), myCandidateHosts.end(), i) ==
+        myCandidateHosts.end()) {
+      myCandidateDataCenters.emplace_back(i);
+    }
+  }
+  myCandidateDataCenters =
+      us::sample(myCandidateDataCenters, myNumDataCenters, myCandidateNodesRv);
+
   // save the network properties
   assert(myNetwork.get() != nullptr);
   myOutput.theNumNodes      = myNetwork->numNodes();
@@ -376,7 +424,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
     // create all the random variables related to the applications
     us::UniformIntRv<unsigned long> myHostRv(
-        0, myNetwork->numNodes() - 1, myRaii.in().theSeed, 2, 0);
+        0, myCandidateHosts.size() - 1, myRaii.in().theSeed, 2, 0);
     us::UniformRv myPeerAssignmentRv(0, 1, myRaii.in().theSeed, 2, 1);
     us::UniformIntRv<unsigned long> myClassRv(
         0, myClassParams.size() - 1, myRaii.in().theSeed, 2, 2);
@@ -389,23 +437,23 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
     // main loop:
     // at each iteration theNumApps applications are created and routed
-    // if there is no target residual, the loop terminates after one iteration,
-    // otherwise it continues until it is reached
+    // if there is no target residual, the loop terminates after one
+    // iteration, otherwise it continues until it is reached
     std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
     do {
       // create applications, with assign QoS class parameters but no peers
       std::vector<qr::PeerAssignment::AppDescriptor> mySingleRunInApps;
       for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
-        const auto myHost       = myHostRv();
-        const auto myClassParam = myClassParams[myClassRv()];
+        const auto myHost       = myCandidateHosts.at(myHostRv());
+        const auto myClassParam = myClassParams.at(myClassRv());
         mySingleRunInApps.emplace_back(myHost,
                                        myClassParam.thePriority,
                                        myClassParam.theFidelityThreshold);
       }
 
       // assign peers to the applications
-      auto mySingleRunApps =
-          myPeerAssignment->assign(mySingleRunInApps, myRaii.in().theNumPeers);
+      auto mySingleRunApps = myPeerAssignment->assign(
+          mySingleRunInApps, myRaii.in().theNumPeers, myCandidateDataCenters);
 
       // route applications
       us::UniformRv myRouteRv(0, 1, myRaii.in().theSeed, 3, 0);
@@ -603,6 +651,8 @@ int main(int argc, char* argv[]) {
   double      myQuantum;
   std::size_t myK;
   double      myFidelityInit;
+  double      myFracEndUsers;
+  double      myFracDataCenters;
   std::string myPrioritiesStr;
   std::string myFidelityThresholdStr;
   std::size_t myNumPeers;
@@ -648,7 +698,7 @@ int main(int argc, char* argv[]) {
     ("num-peers",
      po::value<std::size_t>(&myNumPeers)->default_value(1),
      "Number of peers per app.")
-    ("algorithm",
+    ("peer-assignment-algo",
      po::value<std::string>(&myPeerAssignmentAlgo)->default_value(qr::toString(qr::PeerAssignmentAlgo::Gap)),
      (std::string("Algorithm to be used, one of: ") + toString(qr::allPeerAssignmentAlgos(), ", ", [](const auto& aAlgo) { return toString(aAlgo); })).c_str())
     ("grid-size",
@@ -675,6 +725,12 @@ int main(int argc, char* argv[]) {
     ("fidelity-init",
      po::value<double>(&myFidelityInit)->default_value(0.99),
      "Fidelity of local entanglement between adjacent nodes.")
+    ("frac-end-users",
+     po::value<double>(&myFracEndUsers)->default_value(0.2),
+     "Fraction of end users, i.e., nodes that are candidate hosts.")
+    ("frac-data-centers",
+     po::value<double>(&myFracDataCenters)->default_value(0.2),
+     "Fraction of data centers, i.e., nodes that are candidate peers.")
     ("priorities",
      po::value<std::string>(&myPrioritiesStr)->default_value("4,2,1"),
      "Priorities, as comma-separated values.")
@@ -741,6 +797,8 @@ int main(int argc, char* argv[]) {
                      myQuantum,
                      myK,
                      myFidelityInit,
+                     myFracEndUsers,
+                     myFracDataCenters,
                      myNumApps,
                      myNumPeers,
                      qr::peerAssignmentAlgofromString(myPeerAssignmentAlgo),

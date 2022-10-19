@@ -118,10 +118,16 @@ PeerAssignmentRandom::PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
 }
 
 std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
-    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
-    [[maybe_unused]] const unsigned long               aNumPeers) {
-  (void)theRv;
+    const std::vector<AppDescriptor>& aApps,
+    const unsigned long               aNumPeers,
+    const std::vector<unsigned long>& aCandidatePeers) {
   std::vector<CapacityNetwork::AppDescriptor> ret;
+  for (const auto& myApp : aApps) {
+    ret.emplace_back(myApp.theHost,
+                     support::sample(aCandidatePeers, aNumPeers, theRv),
+                     myApp.thePriority,
+                     myApp.theFidelityThreshold);
+  }
   return ret;
 }
 
@@ -133,7 +139,8 @@ PeerAssignmentShortestPath::PeerAssignmentShortestPath(
 
 std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
     [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
-    [[maybe_unused]] const unsigned long               aNumPeers) {
+    [[maybe_unused]] const unsigned long               aNumPeers,
+    [[maybe_unused]] const std::vector<unsigned long>& aCandidatePeers) {
   std::vector<CapacityNetwork::AppDescriptor> ret;
   return ret;
 }
@@ -145,8 +152,10 @@ PeerAssignmentGap::PeerAssignmentGap(const CapacityNetwork& aNetwork)
 
 std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentGap::assign(
     [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
-    [[maybe_unused]] const unsigned long               aNumPeers) {
+    [[maybe_unused]] const unsigned long               aNumPeers,
+    [[maybe_unused]] const std::vector<unsigned long>& aCandidatePeers) {
   std::vector<CapacityNetwork::AppDescriptor> ret;
+  // XXX
   return ret;
 }
 
