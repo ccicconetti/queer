@@ -204,6 +204,41 @@ TEST_F(TestCapacityNetwork, test_reachable_nodes) {
   }
 }
 
+TEST_F(TestCapacityNetwork, test_closest_nodes) {
+  support::UniformRv myRv(0, 1, 42, 0, 0);
+  CapacityNetwork    myNetwork(exampleEdgeWeights());
+  using Vec = std::vector<unsigned long>;
+
+  ASSERT_EQ(Vec(), myNetwork.closestNodes(0, 0, myRv));
+  ASSERT_EQ(Vec({1}), myNetwork.closestNodes(0, 1, myRv));
+  ASSERT_EQ(Vec({1, 4}), myNetwork.closestNodes(0, 2, myRv));
+  ASSERT_EQ(Vec({1, 4, 2}), myNetwork.closestNodes(0, 3, myRv));
+  EXPECT_EQ(Vec({1, 4, 2, 3}), myNetwork.closestNodes(0, 4, myRv));
+  EXPECT_EQ(Vec({1, 4, 2, 3}), myNetwork.closestNodes(0, 99, myRv));
+
+  ASSERT_EQ(Vec({2}), myNetwork.closestNodes(1, 1, myRv));
+  ASSERT_EQ(Vec({2, 3}), myNetwork.closestNodes(1, 2, myRv));
+
+  ASSERT_EQ(Vec(), myNetwork.closestNodes(3, 1, myRv));
+}
+
+TEST_F(TestCapacityNetwork, test_closest_nodes_another) {
+  support::UniformRv myRv(0, 1, 42, 0, 0);
+  CapacityNetwork    myNetwork(anotherExampleEdgeWeights());
+  using Vec = std::vector<unsigned long>;
+
+  EXPECT_EQ(Vec(), myNetwork.closestNodes(0, 0, myRv));
+  EXPECT_EQ(Vec({1}), myNetwork.closestNodes(0, 1, myRv));
+  EXPECT_EQ(Vec({1, 2}), myNetwork.closestNodes(0, 2, myRv));
+  EXPECT_EQ(Vec({1, 2, 3}), myNetwork.closestNodes(0, 3, myRv));
+  EXPECT_EQ(Vec({1, 2, 3, 4}), myNetwork.closestNodes(0, 4, myRv));
+  EXPECT_EQ(Vec({1, 2, 3, 4, 6}), myNetwork.closestNodes(0, 5, myRv));
+  EXPECT_EQ(Vec({1, 2, 3, 4, 6, 5}), myNetwork.closestNodes(0, 6, myRv));
+  EXPECT_EQ(Vec({1, 2, 3, 4, 6, 5}), myNetwork.closestNodes(0, 99, myRv));
+
+  ASSERT_EQ(Vec({1, 6, 5, 4, 2}), myNetwork.closestNodes(3, 99, myRv));
+}
+
 TEST_F(TestCapacityNetwork, test_route_flows) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
   myNetwork.measurementProbability(0.5);

@@ -324,6 +324,49 @@ CapacityNetwork::reachableNodes(const std::size_t aMinHops,
   return ret;
 }
 
+std::vector<unsigned long>
+CapacityNetwork::closestNodes(const unsigned long       aSrc,
+                              const unsigned long       aNum,
+                              support::RealRvInterface& aRv) const {
+  std::vector<unsigned long> ret;
+  if (aNum == 0) {
+    return ret;
+  }
+
+  // find the shortest paths to reach any node from aSrc
+  const auto                    V = boost::num_vertices(theGraph);
+  std::vector<VertexDescriptor> myDistances(V);
+  boost::dijkstra_shortest_paths(
+      theGraph,
+      boost::vertex(aSrc, theGraph),
+      boost::weight_map(
+          boost::make_static_property_map<Graph::edge_descriptor>(1))
+          .distance_map(boost::make_iterator_property_map(
+              myDistances.data(), get(boost::vertex_index, theGraph))));
+
+  // sort the distances
+  // - do not include the nodes that are unreachable
+  // - add a tiny floating point variation to break ties
+  std::list<std::pair<double, unsigned long>> myDestinations;
+  for (unsigned long i = 0; i < V; i++) {
+    if (aSrc != i and
+        myDistances[i] != std::numeric_limits<unsigned long>::max()) {
+      myDestinations.emplace_back(myDistances[i] + aRv() * .1, i);
+    }
+  }
+  myDestinations.sort([](const auto aLhs, const auto aRhs) {
+    return aLhs.first < aRhs.second;
+  });
+
+  // take the last aNum instances
+  auto it = myDestinations.begin();
+  for (unsigned long i = 0; i < aNum and it != myDestinations.end();
+       i++, ++it) {
+    ret.emplace_back(it->second);
+  }
+  return ret;
+}
+
 void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
                             const FlowCheckFunction&     aCheckFunction) {
   const auto V = boost::num_vertices(theGraph);
@@ -466,7 +509,8 @@ void CapacityNetwork::route(std::vector<AppDescriptor>& aApps,
     }
   }
 
-  // for each app, find k-shortest paths towards each peer with Yen's algorithm
+  // for each app, find k-shortest paths towards each peer with Yen's
+  // algorithm
   auto myIndexMap = boost::get(boost::vertex_index, theGraph);
   for (auto& myApp : aApps) {
     for (const auto& myPeer : myApp.thePeers) {
@@ -756,7 +800,8 @@ void CapacityNetwork::routeDrr(std::vector<AppDescriptor>& aApps,
     // check if there are feasible paths remaining for this app:
     // - yes: move to the next app in the active list
     // - no: remove this app from active list
-    // in both cases it is possible that myCurAppIt reaches the end of the list
+    // in both cases it is possible that myCurAppIt reaches the end of the
+    // list
     if (not myCurApp.theRemainingPaths.empty()) {
       ++myCurAppIt;
     } else {

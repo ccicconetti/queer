@@ -239,6 +239,19 @@ class CapacityNetwork final : public Network
                                 std::size_t&      aDiameter) const;
 
   /**
+   * @brief Find the aNum nodes closest to a source node.
+   *
+   * @param aSrc Source node.
+   * @param aNum Number of closest nodes to find
+   * @param aRv A r.v. in [0,1] to break ties.
+   * @return std::vector<unsigned long> The closest nodes found.
+   * @post the size of the returned vector is smaller than or equal to aNum
+   */
+  std::vector<unsigned long> closestNodes(const unsigned long       aSrc,
+                                          const unsigned long       aNum,
+                                          support::RealRvInterface& aRv) const;
+
+  /**
    * @brief Route the given flows in this network starting with current
    * capacities.
    *
