@@ -84,7 +84,7 @@ makePeerAssignment(const CapacityNetwork&    aNetwork,
     case PeerAssignmentAlgo::Random:
       return std::make_unique<PeerAssignmentRandom>(aNetwork, aRv);
     case PeerAssignmentAlgo::ShortestPath:
-      return std::make_unique<PeerAssignmentShortestPath>(aNetwork);
+      return std::make_unique<PeerAssignmentShortestPath>(aNetwork, aRv);
     case PeerAssignmentAlgo::Gap:
       return std::make_unique<PeerAssignmentGap>(aNetwork);
     default:; /* fall-through */
@@ -132,16 +132,23 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
 }
 
 PeerAssignmentShortestPath::PeerAssignmentShortestPath(
-    const CapacityNetwork& aNetwork)
-    : PeerAssignment(aNetwork, PeerAssignmentAlgo::ShortestPath) {
+    const CapacityNetwork& aNetwork, support::RealRvInterface& aRv)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::ShortestPath)
+    , theRv(aRv) {
   // noop
 }
 
 std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
-    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
-    [[maybe_unused]] const unsigned long               aNumPeers,
-    [[maybe_unused]] const std::vector<unsigned long>& aCandidatePeers) {
+    const std::vector<AppDescriptor>& aApps,
+    const unsigned long               aNumPeers,
+    const std::vector<unsigned long>& aCandidatePeers) {
   std::vector<CapacityNetwork::AppDescriptor> ret;
+  for (const auto& myApp : aApps) {
+    ret.emplace_back(myApp.theHost,
+                     theNetwork.closestNodes(myApp.theHost, aNumPeers, theRv),
+                     myApp.thePriority,
+                     myApp.theFidelityThreshold);
+  }
   return ret;
 }
 

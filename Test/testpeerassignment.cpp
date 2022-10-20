@@ -29,14 +29,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include "QuantumRouting/capacitynetwork.h"
 #include "QuantumRouting/peerassignment.h"
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
+
+#include <ctime>
 
 namespace uiiit {
 namespace qr {
 
-struct TestPeerAssignment : public ::testing::Test {};
+struct TestPeerAssignment : public ::testing::Test {
+  /*
+  0 -------+   +-----> 4      0-3: 10     3-4: 10
+           |  / +----> 5      1-3: 20     3-5: 20
+           v / /              2-3: 40     3-6: 20
+  1 -----> 3 --------> 6                  3-7: 40   7-8: 40
+           ^ \
+           |  \
+  2 -------+   +-----> 7 ------> 8
+  */
+  CapacityNetwork::WeightVector exampleEdgeWeights() {
+    return CapacityNetwork::WeightVector({
+        {0, 3, 10},
+        {1, 3, 20},
+        {2, 3, 40},
+        {3, 4, 10},
+        {3, 5, 20},
+        {3, 6, 20},
+        {3, 7, 40},
+        {7, 8, 40},
+    });
+  }
+};
 
 TEST_F(TestPeerAssignment, test_algorithms) {
   for (const auto& myAlgo : allPeerAssignmentAlgos()) {
@@ -45,6 +71,47 @@ TEST_F(TestPeerAssignment, test_algorithms) {
   ASSERT_EQ("unknown", toString(static_cast<PeerAssignmentAlgo>(999)));
   ASSERT_THROW(peerAssignmentAlgofromString("not-existing-algo"),
                std::runtime_error);
+}
+
+TEST_F(TestPeerAssignment, test_random) {
+  using Nodes                 = std::vector<unsigned long>;
+  const auto         NUM_RUNS = 100;
+  support::UniformRv myRv(0, 1, std::time(nullptr), 0, 0);
+
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+
+  auto myAssignment =
+      makePeerAssignment(myNetwork, PeerAssignmentAlgo::Random, myRv);
+
+  const std::vector<PeerAssignment::AppDescriptor> myApps({
+      {0, 1, 0.5},
+      {1, 1, 0.5},
+      {2, 1, 0.5},
+  });
+
+  const Nodes myDataCenters({4, 5, 6, 8});
+
+  const std::vector<unsigned long> W({1, 2}); // num data centers per app
+
+  for (const auto w : W) {
+    std::map<unsigned long, std::set<unsigned long>> myAllAssigned;
+    for (auto i = 0u; i < NUM_RUNS; i++) {
+      const auto myAssigned = myAssignment->assign(myApps, w, myDataCenters);
+      ASSERT_EQ(myApps.size(), myAssigned.size());
+      for (const auto& elem : myAssigned) {
+        ASSERT_EQ(w, elem.thePeers.size());
+        for (const auto myPeer : elem.thePeers) {
+          myAllAssigned[elem.theHost].insert(myPeer);
+        }
+      }
+    }
+    for (const auto& elem : myAllAssigned) {
+      for (const auto& node : myDataCenters) {
+        EXPECT_EQ(1u, elem.second.count(node))
+            << "w " << w << ", app " << elem.first << ", node " << node;
+      }
+    }
+  }
 }
 
 } // namespace qr

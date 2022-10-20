@@ -146,13 +146,17 @@ class PeerAssignmentRandom final : public PeerAssignment
 class PeerAssignmentShortestPath final : public PeerAssignment
 {
  public:
-  PeerAssignmentShortestPath(const CapacityNetwork& aNetwork);
+  PeerAssignmentShortestPath(const CapacityNetwork&    aNetwork,
+                             support::RealRvInterface& aRv);
 
   //! Pick peers from closest peers.
   std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) override;
+
+ private:
+  support::RealRvInterface& theRv;
 };
 
 class PeerAssignmentGap final : public PeerAssignment
