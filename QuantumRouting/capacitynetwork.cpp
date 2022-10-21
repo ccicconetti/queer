@@ -383,14 +383,20 @@ CapacityNetwork::maxNetRate(const AppDescriptor&    aApp,
                      boost::make_static_property_map<Graph::edge_descriptor>(1),
                      myIndexMap,
                      NUM_PATHS);
+  assert(myResult.size() <= NUM_PATHS);
 
   std::list<double> myNetRates({0.0}); // 0 is always a possible output
   for (auto& elem : myResult) {
+    assert(elem.first > 0);
+    assert(static_cast<std::size_t>(elem.first) == elem.second.size());
     if (aCheckFunction(aApp, elem.second) == false) {
       // this path is invalid
       continue;
     }
+    myNetRates.emplace_back(
+        toNetRate(minCapacity(elem.second, theGraph), elem.first));
   }
+  assert(myNetRates.size() <= (1 + NUM_PATHS));
 
   // return the maximum net rate found (can be 0)
   assert(not myNetRates.empty());

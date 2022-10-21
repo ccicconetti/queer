@@ -260,7 +260,8 @@ class CapacityNetwork final : public Network
   /**
    * @brief Find the maximum net rate achievable from a node to another.
    *
-   * @param aApp The host application (including the source node).
+   * @param aApp The host application. Use only the information about the
+   * source node; ignore the other fields.
    * @param aPeer The candidate peer (destination node).
    * @param aCheckFunction Function to check if a potential path is valid.
    * @return double The maximum net rate achievable, in EPR pairs/s, >= 0.

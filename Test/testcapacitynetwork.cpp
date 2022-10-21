@@ -226,53 +226,53 @@ TEST_F(TestCapacityNetwork, test_closest_nodes) {
   support::UniformRv myRv(0, 1, 42, 0, 0);
   CapacityNetwork    myNetwork(exampleEdgeWeights());
 
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
 
-  EXPECT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 4}));
-  EXPECT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
-  EXPECT_EQ(Set({1, 2, 4}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
-  EXPECT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 4, myRv)));
-  EXPECT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 99, myRv)));
+  ASSERT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 4}));
+  ASSERT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  ASSERT_EQ(Set({1, 2, 4}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
+  ASSERT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 4, myRv)));
+  ASSERT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 99, myRv)));
 
-  EXPECT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(1, 1, myRv)));
-  EXPECT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(1, 2, myRv)));
+  ASSERT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(1, 1, myRv)));
+  ASSERT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(1, 2, myRv)));
 
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(3, 1, myRv)));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(3, 1, myRv)));
 }
 
 TEST_F(TestCapacityNetwork, test_closest_nodes_whitelist) {
   support::UniformRv myRv(0, 1, 42, 0, 0);
   CapacityNetwork    myNetwork(exampleEdgeWeights());
 
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv, {1, 2, 3, 4})));
-  EXPECT_EQ(Set({1}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {1, 2, 3})));
-  EXPECT_EQ(Set({4}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3, 4})));
-  EXPECT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3})));
-  EXPECT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {3})));
-  EXPECT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
-  EXPECT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(0, 2, myRv, {2, 3})));
-  EXPECT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 99, myRv, {3})));
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {0})));
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {42})));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv, {1, 2, 3, 4})));
+  ASSERT_EQ(Set({1}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {1, 2, 3})));
+  ASSERT_EQ(Set({4}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3, 4})));
+  ASSERT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3})));
+  ASSERT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {3})));
+  ASSERT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  ASSERT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(0, 2, myRv, {2, 3})));
+  ASSERT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 99, myRv, {3})));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {0})));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {42})));
 }
 
 TEST_F(TestCapacityNetwork, test_closest_nodes_another) {
   support::UniformRv myRv(0, 1, 42, 0, 0);
   CapacityNetwork    myNetwork(anotherExampleEdgeWeights());
 
-  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
-  EXPECT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 2}));
-  EXPECT_EQ(Set({1, 2}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
-  EXPECT_EQ(Set({1, 2, 3}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
+  ASSERT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
+  ASSERT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 2}));
+  ASSERT_EQ(Set({1, 2}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  ASSERT_EQ(Set({1, 2, 3}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
   auto myNodes = vecToSet(myNetwork.closestNodes(0, 4, myRv));
-  EXPECT_TRUE(myNodes == Set({1, 2, 3, 4}) or myNodes == Set({1, 2, 3, 5}));
-  EXPECT_EQ(Set({1, 2, 3, 4, 5}), vecToSet(myNetwork.closestNodes(0, 5, myRv)));
-  EXPECT_EQ(Set({1, 2, 3, 4, 5, 6}),
+  ASSERT_TRUE(myNodes == Set({1, 2, 3, 4}) or myNodes == Set({1, 2, 3, 5}));
+  ASSERT_EQ(Set({1, 2, 3, 4, 5}), vecToSet(myNetwork.closestNodes(0, 5, myRv)));
+  ASSERT_EQ(Set({1, 2, 3, 4, 5, 6}),
             vecToSet(myNetwork.closestNodes(0, 6, myRv)));
-  EXPECT_EQ(Set({1, 2, 3, 4, 5, 6}),
+  ASSERT_EQ(Set({1, 2, 3, 4, 5, 6}),
             vecToSet(myNetwork.closestNodes(0, 99, myRv)));
 
-  EXPECT_EQ(Set({1, 2, 4, 5, 6}),
+  ASSERT_EQ(Set({1, 2, 4, 5, 6}),
             vecToSet(myNetwork.closestNodes(3, 99, myRv)));
 }
 
@@ -702,6 +702,41 @@ TEST_F(TestCapacityNetwork, test_min_capacity_edges) {
                                                G));
   ASSERT_FLOAT_EQ(std::numeric_limits<double>::max(),
                   CapacityNetwork::minCapacity(P(), G));
+}
+
+TEST_F(TestCapacityNetwork, test_max_net_rate) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+  const std::vector<unsigned long> myNoPeers;
+
+  // path 0-1-2-3, min capacity = 4 and 2 swaps
+  ASSERT_FLOAT_EQ(1,
+                  myNetwork.maxNetRate(
+                      CapacityNetwork::AppDescriptor(0, myNoPeers, 1, 0.5), 3));
+
+  // path 0-4, min capacity = 1 and 0 swaps
+  ASSERT_FLOAT_EQ(1,
+                  myNetwork.maxNetRate(
+                      CapacityNetwork::AppDescriptor(0, myNoPeers, 1, 0.5), 3));
+
+  // path 0-4-3, min capacity = 1 and 1 swap
+  ASSERT_FLOAT_EQ(
+      0.5,
+      myNetwork.maxNetRate(CapacityNetwork::AppDescriptor(0, myNoPeers, 1, 0.5),
+                           3,
+                           [](const auto&, const auto& aPath) {
+                             for (const auto& elem : aPath) {
+                               if (elem.m_target == 2) {
+                                 return false;
+                               }
+                             }
+                             return true;
+                           }));
+
+  // non-existing path 3-0
+  ASSERT_FLOAT_EQ(0,
+                  myNetwork.maxNetRate(
+                      CapacityNetwork::AppDescriptor(3, myNoPeers, 1, 0.5), 0));
 }
 
 } // namespace qr
