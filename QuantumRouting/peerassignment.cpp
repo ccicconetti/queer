@@ -142,12 +142,15 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
+  std::set<unsigned long> myDataCenters(aCandidatePeers.begin(),
+                                        aCandidatePeers.end());
   std::vector<CapacityNetwork::AppDescriptor> ret;
   for (const auto& myApp : aApps) {
-    ret.emplace_back(myApp.theHost,
-                     theNetwork.closestNodes(myApp.theHost, aNumPeers, theRv),
-                     myApp.thePriority,
-                     myApp.theFidelityThreshold);
+    ret.emplace_back(
+        myApp.theHost,
+        theNetwork.closestNodes(myApp.theHost, aNumPeers, theRv, myDataCenters),
+        myApp.thePriority,
+        myApp.theFidelityThreshold);
   }
   return ret;
 }

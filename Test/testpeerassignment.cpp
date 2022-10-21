@@ -42,13 +42,33 @@ namespace qr {
 
 struct TestPeerAssignment : public ::testing::Test {
   /*
-  0 -------+   +-----> 4      0-3: 10     3-4: 10
-           |  / +----> 5      1-3: 20     3-5: 20
-           v / /              2-3: 40     3-6: 20
-  1 -----> 3 --------> 6                  3-7: 40   7-8: 40
-           ^ \
-           |  \
-  2 -------+   +-----> 7 ------> 8
+  end users: 0, 1, 2
+  data centers: 4, 5, 6, 8
+  network-only nodes: 3, 7
+
+                                 ┌─────┐
+                                 │     │
+                      ┌───10────►│  4  │
+                      │          │     │
+  ┌─────┐             │          └─────┘
+  │     │             │
+  │  0  ├────10─────┐ │          ┌─────┐
+  │     │           │ │          │     │
+  └─────┘           │ │     ┌───►│  5  │
+                    ▼ │     │    │     │
+  ┌─────┐         ┌───┴─┐   20   └─────┘
+  │     │         │     ├────
+  │  1  ├───20───►│  3  │             ┌─────┐
+  │     │         │     ├───┐         │     │
+  └─────┘         └───┬─┘   └──20────►│  6  │
+                    ▲ │               │     │
+  ┌─────┐           │ │               └─────┘
+  │     │           │ │
+  │  2  ├────40─────┘ │          ┌─────┐       ┌─────┐
+  │     │             │          │     │       │     │
+  └─────┘             └───40────►│  7  ├──40──►│  8  │
+                                 │     │       │     │
+                                 └─────┘       └─────┘
   */
   CapacityNetwork::WeightVector exampleEdgeWeights() {
     return CapacityNetwork::WeightVector({
@@ -62,6 +82,25 @@ struct TestPeerAssignment : public ::testing::Test {
         {7, 8, 40},
     });
   }
+
+  TestPeerAssignment()
+      : theRv(0, 1, std::time(nullptr), 0, 0)
+      , theApps({
+            {0, 1, 0.5},
+            {1, 1, 0.5},
+            {2, 1, 0.5},
+        })
+      , theDataCenters({4, 5, 6, 8}) {
+    // noop
+  }
+
+  using Nodes = std::vector<unsigned long>;
+
+  const unsigned long NUM_RUNS = 100;
+
+  support::UniformRv                               theRv;
+  const std::vector<PeerAssignment::AppDescriptor> theApps;
+  const Nodes                                      theDataCenters;
 };
 
 TEST_F(TestPeerAssignment, test_algorithms) {
@@ -74,30 +113,18 @@ TEST_F(TestPeerAssignment, test_algorithms) {
 }
 
 TEST_F(TestPeerAssignment, test_random) {
-  using Nodes                 = std::vector<unsigned long>;
-  const auto         NUM_RUNS = 100;
-  support::UniformRv myRv(0, 1, std::time(nullptr), 0, 0);
-
   CapacityNetwork myNetwork(exampleEdgeWeights());
 
   auto myAssignment =
-      makePeerAssignment(myNetwork, PeerAssignmentAlgo::Random, myRv);
-
-  const std::vector<PeerAssignment::AppDescriptor> myApps({
-      {0, 1, 0.5},
-      {1, 1, 0.5},
-      {2, 1, 0.5},
-  });
-
-  const Nodes myDataCenters({4, 5, 6, 8});
+      makePeerAssignment(myNetwork, PeerAssignmentAlgo::Random, theRv);
 
   const std::vector<unsigned long> W({1, 2}); // num data centers per app
 
   for (const auto w : W) {
     std::map<unsigned long, std::set<unsigned long>> myAllAssigned;
     for (auto i = 0u; i < NUM_RUNS; i++) {
-      const auto myAssigned = myAssignment->assign(myApps, w, myDataCenters);
-      ASSERT_EQ(myApps.size(), myAssigned.size());
+      const auto myAssigned = myAssignment->assign(theApps, w, theDataCenters);
+      ASSERT_EQ(theApps.size(), myAssigned.size());
       for (const auto& elem : myAssigned) {
         ASSERT_EQ(w, elem.thePeers.size());
         for (const auto myPeer : elem.thePeers) {
@@ -106,11 +133,50 @@ TEST_F(TestPeerAssignment, test_random) {
       }
     }
     for (const auto& elem : myAllAssigned) {
-      for (const auto& node : myDataCenters) {
-        EXPECT_EQ(1u, elem.second.count(node))
+      for (const auto& node : theDataCenters) {
+        ASSERT_EQ(1u, elem.second.count(node))
             << "w " << w << ", app " << elem.first << ", node " << node;
       }
     }
+  }
+}
+
+TEST_F(TestPeerAssignment, test_shortest_path) {
+  using Set = std::set<unsigned long>;
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+
+  auto myAssignment =
+      makePeerAssignment(myNetwork, PeerAssignmentAlgo::ShortestPath, theRv);
+
+  // W = 1: all apps pick the same node
+  auto myAssigned = myAssignment->assign(theApps, 1, theDataCenters);
+  ASSERT_EQ(theApps.size(), myAssigned.size());
+  for (const auto& elem : myAssigned) {
+    ASSERT_EQ(1u, elem.thePeers.size());
+    ASSERT_TRUE(Set({4, 5, 6}).count(elem.thePeers[0]) > 0);
+  }
+
+  // W = 2: all apps pick the same two nodes
+  myAssigned = myAssignment->assign(theApps, 2, theDataCenters);
+  ASSERT_EQ(theApps.size(), myAssigned.size());
+  for (const auto& elem : myAssigned) {
+    ASSERT_EQ(2u, elem.thePeers.size());
+    ASSERT_TRUE(Set({4, 5, 6}).count(elem.thePeers[0]) > 0);
+    ASSERT_TRUE(Set({4, 5, 6}).count(elem.thePeers[1]) > 0);
+  }
+
+  // W >= 4: all apps pick all nodes
+  myAssigned = myAssignment->assign(theApps, 4, theDataCenters);
+  ASSERT_EQ(theApps.size(), myAssigned.size());
+  for (const auto& elem : myAssigned) {
+    ASSERT_EQ(Set({4, 5, 6, 8}),
+              Set(elem.thePeers.begin(), elem.thePeers.end()));
+  }
+  myAssigned = myAssignment->assign(theApps, 99, theDataCenters);
+  ASSERT_EQ(theApps.size(), myAssigned.size());
+  for (const auto& elem : myAssigned) {
+    ASSERT_EQ(Set({4, 5, 6, 8}),
+              Set(elem.thePeers.begin(), elem.thePeers.end()));
   }
 }
 
