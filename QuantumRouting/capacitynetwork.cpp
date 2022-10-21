@@ -325,9 +325,10 @@ CapacityNetwork::reachableNodes(const std::size_t aMinHops,
 }
 
 std::vector<unsigned long>
-CapacityNetwork::closestNodes(const unsigned long       aSrc,
-                              const unsigned long       aNum,
-                              support::RealRvInterface& aRv) const {
+CapacityNetwork::closestNodes(const unsigned long            aSrc,
+                              const unsigned long            aNum,
+                              support::RealRvInterface&      aRv,
+                              const std::set<unsigned long>& aWhiteList) const {
   std::vector<unsigned long> ret;
   if (aNum == 0) {
     return ret;
@@ -354,15 +355,17 @@ CapacityNetwork::closestNodes(const unsigned long       aSrc,
       myDestinations.emplace_back(myDistances[i] + aRv() * .1, i);
     }
   }
-  myDestinations.sort([](const auto aLhs, const auto aRhs) {
-    return aLhs.first < aRhs.second;
+  myDestinations.sort([](const auto& aLhs, const auto& aRhs) {
+    return aLhs.first < aRhs.first;
   });
 
-  // take the last aNum instances
+  // take the first aNum instances
   auto it = myDestinations.begin();
-  for (unsigned long i = 0; i < aNum and it != myDestinations.end();
-       i++, ++it) {
-    ret.emplace_back(it->second);
+  for (unsigned long i = 0; i < aNum and it != myDestinations.end(); ++it) {
+    if (aWhiteList.empty() or aWhiteList.count(it->second) > 0) {
+      ret.emplace_back(it->second);
+      ++i;
+    }
   }
   return ret;
 }

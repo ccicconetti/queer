@@ -244,12 +244,16 @@ class CapacityNetwork final : public Network
    * @param aSrc Source node.
    * @param aNum Number of closest nodes to find
    * @param aRv A r.v. in [0,1] to break ties.
+   * @param aWhiteList Only return nodes from this list if non-empty.
    * @return std::vector<unsigned long> The closest nodes found.
    * @post the size of the returned vector is smaller than or equal to aNum
    */
-  std::vector<unsigned long> closestNodes(const unsigned long       aSrc,
-                                          const unsigned long       aNum,
-                                          support::RealRvInterface& aRv) const;
+  std::vector<unsigned long>
+  closestNodes(const unsigned long            aSrc,
+               const unsigned long            aNum,
+               support::RealRvInterface&      aRv,
+               const std::set<unsigned long>& aWhiteList =
+                   std::set<unsigned long>()) const;
 
   /**
    * @brief Route the given flows in this network starting with current

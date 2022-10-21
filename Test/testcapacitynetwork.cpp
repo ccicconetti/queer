@@ -104,6 +104,24 @@ struct TestCapacityNetwork : public ::testing::Test {
         {5, 6, 1},
     });
   }
+
+  using Vec = std::vector<unsigned long>;
+  using Set = std::set<unsigned long>;
+  Set vecToSet(const Vec& aVec) {
+    Set ret;
+    for (const auto& elem : aVec) {
+      ret.insert(elem);
+    }
+    return ret;
+  }
+  bool setInSet(const Set& aOuter, const Set& aInner) {
+    for (const auto& elem : aInner) {
+      if (aOuter.count(elem) > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 };
 
 TEST_F(TestCapacityNetwork, test_app_route_algo) {
@@ -207,36 +225,55 @@ TEST_F(TestCapacityNetwork, test_reachable_nodes) {
 TEST_F(TestCapacityNetwork, test_closest_nodes) {
   support::UniformRv myRv(0, 1, 42, 0, 0);
   CapacityNetwork    myNetwork(exampleEdgeWeights());
-  using Vec = std::vector<unsigned long>;
 
-  ASSERT_EQ(Vec(), myNetwork.closestNodes(0, 0, myRv));
-  ASSERT_EQ(Vec({1}), myNetwork.closestNodes(0, 1, myRv));
-  ASSERT_EQ(Vec({1, 4}), myNetwork.closestNodes(0, 2, myRv));
-  ASSERT_EQ(Vec({1, 4, 2}), myNetwork.closestNodes(0, 3, myRv));
-  EXPECT_EQ(Vec({1, 4, 2, 3}), myNetwork.closestNodes(0, 4, myRv));
-  EXPECT_EQ(Vec({1, 4, 2, 3}), myNetwork.closestNodes(0, 99, myRv));
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
 
-  ASSERT_EQ(Vec({2}), myNetwork.closestNodes(1, 1, myRv));
-  ASSERT_EQ(Vec({2, 3}), myNetwork.closestNodes(1, 2, myRv));
+  EXPECT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 4}));
+  EXPECT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  EXPECT_EQ(Set({1, 2, 4}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
+  EXPECT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 4, myRv)));
+  EXPECT_EQ(Set({1, 2, 3, 4}), vecToSet(myNetwork.closestNodes(0, 99, myRv)));
 
-  ASSERT_EQ(Vec(), myNetwork.closestNodes(3, 1, myRv));
+  EXPECT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(1, 1, myRv)));
+  EXPECT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(1, 2, myRv)));
+
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(3, 1, myRv)));
+}
+
+TEST_F(TestCapacityNetwork, test_closest_nodes_whitelist) {
+  support::UniformRv myRv(0, 1, 42, 0, 0);
+  CapacityNetwork    myNetwork(exampleEdgeWeights());
+
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv, {1, 2, 3, 4})));
+  EXPECT_EQ(Set({1}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {1, 2, 3})));
+  EXPECT_EQ(Set({4}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3, 4})));
+  EXPECT_EQ(Set({2}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {2, 3})));
+  EXPECT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 1, myRv, {3})));
+  EXPECT_EQ(Set({1, 4}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  EXPECT_EQ(Set({2, 3}), vecToSet(myNetwork.closestNodes(0, 2, myRv, {2, 3})));
+  EXPECT_EQ(Set({3}), vecToSet(myNetwork.closestNodes(0, 99, myRv, {3})));
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {0})));
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 99, myRv, {42})));
 }
 
 TEST_F(TestCapacityNetwork, test_closest_nodes_another) {
   support::UniformRv myRv(0, 1, 42, 0, 0);
   CapacityNetwork    myNetwork(anotherExampleEdgeWeights());
-  using Vec = std::vector<unsigned long>;
 
-  EXPECT_EQ(Vec(), myNetwork.closestNodes(0, 0, myRv));
-  EXPECT_EQ(Vec({1}), myNetwork.closestNodes(0, 1, myRv));
-  EXPECT_EQ(Vec({1, 2}), myNetwork.closestNodes(0, 2, myRv));
-  EXPECT_EQ(Vec({1, 2, 3}), myNetwork.closestNodes(0, 3, myRv));
-  EXPECT_EQ(Vec({1, 2, 3, 4}), myNetwork.closestNodes(0, 4, myRv));
-  EXPECT_EQ(Vec({1, 2, 3, 4, 6}), myNetwork.closestNodes(0, 5, myRv));
-  EXPECT_EQ(Vec({1, 2, 3, 4, 6, 5}), myNetwork.closestNodes(0, 6, myRv));
-  EXPECT_EQ(Vec({1, 2, 3, 4, 6, 5}), myNetwork.closestNodes(0, 99, myRv));
+  EXPECT_EQ(Set(), vecToSet(myNetwork.closestNodes(0, 0, myRv)));
+  EXPECT_TRUE(setInSet(vecToSet(myNetwork.closestNodes(0, 1, myRv)), {1, 2}));
+  EXPECT_EQ(Set({1, 2}), vecToSet(myNetwork.closestNodes(0, 2, myRv)));
+  EXPECT_EQ(Set({1, 2, 3}), vecToSet(myNetwork.closestNodes(0, 3, myRv)));
+  auto myNodes = vecToSet(myNetwork.closestNodes(0, 4, myRv));
+  EXPECT_TRUE(myNodes == Set({1, 2, 3, 4}) or myNodes == Set({1, 2, 3, 5}));
+  EXPECT_EQ(Set({1, 2, 3, 4, 5}), vecToSet(myNetwork.closestNodes(0, 5, myRv)));
+  EXPECT_EQ(Set({1, 2, 3, 4, 5, 6}),
+            vecToSet(myNetwork.closestNodes(0, 6, myRv)));
+  EXPECT_EQ(Set({1, 2, 3, 4, 5, 6}),
+            vecToSet(myNetwork.closestNodes(0, 99, myRv)));
 
-  ASSERT_EQ(Vec({1, 6, 5, 4, 2}), myNetwork.closestNodes(3, 99, myRv));
+  EXPECT_EQ(Set({1, 2, 4, 5, 6}),
+            vecToSet(myNetwork.closestNodes(3, 99, myRv)));
 }
 
 TEST_F(TestCapacityNetwork, test_route_flows) {
