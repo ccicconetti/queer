@@ -42,7 +42,7 @@ std::vector<PeerAssignmentAlgo> allPeerAssignmentAlgos() {
   static const std::vector<PeerAssignmentAlgo> myAlgos({
       PeerAssignmentAlgo::Random,
       PeerAssignmentAlgo::ShortestPath,
-      PeerAssignmentAlgo::Gap,
+      PeerAssignmentAlgo::LoadBalancing,
   });
   return myAlgos;
 }
@@ -52,9 +52,9 @@ std::string toString(const PeerAssignmentAlgo aAlgo) {
     case PeerAssignmentAlgo::Random:
       return "random";
     case PeerAssignmentAlgo::ShortestPath:
-      return "shortestpath";
-    case PeerAssignmentAlgo::Gap:
-      return "gap";
+      return "shortest-path";
+    case PeerAssignmentAlgo::LoadBalancing:
+      return "load-balancing";
     default:; /* fall-through */
   }
   return "unknown";
@@ -63,10 +63,10 @@ std::string toString(const PeerAssignmentAlgo aAlgo) {
 PeerAssignmentAlgo peerAssignmentAlgofromString(const std::string& aAlgo) {
   if (aAlgo == "random") {
     return PeerAssignmentAlgo::Random;
-  } else if (aAlgo == "shortestpath") {
+  } else if (aAlgo == "shortest-path") {
     return PeerAssignmentAlgo::ShortestPath;
-  } else if (aAlgo == "gap") {
-    return PeerAssignmentAlgo::Gap;
+  } else if (aAlgo == "load-balancing") {
+    return PeerAssignmentAlgo::LoadBalancing;
   }
   throw std::runtime_error(
       "invalid peer assignment algorithm: " + aAlgo + " (valid options are: " +
@@ -85,8 +85,8 @@ makePeerAssignment(const CapacityNetwork&    aNetwork,
       return std::make_unique<PeerAssignmentRandom>(aNetwork, aRv);
     case PeerAssignmentAlgo::ShortestPath:
       return std::make_unique<PeerAssignmentShortestPath>(aNetwork, aRv);
-    case PeerAssignmentAlgo::Gap:
-      return std::make_unique<PeerAssignmentGap>(aNetwork);
+    case PeerAssignmentAlgo::LoadBalancing:
+      return std::make_unique<PeerAssignmentLoadBalancing>(aNetwork);
     default:; /* fall-through */
   }
   throw std::runtime_error("invalid peer assignment algorithm: " +
@@ -152,12 +152,13 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
   return ret;
 }
 
-PeerAssignmentGap::PeerAssignmentGap(const CapacityNetwork& aNetwork)
-    : PeerAssignment(aNetwork, PeerAssignmentAlgo::Gap) {
+PeerAssignmentLoadBalancing::PeerAssignmentLoadBalancing(
+    const CapacityNetwork& aNetwork)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::LoadBalancing) {
   // noop
 }
 
-std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentGap::assign(
+std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
     [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
     [[maybe_unused]] const unsigned long               aNumPeers,
     [[maybe_unused]] const std::vector<unsigned long>& aCandidatePeers) {

@@ -47,9 +47,9 @@ namespace qr {
 //
 
 enum class PeerAssignmentAlgo : unsigned int {
-  Random       = 0,
-  ShortestPath = 1,
-  Gap          = 2,
+  Random        = 0,
+  ShortestPath  = 1,
+  LoadBalancing = 2,
 };
 
 std::vector<PeerAssignmentAlgo> allPeerAssignmentAlgos();
@@ -159,10 +159,10 @@ class PeerAssignmentShortestPath final : public PeerAssignment
   support::RealRvInterface& theRv;
 };
 
-class PeerAssignmentGap final : public PeerAssignment
+class PeerAssignmentLoadBalancing final : public PeerAssignment
 {
  public:
-  PeerAssignmentGap(const CapacityNetwork& aNetwork);
+  PeerAssignmentLoadBalancing(const CapacityNetwork& aNetwork);
 
   //! Assign peers as the result of a generalized assignment problem.
   std::vector<CapacityNetwork::AppDescriptor>

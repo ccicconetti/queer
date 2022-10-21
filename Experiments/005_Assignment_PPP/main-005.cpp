@@ -699,7 +699,7 @@ int main(int argc, char* argv[]) {
      po::value<std::size_t>(&myNumPeers)->default_value(1),
      "Number of peers per app.")
     ("peer-assignment-algo",
-     po::value<std::string>(&myPeerAssignmentAlgo)->default_value(qr::toString(qr::PeerAssignmentAlgo::Gap)),
+     po::value<std::string>(&myPeerAssignmentAlgo)->default_value(qr::toString(qr::PeerAssignmentAlgo::LoadBalancing)),
      (std::string("Algorithm to be used, one of: ") + toString(qr::allPeerAssignmentAlgos(), ", ", [](const auto& aAlgo) { return toString(aAlgo); })).c_str())
     ("grid-size",
      po::value<double>(&myGridSize)->default_value(60000),
