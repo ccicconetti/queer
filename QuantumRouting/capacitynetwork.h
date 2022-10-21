@@ -256,6 +256,24 @@ class CapacityNetwork final : public Network
                    std::set<unsigned long>()) const;
 
   /**
+   * @brief Find the maximum net rate achievable from a node to another.
+   *
+   * @param aApp The host application (including the source node).
+   * @param aPeer The candidate peer (destination node).
+   * @param aCheckFunction Function to check if a potential path is valid.
+   * @return double The maximum net rate achievable, in EPR pairs/s, >= 0.
+   *
+   * The search is not full, so it is not guaranteed that the real maximum
+   * value will be returned, but an approximation.
+   */
+  double maxNetRate(
+      const AppDescriptor&    aApp,
+      const unsigned long     aPeer,
+      const AppCheckFunction& aCheckFunction = [](const auto&, const auto&) {
+        return true;
+      }) const;
+
+  /**
    * @brief Route the given flows in this network starting with current
    * capacities.
    *
@@ -322,6 +340,19 @@ class CapacityNetwork final : public Network
   void addCapacityToPath(const VertexDescriptor               aSrc,
                          const std::vector<VertexDescriptor>& aPath,
                          const double                         aCapacity);
+
+  /**
+   * @brief Find the minimum capacity along a path in a graph.
+   *
+   * @param aSrc The source node.
+   * @param aPath The path to the destination.
+   * @param aGraph The network.
+   * @return double The minimum capacity found, in EPR pairs/s.
+   * @throw std::runtime_error if the path does not exist in the network.
+   */
+  double minCapacity(const VertexDescriptor               aSrc,
+                     const std::vector<VertexDescriptor>& aPath) const;
+
   /**
    * @brief Return the capacity for each node, defined as the sum of the
    * capacity of all its outgoing edges.

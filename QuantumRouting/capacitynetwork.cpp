@@ -370,6 +370,34 @@ CapacityNetwork::closestNodes(const unsigned long            aSrc,
   return ret;
 }
 
+double
+CapacityNetwork::maxNetRate(const AppDescriptor&    aApp,
+                            const unsigned long     aPeer,
+                            const AppCheckFunction& aCheckFunction) const {
+  const auto NUM_PATHS  = 10u;
+  auto       myIndexMap = boost::get(boost::vertex_index, theGraph);
+  auto       myResult =
+      boost::yen_ksp(theGraph,
+                     aApp.theHost,
+                     aPeer,
+                     boost::make_static_property_map<Graph::edge_descriptor>(1),
+                     myIndexMap,
+                     NUM_PATHS);
+
+  std::list<double> myNetRates({0.0}); // 0 is always a possible output
+  for (auto& elem : myResult) {
+    if (aCheckFunction(aApp, elem.second) == false) {
+      // this path is invalid
+      continue;
+    }
+  }
+
+  // return the maximum net rate found (can be 0)
+  assert(not myNetRates.empty());
+  myNetRates.sort();
+  return myNetRates.back();
+}
+
 void CapacityNetwork::route(std::vector<FlowDescriptor>& aFlows,
                             const FlowCheckFunction&     aCheckFunction) {
   const auto V = boost::num_vertices(theGraph);
@@ -634,6 +662,30 @@ bool CapacityNetwork::checkCapacity(const VertexDescriptor               aSrc,
     mySrc = myDst;
   }
   return true;
+}
+
+double
+CapacityNetwork::minCapacity(const VertexDescriptor               aSrc,
+                             const std::vector<VertexDescriptor>& aPath) const {
+  double ret   = std::numeric_limits<double>::max();
+  auto   mySrc = aSrc;
+  for (std::size_t i = 0; i < aPath.size(); i++) {
+    auto myDst = aPath[i];
+
+    EdgeDescriptor myEdge;
+    auto           myFound    = false;
+    std::tie(myEdge, myFound) = boost::edge(mySrc, myDst, theGraph);
+    if (not myFound) {
+      throw std::runtime_error("non-existing path for src node " +
+                               std::to_string(aSrc) + ": " +
+                               ::toStringStd(aPath, ","));
+    }
+    ret = std::min(ret, boost::get(boost::edge_weight, theGraph, myEdge));
+
+    // move to the next edge
+    mySrc = myDst;
+  }
+  return ret;
 }
 
 void CapacityNetwork::removeSmallestCapacityEdge(

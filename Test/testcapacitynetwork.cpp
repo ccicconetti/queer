@@ -660,5 +660,19 @@ TEST_F(TestCapacityNetwork, test_add_capacity_to_edge) {
   ASSERT_NO_THROW(myNetwork.addCapacityToPath(0, {1}, 1));
 }
 
+TEST_F(TestCapacityNetwork, test_min_capacity) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+
+  ASSERT_FLOAT_EQ(4, myNetwork.minCapacity(0, {1, 2, 3}));
+  ASSERT_FLOAT_EQ(4, myNetwork.minCapacity(1, {2, 3}));
+  ASSERT_FLOAT_EQ(1, myNetwork.minCapacity(0, {4}));
+  ASSERT_FLOAT_EQ(1, myNetwork.minCapacity(0, {4, 3}));
+
+  ASSERT_NO_THROW(myNetwork.minCapacity(0, {1}));
+  ASSERT_THROW(myNetwork.minCapacity(1, {0}), std::runtime_error);
+  ASSERT_THROW(myNetwork.minCapacity(0, {3}), std::runtime_error);
+  ASSERT_THROW(myNetwork.minCapacity(0, {99}), std::runtime_error);
+}
+
 } // namespace qr
 } // namespace uiiit
