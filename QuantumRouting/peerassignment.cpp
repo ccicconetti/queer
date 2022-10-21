@@ -32,6 +32,7 @@ SOFTWARE.
 #include "QuantumRouting/peerassignment.h"
 
 #include "Support/tostring.h"
+#include "hungarian-algorithm-cpp/Hungarian.h"
 
 #include <stdexcept>
 
@@ -77,27 +78,22 @@ PeerAssignmentAlgo peerAssignmentAlgofromString(const std::string& aAlgo) {
 }
 
 std::unique_ptr<PeerAssignment>
-makePeerAssignment(const CapacityNetwork&    aNetwork,
-                   const PeerAssignmentAlgo  aAlgo,
-                   support::RealRvInterface& aRv) {
+makePeerAssignment(const CapacityNetwork&                   aNetwork,
+                   const PeerAssignmentAlgo                 aAlgo,
+                   support::RealRvInterface&                aRv,
+                   const CapacityNetwork::AppCheckFunction& aCheckFunction) {
   switch (aAlgo) {
     case PeerAssignmentAlgo::Random:
       return std::make_unique<PeerAssignmentRandom>(aNetwork, aRv);
     case PeerAssignmentAlgo::ShortestPath:
       return std::make_unique<PeerAssignmentShortestPath>(aNetwork, aRv);
     case PeerAssignmentAlgo::LoadBalancing:
-      return std::make_unique<PeerAssignmentLoadBalancing>(aNetwork);
+      return std::make_unique<PeerAssignmentLoadBalancing>(aNetwork,
+                                                           aCheckFunction);
     default:; /* fall-through */
   }
   throw std::runtime_error("invalid peer assignment algorithm: " +
                            toString(aAlgo));
-}
-
-PeerAssignment::PeerAssignment(const CapacityNetwork&   aNetwork,
-                               const PeerAssignmentAlgo aAlgo)
-    : theNetwork(aNetwork)
-    , theAlgo(aAlgo) {
-  // noop
 }
 
 PeerAssignment::AppDescriptor::AppDescriptor(
@@ -108,6 +104,25 @@ PeerAssignment::AppDescriptor::AppDescriptor(
     , thePriority(aPriority)
     , theFidelityThreshold(aFidelityThreshold) {
   // noop
+}
+
+PeerAssignment::PeerAssignment(const CapacityNetwork&   aNetwork,
+                               const PeerAssignmentAlgo aAlgo)
+    : theNetwork(aNetwork)
+    , theAlgo(aAlgo) {
+  // noop
+}
+
+void PeerAssignment::throwIfDuplicates(
+    const std::vector<unsigned long>& aCandidatePeers) {
+  std::set<unsigned long> myPeers(aCandidatePeers.begin(),
+                                  aCandidatePeers.end());
+  if (myPeers.size() != aCandidatePeers.size()) {
+    assert(aCandidatePeers.size() > myPeers.size());
+    throw std::runtime_error(
+        "found " + std::to_string(aCandidatePeers.size() - myPeers.size()) +
+        " duplicates among the candidate peers");
+  }
 }
 
 PeerAssignmentRandom::PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
@@ -121,6 +136,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
+  throwIfDuplicates(aCandidatePeers);
   std::vector<CapacityNetwork::AppDescriptor> ret;
   for (const auto& myApp : aApps) {
     ret.emplace_back(myApp.theHost,
@@ -142,6 +158,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
+  throwIfDuplicates(aCandidatePeers);
   std::set<unsigned long> myDataCenters(aCandidatePeers.begin(),
                                         aCandidatePeers.end());
   std::vector<CapacityNetwork::AppDescriptor> ret;
@@ -156,17 +173,30 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
 }
 
 PeerAssignmentLoadBalancing::PeerAssignmentLoadBalancing(
-    const CapacityNetwork& aNetwork)
-    : PeerAssignment(aNetwork, PeerAssignmentAlgo::LoadBalancing) {
+    const CapacityNetwork&                   aNetwork,
+    const CapacityNetwork::AppCheckFunction& aCheckFunction)
+    : PeerAssignment(aNetwork, PeerAssignmentAlgo::LoadBalancing)
+    , theCheckFunction(aCheckFunction) {
   // noop
 }
 
 std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
-    [[maybe_unused]] const std::vector<AppDescriptor>& aApps,
-    [[maybe_unused]] const unsigned long               aNumPeers,
-    [[maybe_unused]] const std::vector<unsigned long>& aCandidatePeers) {
+    const std::vector<AppDescriptor>& aApps,
+    const unsigned long               aNumPeers,
+    const std::vector<unsigned long>& aCandidatePeers) {
+  throwIfDuplicates(aCandidatePeers);
   std::vector<CapacityNetwork::AppDescriptor> ret;
-  // XXX
+
+  // assignment problem input matrix, with costs from end users to data centers
+  hungarian::HungarianAlgorithm::DistMatrix myDistMatrix(
+      aApps.size(), std::vector<double>(aCandidatePeers.size()));
+  for (unsigned long s = 0; s < aApps.size(); s++) {
+    for (unsigned long d = 0; d < aCandidatePeers.size(); d++) {
+      myDistMatrix[s][d] = theNetwork.maxNetRate(
+          CapacityNetwork::AppDescriptor(s, {}, 1, 0.5), d, theCheckFunction);
+    }
+  }
+
   return ret;
 }
 

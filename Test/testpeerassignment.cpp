@@ -116,7 +116,10 @@ TEST_F(TestPeerAssignment, test_random) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
 
   auto myAssignment =
-      makePeerAssignment(myNetwork, PeerAssignmentAlgo::Random, theRv);
+      makePeerAssignment(myNetwork,
+                         PeerAssignmentAlgo::Random,
+                         theRv,
+                         [](const auto&, const auto&) { return true; });
 
   const std::vector<unsigned long> W({1, 2}); // num data centers per app
 
@@ -146,7 +149,10 @@ TEST_F(TestPeerAssignment, test_shortest_path) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
 
   auto myAssignment =
-      makePeerAssignment(myNetwork, PeerAssignmentAlgo::ShortestPath, theRv);
+      makePeerAssignment(myNetwork,
+                         PeerAssignmentAlgo::ShortestPath,
+                         theRv,
+                         [](const auto&, const auto&) { return true; });
 
   // W = 1: all apps pick the same node
   auto myAssigned = myAssignment->assign(theApps, 1, theDataCenters);

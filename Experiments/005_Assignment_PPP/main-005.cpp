@@ -350,6 +350,14 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                               myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
+  // define validity of a path based on the minimum fidelity
+  const auto myCheckFunction = [&myRaii](const auto& aApp, const auto& aPath) {
+    assert(not aPath.empty());
+    return qr::fidelitySwapping(
+               p1, p2, eta, aPath.size() - 1, myRaii.in().theFidelityInit) >=
+           aApp.theFidelityThreshold;
+  };
+
   // select the end users (candidate hosts) and data centers (candidate peers)
   struct Rounder {
     Rounder(const unsigned long aN)
@@ -430,8 +438,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         0, myClassParams.size() - 1, myRaii.in().theSeed, 2, 2);
 
     // create the object for peer assignment
-    auto myPeerAssignment = qr::makePeerAssignment(
-        *myNetwork, myRaii.in().thePeerAssignmentAlgo, myPeerAssignmentRv);
+    auto myPeerAssignment =
+        qr::makePeerAssignment(*myNetwork,
+                               myRaii.in().thePeerAssignmentAlgo,
+                               myPeerAssignmentRv,
+                               myCheckFunction);
     assert(myPeerAssignment.get() != nullptr);
     assert(myPeerAssignment->algo() == myRaii.in().thePeerAssignmentAlgo);
 
@@ -462,16 +473,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                        myRaii.in().theQuantum * myRaii.in().theNumApps,
                        myRouteRv,
                        myRaii.in().theK,
-                       [&myRaii](const auto& aApp, const auto& aPath) {
-                         assert(not aPath.empty());
-                         return qr::fidelitySwapping(
-                                    p1,
-                                    p2,
-                                    eta,
-                                    aPath.size() - 1,
-                                    myRaii.in().theFidelityInit) >=
-                                aApp.theFidelityThreshold;
-                       });
+                       myCheckFunction);
 
       std::move(mySingleRunApps.begin(),
                 mySingleRunApps.end(),

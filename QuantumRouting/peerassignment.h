@@ -67,13 +67,15 @@ class PeerAssignment;
  * @param aNetwork The reference quantum network for peer assignment.
  * @param aAlgo The assignment algorithm to be used.
  * @param aRv A random variable in [0,1] that might be used by the algorithm.
+ * @param aCheckFunction The function that checks if a given path is valid.
  * @return std::unique_ptr<PeerAssignment> The peer assignment object.
  * @throw std::runtime_error if aAlgo is not known.
  */
 std::unique_ptr<PeerAssignment>
-makePeerAssignment(const CapacityNetwork&    aNetwork,
-                   const PeerAssignmentAlgo  aAlgo,
-                   support::RealRvInterface& aRv);
+makePeerAssignment(const CapacityNetwork&                   aNetwork,
+                   const PeerAssignmentAlgo                 aAlgo,
+                   support::RealRvInterface&                aRv,
+                   const CapacityNetwork::AppCheckFunction& aCheckFunction);
 
 //
 // peer assignment classes
@@ -122,6 +124,8 @@ class PeerAssignment
   PeerAssignment(const CapacityNetwork&   aNetwork,
                  const PeerAssignmentAlgo aAlgo);
 
+  void throwIfDuplicates(const std::vector<unsigned long>& aCandidatePeers);
+
  protected:
   const CapacityNetwork&   theNetwork;
   const PeerAssignmentAlgo theAlgo;
@@ -162,13 +166,18 @@ class PeerAssignmentShortestPath final : public PeerAssignment
 class PeerAssignmentLoadBalancing final : public PeerAssignment
 {
  public:
-  PeerAssignmentLoadBalancing(const CapacityNetwork& aNetwork);
+  PeerAssignmentLoadBalancing(
+      const CapacityNetwork&                   aNetwork,
+      const CapacityNetwork::AppCheckFunction& aCheckFunction);
 
   //! Assign peers as the result of a generalized assignment problem.
   std::vector<CapacityNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) override;
+
+ private:
+  const CapacityNetwork::AppCheckFunction theCheckFunction;
 };
 
 } // namespace qr
