@@ -53,6 +53,7 @@ add_subdirectory(Experiments)
 
 # external repos
 add_subdirectory(support/Support)
+add_subdirectory(hungarian-algorithm-cpp)
 add_subdirectory(yen)
 
 # unit tests

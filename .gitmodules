@@ -4,3 +4,6 @@
 [submodule "yen"]
 	path = yen
 	url = ../yen.git
+[submodule "hungarian-algorithm-cpp"]
+	path = hungarian-algorithm-cpp
+	url = ../hungarian-algorithm-cpp.git
