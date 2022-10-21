@@ -34,6 +34,8 @@ SOFTWARE.
 #include "Support/tostring.h"
 #include "hungarian-algorithm-cpp/Hungarian.h"
 
+#include <glog/logging.h>
+
 #include <stdexcept>
 
 namespace uiiit {
@@ -185,16 +187,80 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
   throwIfDuplicates(aCandidatePeers);
-  std::vector<CapacityNetwork::AppDescriptor> ret;
+
+  // return immediately if there are no data centers, a.k.a. peer candidates
+  if (aCandidatePeers.empty()) {
+    return std::vector<CapacityNetwork::AppDescriptor>();
+  }
+
+  // keep the current peer assigned: the inner vectors will grow by
+  // one unit at every iteration (#iterations = aNumPeers)
+  std::vector<std::vector<unsigned long>> myCurAssign(aApps.size());
+
+  // compute how many columns we need per data center
+  const auto C = 1 + (aApps.size() * aNumPeers - 1) / aCandidatePeers.size();
+  assert(C > 0);
 
   // assignment problem input matrix, with costs from end users to data centers
   hungarian::HungarianAlgorithm::DistMatrix myDistMatrix(
-      aApps.size(), std::vector<double>(aCandidatePeers.size()));
+      aApps.size(), std::vector<double>(C * aCandidatePeers.size()));
+  double myMax = 0;
   for (unsigned long s = 0; s < aApps.size(); s++) {
-    for (unsigned long d = 0; d < aCandidatePeers.size(); d++) {
-      myDistMatrix[s][d] = theNetwork.maxNetRate(
-          CapacityNetwork::AppDescriptor(s, {}, 1, 0.5), d, theCheckFunction);
+    for (unsigned long d = 0; d < (C * aCandidatePeers.size()); d++) {
+      const auto myNetRate = theNetwork.maxNetRate(
+          CapacityNetwork::AppDescriptor(aApps[s].theHost, {}, 1, 0.5),
+          aCandidatePeers[d / C],
+          theCheckFunction);
+      myDistMatrix[s][d] = -myNetRate;
+      myMax              = std::max(myMax, myNetRate);
+      VLOG(2) << s << '/' << aApps.size() << " " << d << '/'
+              << (C * aCandidatePeers.size()) << " net-rate " << myNetRate;
     }
+  }
+
+  // transform the cost-minimization problem into profit-maximization
+  for (unsigned long s = 0; s < aApps.size(); s++) {
+    for (unsigned long d = 0; d < (C * aCandidatePeers.size()); d++) {
+      myDistMatrix[s][d] += myMax;
+      assert(myDistMatrix[s][d] >= 0);
+    }
+  }
+
+  // at every iteration add one peer to each app
+  for (unsigned long i = 0; i < aNumPeers; i++) {
+    // solve assignment problem
+    std::vector<int> myAssignment;
+    const auto       myCost =
+        hungarian::HungarianAlgorithm::Solve(myDistMatrix, myAssignment);
+    assert(myAssignment.size() == aApps.size());
+    if (VLOG_IS_ON(2)) {
+      LOG(INFO) << "found assignment solution with cost " << myCost;
+      for (unsigned long a = 0; a < aApps.size(); a++) {
+        LOG(INFO) << "\tend user #" << a << "\tsrc " << aApps[a].theHost
+                  << "\tdst " << aCandidatePeers[myAssignment[a] / C];
+      }
+    }
+
+    // copy the assigment of this iteration into myCurAssign
+    // and remove the resources used
+    for (unsigned long a = 0; a < aApps.size(); a++) {
+      if (myAssignment[a] >= 0) {
+        myCurAssign[a].emplace_back(myAssignment[a] / C);
+      }
+      for (unsigned long i = 0; i < aApps.size(); i++) {
+        myDistMatrix[i][myAssignment[a]] = 1 + myMax;
+      }
+    }
+  }
+
+  // copy the last assignment to the return value
+  std::vector<CapacityNetwork::AppDescriptor> ret;
+  assert(aApps.size() == myCurAssign.size());
+  for (unsigned long a = 0; a < aApps.size(); a++) {
+    ret.emplace_back(aApps[a].theHost,
+                     myCurAssign[a],
+                     aApps[a].thePriority,
+                     aApps[a].theFidelityThreshold);
   }
 
   return ret;

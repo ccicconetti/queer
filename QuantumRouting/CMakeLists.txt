@@ -7,5 +7,6 @@ add_library(uiiitqr STATIC
 )
 
 target_link_libraries(uiiitqr
+  hungarian
   uiiitsupport
 )
