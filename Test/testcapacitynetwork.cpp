@@ -660,7 +660,7 @@ TEST_F(TestCapacityNetwork, test_add_capacity_to_edge) {
   ASSERT_NO_THROW(myNetwork.addCapacityToPath(0, {1}, 1));
 }
 
-TEST_F(TestCapacityNetwork, test_min_capacity) {
+TEST_F(TestCapacityNetwork, test_min_capacity_nodes) {
   CapacityNetwork myNetwork(exampleEdgeWeights());
 
   ASSERT_FLOAT_EQ(4, myNetwork.minCapacity(0, {1, 2, 3}));
@@ -668,10 +668,40 @@ TEST_F(TestCapacityNetwork, test_min_capacity) {
   ASSERT_FLOAT_EQ(1, myNetwork.minCapacity(0, {4}));
   ASSERT_FLOAT_EQ(1, myNetwork.minCapacity(0, {4, 3}));
 
+  ASSERT_FLOAT_EQ(std::numeric_limits<double>::max(),
+                  myNetwork.minCapacity(0, {}));
+
   ASSERT_NO_THROW(myNetwork.minCapacity(0, {1}));
   ASSERT_THROW(myNetwork.minCapacity(1, {0}), std::runtime_error);
   ASSERT_THROW(myNetwork.minCapacity(0, {3}), std::runtime_error);
   ASSERT_THROW(myNetwork.minCapacity(0, {99}), std::runtime_error);
+}
+
+TEST_F(TestCapacityNetwork, test_min_capacity_edges) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  const auto&     G = myNetwork.theGraph;
+  using P           = CapacityNetwork::AppDescriptor::Path;
+
+  ASSERT_FLOAT_EQ(4,
+                  CapacityNetwork::minCapacity(P({
+                                                   boost::edge(0, 1, G).first,
+                                                   boost::edge(1, 2, G).first,
+                                                   boost::edge(2, 3, G).first,
+                                               }),
+                                               G));
+  ASSERT_FLOAT_EQ(1,
+                  CapacityNetwork::minCapacity(P({
+                                                   boost::edge(0, 4, G).first,
+                                                   boost::edge(4, 3, G).first,
+                                               }),
+                                               G));
+  ASSERT_FLOAT_EQ(4,
+                  CapacityNetwork::minCapacity(P({
+                                                   boost::edge(4, 3, G).first,
+                                               }),
+                                               G));
+  ASSERT_FLOAT_EQ(std::numeric_limits<double>::max(),
+                  CapacityNetwork::minCapacity(P(), G));
 }
 
 } // namespace qr

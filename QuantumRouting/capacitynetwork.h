@@ -84,6 +84,8 @@ AppRouteAlgo              appRouteAlgofromString(const std::string& aAlgo);
 class CapacityNetwork final : public Network
 {
  public:
+  FRIEND_TEST(TestCapacityNetwork, test_min_capacity_edges);
+
   using Graph =
       boost::adjacency_list<boost::listS,
                             boost::vecS,
@@ -342,11 +344,10 @@ class CapacityNetwork final : public Network
                          const double                         aCapacity);
 
   /**
-   * @brief Find the minimum capacity along a path in a graph.
+   * @brief Find the minimum capacity along a path in the network.
    *
    * @param aSrc The source node.
    * @param aPath The path to the destination.
-   * @param aGraph The network.
    * @return double The minimum capacity found, in EPR pairs/s.
    * @throw std::runtime_error if the path does not exist in the network.
    */
@@ -395,6 +396,16 @@ class CapacityNetwork final : public Network
                             const std::vector<VertexDescriptor>& aPath,
                             const double                         aCapacity,
                             const Graph&                         aGraph);
+
+  /**
+   * @brief Find the minimum capacity along a path in a graph.
+   *
+   * @param aPath The path.
+   * @param aGraph The network.
+   * @return double The minimum capacity found, in EPR pairs/s.
+   */
+  static double minCapacity(const AppDescriptor::Path& aPath,
+                            const Graph&               aGraph);
 
   static void
   removeSmallestCapacityEdge(const VertexDescriptor               aSrc,

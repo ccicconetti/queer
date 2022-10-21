@@ -688,6 +688,15 @@ CapacityNetwork::minCapacity(const VertexDescriptor               aSrc,
   return ret;
 }
 
+double CapacityNetwork::minCapacity(const AppDescriptor::Path& aPath,
+                                    const Graph&               aGraph) {
+  double ret = std::numeric_limits<double>::max();
+  for (const auto& edge : aPath) {
+    ret = std::min(ret, boost::get(boost::edge_weight, aGraph, edge));
+  }
+  return ret;
+}
+
 void CapacityNetwork::removeSmallestCapacityEdge(
     const VertexDescriptor               aSrc,
     const std::vector<VertexDescriptor>& aPath,
