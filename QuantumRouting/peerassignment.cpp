@@ -34,8 +34,10 @@ SOFTWARE.
 #include "Support/tostring.h"
 #include "hungarian-algorithm-cpp/Hungarian.h"
 
+#include <algorithm>
 #include <glog/logging.h>
 
+#include <iterator>
 #include <numeric>
 #include <stdexcept>
 
@@ -141,12 +143,16 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
     const std::vector<unsigned long>& aCandidatePeers) {
   throwIfDuplicates(aCandidatePeers);
   std::vector<CapacityNetwork::AppDescriptor> ret;
-  for (const auto& myApp : aApps) {
-    ret.emplace_back(myApp.theHost,
-                     support::sample(aCandidatePeers, aNumPeers, theRv),
-                     myApp.thePriority,
-                     myApp.theFidelityThreshold);
-  }
+  std::transform(aApps.cbegin(),
+                 aApps.cend(),
+                 std::back_inserter(ret),
+                 [&aCandidatePeers, aNumPeers, this](const auto& aApp) {
+                   return CapacityNetwork::AppDescriptor(
+                       aApp.theHost,
+                       support::sample(aCandidatePeers, aNumPeers, theRv),
+                       aApp.thePriority,
+                       aApp.theFidelityThreshold);
+                 });
   return ret;
 }
 
@@ -165,13 +171,17 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
   std::set<unsigned long> myDataCenters(aCandidatePeers.begin(),
                                         aCandidatePeers.end());
   std::vector<CapacityNetwork::AppDescriptor> ret;
-  for (const auto& myApp : aApps) {
-    ret.emplace_back(
-        myApp.theHost,
-        theNetwork.closestNodes(myApp.theHost, aNumPeers, theRv, myDataCenters),
-        myApp.thePriority,
-        myApp.theFidelityThreshold);
-  }
+  std::transform(aApps.cbegin(),
+                 aApps.cend(),
+                 std::back_inserter(ret),
+                 [&myDataCenters, aNumPeers, this](const auto& aApp) {
+                   return CapacityNetwork::AppDescriptor(
+                       aApp.theHost,
+                       theNetwork.closestNodes(
+                           aApp.theHost, aNumPeers, theRv, myDataCenters),
+                       aApp.thePriority,
+                       aApp.theFidelityThreshold);
+                 });
   return ret;
 }
 
@@ -233,7 +243,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   }
 
   // at every iteration add one peer to each app
-  for (unsigned long i = 0; i < aNumPeers; i++) {
+  for (unsigned long myIteration = 0; myIteration < aNumPeers; myIteration++) {
     // solve assignment problem
     std::vector<int>            myAssignment;
     [[maybe_unused]] const auto myCost =
@@ -244,8 +254,8 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
 
 #ifndef NDEBUG
     // print the allocation found
-    VLOG(2) << "[" << i << "] found assignment solution with cost " << myCost
-            << " (profit " << myProfit << ")";
+    VLOG(2) << "[" << myIteration << "] found assignment solution with cost "
+            << myCost << " (profit " << myProfit << ")";
     for (unsigned long a = 0; a < aApps.size(); a++) {
       VLOG(2) << "\tend user #" << a << "\tsrc " << aApps[a].theHost << "\tdst "
               << aCandidatePeers[myAssignment[a] / C] << "\tcost "
