@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include "QuantumRouting/capacitynetwork.h"
 #include "QuantumRouting/peerassignment.h"
+#include "Support/tostring.h"
 
 #include "gtest/gtest.h"
 #include <glog/logging.h>
@@ -184,6 +185,76 @@ TEST_F(TestPeerAssignment, test_shortest_path) {
     ASSERT_EQ(Set({4, 5, 6, 8}),
               Set(elem.thePeers.begin(), elem.thePeers.end()));
   }
+}
+
+TEST_F(TestPeerAssignment, test_load_balancing) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  myNetwork.measurementProbability(0.5);
+
+  auto myAssignment =
+      makePeerAssignment(myNetwork,
+                         PeerAssignmentAlgo::LoadBalancing,
+                         theRv,
+                         [](const auto&, const auto&) { return true; });
+
+  struct Checker {
+    bool
+    operator()(const std::vector<CapacityNetwork::AppDescriptor>& aAssigned,
+               const std::vector<std::vector<unsigned long>>& aExpected) const {
+      auto ret = true;
+      if (aAssigned.size() != aExpected.size()) {
+        ret = false;
+      } else {
+        for (unsigned long a = 0; a < aAssigned.size(); a++) {
+          if (aAssigned[a].thePeers != aExpected[a]) {
+            ret = false;
+            break;
+          }
+        }
+      }
+      if (ret == false) {
+        LOG(INFO) << "assigned:";
+        for (unsigned long a = 0; a < aAssigned.size(); a++) {
+          LOG(INFO) << "\t#" << a << '\t' << aAssigned[a].toString();
+        }
+        LOG(INFO) << "expected:";
+        for (unsigned long e = 0; e < aExpected.size(); e++) {
+          LOG(INFO) << "\t#" << e << '\t' << ::toStringStd(aExpected[e], ",");
+        }
+      }
+      return ret;
+    }
+  };
+  Checker myChecker;
+
+  // W = 1
+  auto myAssigned = myAssignment->assign(theApps, 1, theDataCenters);
+  ASSERT_TRUE(myChecker(
+      myAssigned, std::vector<std::vector<unsigned long>>({{4}, {5}, {6}})));
+
+  // W = 2
+  myAssigned = myAssignment->assign(theApps, 2, theDataCenters);
+  ASSERT_TRUE(myChecker(
+      myAssigned,
+      std::vector<std::vector<unsigned long>>({{4, 6}, {5, 6}, {5, 8}})));
+
+  // W = 3
+  myAssigned = myAssignment->assign(theApps, 3, theDataCenters);
+  ASSERT_TRUE(myChecker(myAssigned,
+                        std::vector<std::vector<unsigned long>>(
+                            {{4, 5, 6}, {5, 6, 4}, {5, 6, 8}})));
+
+  // W = 4: each app is assigned to all data centers
+  myAssigned = myAssignment->assign(theApps, 4, theDataCenters);
+  ASSERT_TRUE(myChecker(myAssigned,
+                        std::vector<std::vector<unsigned long>>(
+                            {{4, 5, 6, 8}, {5, 6, 4, 8}, {5, 6, 8, 4}})));
+
+  // W = 10 > number of data centers
+  myAssigned = myAssignment->assign(theApps, 10, theDataCenters);
+  ASSERT_TRUE(myChecker(myAssigned,
+                        std::vector<std::vector<unsigned long>>(
+                            {{4, 5, 6, 8}, {5, 6, 4, 8}, {5, 6, 8, 4}})));
 }
 
 } // namespace qr

@@ -36,6 +36,7 @@ SOFTWARE.
 
 #include <glog/logging.h>
 
+#include <numeric>
 #include <stdexcept>
 
 namespace uiiit {
@@ -204,24 +205,29 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   // assignment problem input matrix, with costs from end users to data centers
   hungarian::HungarianAlgorithm::DistMatrix myDistMatrix(
       aApps.size(), std::vector<double>(C * aCandidatePeers.size()));
-  double myMax = 0;
+
+  // the maximum profit in each row, which will be used to tranform the
+  // problem into a cost-minimization
+  std::vector<double> myPerRowMaxValues(aApps.size(), 0.0);
   for (unsigned long s = 0; s < aApps.size(); s++) {
     for (unsigned long d = 0; d < (C * aCandidatePeers.size()); d++) {
       const auto myNetRate = theNetwork.maxNetRate(
           CapacityNetwork::AppDescriptor(aApps[s].theHost, {}, 1, 0.5),
           aCandidatePeers[d / C],
           theCheckFunction);
-      myDistMatrix[s][d] = -myNetRate;
-      myMax              = std::max(myMax, myNetRate);
+      myDistMatrix[s][d]   = -myNetRate;
+      myPerRowMaxValues[s] = std::max(myPerRowMaxValues[s], myNetRate);
       VLOG(2) << s << '/' << aApps.size() << " " << d << '/'
               << (C * aCandidatePeers.size()) << " net-rate " << myNetRate;
     }
   }
+  const auto mySumMax =
+      std::accumulate(myPerRowMaxValues.begin(), myPerRowMaxValues.end(), 0.0);
 
-  // transform the cost-minimization problem into profit-maximization
+  // transform profit-maximization profit into cost-minimization
   for (unsigned long s = 0; s < aApps.size(); s++) {
     for (unsigned long d = 0; d < (C * aCandidatePeers.size()); d++) {
-      myDistMatrix[s][d] += myMax;
+      myDistMatrix[s][d] += mySumMax;
       assert(myDistMatrix[s][d] >= 0);
     }
   }
@@ -229,29 +235,60 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   // at every iteration add one peer to each app
   for (unsigned long i = 0; i < aNumPeers; i++) {
     // solve assignment problem
-    std::vector<int> myAssignment;
-    const auto       myCost =
+    std::vector<int>            myAssignment;
+    [[maybe_unused]] const auto myCost =
         hungarian::HungarianAlgorithm::Solve(myDistMatrix, myAssignment);
+    [[maybe_unused]] const auto myProfit = aApps.size() * mySumMax - myCost;
+    assert(myProfit >= 0);
     assert(myAssignment.size() == aApps.size());
-    if (VLOG_IS_ON(2)) {
-      LOG(INFO) << "found assignment solution with cost " << myCost;
-      for (unsigned long a = 0; a < aApps.size(); a++) {
-        LOG(INFO) << "\tend user #" << a << "\tsrc " << aApps[a].theHost
-                  << "\tdst " << aCandidatePeers[myAssignment[a] / C];
-      }
-    }
 
-    // copy the assigment of this iteration into myCurAssign
-    // and remove the resources used
+#ifndef NDEBUG
+    // print the allocation found
+    VLOG(2) << "[" << i << "] found assignment solution with cost " << myCost
+            << " (profit " << myProfit << ")";
     for (unsigned long a = 0; a < aApps.size(); a++) {
-      if (myAssignment[a] >= 0) {
-        myCurAssign[a].emplace_back(myAssignment[a] / C);
+      VLOG(2) << "\tend user #" << a << "\tsrc " << aApps[a].theHost << "\tdst "
+              << aCandidatePeers[myAssignment[a] / C] << "\tcost "
+              << myDistMatrix[a][myAssignment[a]] << "\t(profit "
+              << (mySumMax - myDistMatrix[a][myAssignment[a]]) << ")";
+    }
+#endif
+
+    for (unsigned long a = 0; a < aApps.size(); a++) {
+      // copy the assigment of this iteration into myCurAssign if it is valid
+      // and the app was not assigned a data center marked as unavailable
+      if (myAssignment[a] >= 0 and
+          myDistMatrix[a][myAssignment[a]] < mySumMax) {
+        assert((myAssignment[a] / C) < aCandidatePeers.size());
+        myCurAssign[a].emplace_back(aCandidatePeers[myAssignment[a] / C]);
       }
+
+      // set maximum cost (mySumMax) in all cells that refer to the same data
+      // center that has been assigned to current application a, so that a given
+      // node is not assigned twice to the same app
+      for (unsigned long c = 0; c < C; c++) {
+        myDistMatrix[a][myAssignment[a] / C * C + c] = mySumMax;
+      }
+
+      // set maximum cost (mySumMax) in all columns already assigned
       for (unsigned long i = 0; i < aApps.size(); i++) {
-        myDistMatrix[i][myAssignment[a]] = 1 + myMax;
+        myDistMatrix[i][myAssignment[a]] = mySumMax;
       }
     }
   }
+
+#ifndef NDEBUG
+  for (unsigned long a = 0; a < aApps.size(); a++) {
+    // no app is assigned more than data centers that requested
+    assert(myCurAssign[a].size() <= aNumPeers);
+
+    // no app is assigned twice the same data center
+    std::set<unsigned long> myUniq;
+    for (const auto d : myCurAssign[a]) {
+      assert(myUniq.emplace(d).second);
+    }
+  }
+#endif
 
   // copy the last assignment to the return value
   std::vector<CapacityNetwork::AppDescriptor> ret;
