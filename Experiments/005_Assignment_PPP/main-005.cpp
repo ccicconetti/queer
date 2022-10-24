@@ -734,10 +734,10 @@ int main(int argc, char* argv[]) {
      po::value<double>(&myFracDataCenters)->default_value(0.2),
      "Fraction of data centers, i.e., nodes that are candidate peers.")
     ("priorities",
-     po::value<std::string>(&myPrioritiesStr)->default_value("4,2,1"),
+     po::value<std::string>(&myPrioritiesStr)->default_value("1"),
      "Priorities, as comma-separated values.")
     ("fidelity-thresholds",
-     po::value<std::string>(&myFidelityThresholdStr)->default_value("0.95,0.75"),
+     po::value<std::string>(&myFidelityThresholdStr)->default_value("0.5"),
      "Fidelity thresholds, as comma-separated values.")
     ("target-residual",
      po::value<double>(&myTargetResidual)->default_value(-1),
