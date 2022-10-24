@@ -211,6 +211,8 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   // compute how many columns we need per data center
   const auto C = 1 + (aApps.size() * aNumPeers - 1) / aCandidatePeers.size();
   assert(C > 0);
+  VLOG(2) << "num-apps " << aApps.size() << ", num-peers " << aNumPeers
+          << ", num-data-centers " << aCandidatePeers.size() << ", C " << C;
 
   // assignment problem input matrix, with costs from end users to data centers
   hungarian::HungarianAlgorithm::DistMatrix myDistMatrix(
@@ -220,15 +222,17 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   // problem into a cost-minimization
   std::vector<double> myPerRowMaxValues(aApps.size(), 0.0);
   for (unsigned long s = 0; s < aApps.size(); s++) {
-    for (unsigned long d = 0; d < (C * aCandidatePeers.size()); d++) {
+    for (unsigned long d = 0; d < aCandidatePeers.size(); d++) {
       const auto myNetRate = theNetwork.maxNetRate(
           CapacityNetwork::AppDescriptor(aApps[s].theHost, {}, 1, 0.5),
-          aCandidatePeers[d / C],
+          aCandidatePeers[d],
           theCheckFunction);
-      myDistMatrix[s][d]   = -myNetRate;
       myPerRowMaxValues[s] = std::max(myPerRowMaxValues[s], myNetRate);
       VLOG(2) << s << '/' << aApps.size() << " " << d << '/'
-              << (C * aCandidatePeers.size()) << " net-rate " << myNetRate;
+              << (aCandidatePeers.size()) << " net-rate " << myNetRate;
+      for (unsigned long c = 0; c < C; c++) {
+        myDistMatrix[s][d * C + c] = -myNetRate;
+      }
     }
   }
   const auto mySumMax =
@@ -245,24 +249,24 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   // at every iteration add one peer to each app
   for (unsigned long myIteration = 0; myIteration < aNumPeers; myIteration++) {
     // solve assignment problem
-    std::vector<int>            myAssignment;
-    [[maybe_unused]] const auto myCost =
+    std::vector<int> myAssignment;
+    const auto       myCost =
         hungarian::HungarianAlgorithm::Solve(myDistMatrix, myAssignment);
-    [[maybe_unused]] const auto myProfit = aApps.size() * mySumMax - myCost;
+    const auto myProfit = aApps.size() * mySumMax - myCost;
     assert(myProfit >= 0);
     assert(myAssignment.size() == aApps.size());
 
-#ifndef NDEBUG
     // print the allocation found
-    VLOG(2) << "[" << myIteration << "] found assignment solution with cost "
-            << myCost << " (profit " << myProfit << ")";
-    for (unsigned long a = 0; a < aApps.size(); a++) {
-      VLOG(2) << "\tend user #" << a << "\tsrc " << aApps[a].theHost << "\tdst "
-              << aCandidatePeers[myAssignment[a] / C] << "\tcost "
-              << myDistMatrix[a][myAssignment[a]] << "\t(profit "
-              << (mySumMax - myDistMatrix[a][myAssignment[a]]) << ")";
+    if (VLOG_IS_ON(2)) {
+      VLOG(2) << "[" << myIteration << "] found assignment solution with cost "
+              << myCost << " (profit " << myProfit << ")";
+      for (unsigned long a = 0; a < aApps.size(); a++) {
+        VLOG(2) << "\tend user #" << a << "\tsrc " << aApps[a].theHost
+                << "\tdst " << aCandidatePeers[myAssignment[a] / C] << "\tcost "
+                << myDistMatrix[a][myAssignment[a]] << "\t(profit "
+                << (mySumMax - myDistMatrix[a][myAssignment[a]]) << ")";
+      }
     }
-#endif
 
     for (unsigned long a = 0; a < aApps.size(); a++) {
       // copy the assigment of this iteration into myCurAssign if it is valid
