@@ -184,8 +184,15 @@ struct Output {
   double      theTotalCapacity = 0;
 
   // routing stats
-  double theResidualCapacity = 0;
-  double theFairnessWpf      = 0; // weighted proportional fairness index
+  double theResidualCapacity   = 0;
+  double theFairnessWpf        = 0; // weighted proportional fairness index
+  double theAvgUsersPerDc      = 0; // average no. end-users per data center
+  double theStddevUsersPerDc   = 0; // std dev
+  double theSpreadUsersPerDc   = 0; // max-min
+  double theAvgNetRatePerDc    = 0; // average net rate per data center
+  double theStddevNetRatePerDc = 0; // std dev
+  double theSpreadNetRatePerDc = 0; // max-min
+
   struct PerClass {
     // conf
     double thePriority          = 0;
@@ -236,6 +243,12 @@ struct Output {
         // routing stats
         "capacity-res",
         "fairness-wpf",
+        "avg-users-per-dc",
+        "stddev-users-per-dc",
+        "spread-users-per-dc",
+        "avg-net-rate-per-dc",
+        "stddev-net-rate-per-dc",
+        "spread-net-rate-per-dc",
     });
     std::vector<std::string>        ret(myStaticNames);
     for (const auto& myPerClassName : PerClass::names()) {
@@ -251,13 +264,19 @@ struct Output {
 
   std::string toString() const {
     std::stringstream myStream;
-    myStream << "G(" << theNumNodes << "," << theNumEdges << "), in-degree "
-             << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
-             << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
-             << theDiameter << ", total capacity " << theTotalCapacity
-             << " EPR-pairs/s; residual capacity " << theResidualCapacity
-             << " EPR-pairs/s, sum-log-rates " << theFairnessWpf
-             << " EPR-pairs/s; ";
+    myStream
+        << "G(" << theNumNodes << "," << theNumEdges << "), in-degree "
+        << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
+        << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
+        << theDiameter << ", total capacity " << theTotalCapacity
+        << " EPR-pairs/s; residual capacity " << theResidualCapacity
+        << " EPR-pairs/s, sum-log-rates " << theFairnessWpf
+        << " EPR-pairs/s; number of users per data center (avg/stddev/max-min) "
+        << theAvgUsersPerDc << '/' << theStddevUsersPerDc << '/'
+        << theSpreadUsersPerDc
+        << "; net rate, in EPR-pairs/s, per data center (avg/stddev/max-min)"
+        << theAvgNetRatePerDc << '/' << theStddevNetRatePerDc << '/'
+        << theSpreadNetRatePerDc << "; ";
     for (const auto& stat : thePerClassStats) {
       myStream << "app class priority " << stat.thePriority
                << ", fidelity threshold " << stat.theFidelityThreshold << ": "
@@ -279,7 +298,11 @@ struct Output {
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
              << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
-             << ',' << theResidualCapacity << ',' << theFairnessWpf;
+             << ',' << theResidualCapacity << ',' << theFairnessWpf << ','
+             << theAvgUsersPerDc << ',' << theStddevUsersPerDc << ','
+             << theSpreadUsersPerDc << ',' << theAvgNetRatePerDc << ','
+             << theStddevNetRatePerDc << ',' << theSpreadNetRatePerDc;
+
     struct Printer {
       Printer(const std::vector<PerClass>& aStats)
           : theStats(aStats) {
@@ -522,6 +545,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     std::vector<double> myPerAppWeights;
     myPerAppRates.reserve(myApps.size());
     myPerAppWeights.reserve(myApps.size());
+    std::map<unsigned long, double> myPerDcNumUsers;
+    std::map<unsigned long, double> myPerDcNetRates;
     for (const auto& myApp : myApps) {
       auto& stat = myPerClassSummaryStats[myClassFinder(
           myApp.thePriority, myApp.theFidelityThreshold)];
@@ -541,6 +566,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       if (myHostNetRate > 0) {
         assert(std::isnormal(myHostNetRate));
         for (const auto& myAllocation : myApp.theAllocated) {
+          myPerDcNumUsers[myAllocation.first]++;
           for (const auto& myPeer : myAllocation.second) {
             const auto myWeight = myPeer.theNetRate / myHostNetRate;
             myHostPathSize(myWeight * myPeer.theHops.size());
@@ -550,11 +576,22 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                                                 eta,
                                                 myPeer.theHops.size() - 1,
                                                 myRaii.in().theFidelityInit));
+            myPerDcNetRates[myAllocation.first] += myPeer.theNetRate;
           }
         }
         stat.thePathSize(myHostPathSize.mean() * myHostPathSize.count());
         stat.theFidelity(myHostFidelity.mean() * myHostFidelity.count());
       }
+    }
+
+    // accumulate the per data centers stats
+    us::SummaryStat myPerDcNumUsersStat;
+    for (const auto& elem : myPerDcNumUsers) {
+      myPerDcNumUsersStat(elem.second);
+    }
+    us::SummaryStat myPerDcNetRatesStat;
+    for (const auto& elem : myPerDcNetRates) {
+      myPerDcNetRatesStat(elem.second);
     }
 
     // consistency checks
@@ -573,6 +610,15 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     myOutput.theResidualCapacity = myNetwork->totalCapacity();
     myOutput.theFairnessWpf =
         us::proportionalFairnessIndex(myPerAppRates, myPerAppWeights);
+    myOutput.theAvgUsersPerDc    = myPerDcNumUsersStat.mean();
+    myOutput.theStddevUsersPerDc = myPerDcNumUsersStat.stddev();
+    myOutput.theSpreadUsersPerDc =
+        myPerDcNumUsersStat.max() - myPerDcNumUsersStat.min();
+    myOutput.theAvgNetRatePerDc    = myPerDcNetRatesStat.mean();
+    myOutput.theStddevNetRatePerDc = myPerDcNetRatesStat.stddev();
+    myOutput.theSpreadNetRatePerDc =
+        myPerDcNetRatesStat.max() - myPerDcNetRatesStat.min();
+
     for (std::size_t i = 0; i < myPerClassSummaryStats.size(); i++) {
       auto& stats = myPerClassSummaryStats[i];
       myOutput.thePerClassStats.emplace_back(Output::PerClass{
