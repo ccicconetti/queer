@@ -14,12 +14,12 @@ if [ ! -d "post" ] ; then
   mkdir post 2> /dev/null
 fi
 
-columns=( 28 29 )
-names=( "capacity" "residual" )
+columns=( 28 29 30 31 32 33 34 35 36 )
+names=( "capacity" "residual" "fairness-wpf" "avg-users-per-dc" "stddev-users-per-dc" "spread-users-per-dc" "avg-net-rate-per-dc" "stddev-net-rate-per-dc" "spread-net-rate-per-dc")
 
 priorities="1"
 perclass=("visits" "grossrate" "netrate" "pathsize" "fidelity" "jain" "jitter")
-cnt=34
+cnt=40
 for value in "${perclass[@]}" ; do
   for p in $priorities ; do
     columns+=( $cnt )
