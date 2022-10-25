@@ -274,7 +274,7 @@ struct Output {
         << " EPR-pairs/s; number of users per data center (avg/stddev/max-min) "
         << theAvgUsersPerDc << '/' << theStddevUsersPerDc << '/'
         << theSpreadUsersPerDc
-        << "; net rate, in EPR-pairs/s, per data center (avg/stddev/max-min)"
+        << "; net rate, in EPR-pairs/s, per data center (avg/stddev/max-min) "
         << theAvgNetRatePerDc << '/' << theStddevNetRatePerDc << '/'
         << theSpreadNetRatePerDc << "; ";
     for (const auto& stat : thePerClassStats) {
