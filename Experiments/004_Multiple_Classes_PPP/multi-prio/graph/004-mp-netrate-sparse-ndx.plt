@@ -170,4 +170,4 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/netrate-*-dense-random.dat'  u 1:(sqrt((($5/$2)-2)**2+(($8/$2)-4)**2)) w lp pt 5  lt 1 title "Random",\
   '< paste ../post/netrate-*-dense-bestfit.dat' u 1:(sqrt((($5/$2)-2)**2+(($8/$2)-4)**2)) w lp pt 13 lt 2 title "Best-fit",\
-  '< paste ../post/netrate-*-dense-drr.dat   '  u 1:(sqrt((($5/$2)-2)**2+(($8/$2)-4)**2)) w lp pt 7  lt 3 title "DRR"
+  '< paste ../post/netrate-*-dense-drr.dat   '  u 1:(sqrt((($5/$2)-2)**2+(($8/$2)-4)**2)) w lp pt 7  lt 3 title "QDRR"

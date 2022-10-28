@@ -170,7 +170,7 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/jitter-*-sparse-random.dat'  u 1:(($2+$5+$8)/3) w lp pt 5  lt 1 title "Random (class avg)",\
   '< paste ../post/jitter-*-sparse-bestfit.dat' u 1:(($2+$5+$8)/3) w lp pt 13 lt 2 title "Best-fit (class avg)",\
-  '../post/jitter-1-sparse-drr.dat'  u 1:2 w lp pt 6  lt 3 title "DRR (prio 1)",\
-  '../post/jitter-2-sparse-drr.dat'  u 1:2 w lp pt 8  lt 3 title "DRR (prio 2)",\
-  '../post/jitter-4-sparse-drr.dat'  u 1:2 w lp pt 18 lt 3 title "DRR (prio 4)"
+  '../post/jitter-1-sparse-drr.dat'  u 1:2 w lp pt 6  lt 3 title "QDRR ({/Symbol r} = 1)",\
+  '../post/jitter-2-sparse-drr.dat'  u 1:2 w lp pt 8  lt 3 title "QDRR ({/Symbol r} = 2)",\
+  '../post/jitter-4-sparse-drr.dat'  u 1:2 w lp pt 18 lt 3 title "QDRR ({/Symbol r} = 4)"
 #    EOF

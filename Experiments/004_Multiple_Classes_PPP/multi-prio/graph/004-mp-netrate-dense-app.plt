@@ -170,7 +170,7 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/netrate-*-dense-random.dat'  u 1:(($2+$5+$8)/(3*$1)) w lp pt 5  lt 1 title "Random (class avg)",\
   '< paste ../post/netrate-*-dense-bestfit.dat' u 1:(($2+$5+$8)/(3*$1)) w lp pt 13 lt 2 title "Best-fit (class avg)",\
-  '../post/netrate-1-dense-drr.dat'  u 1:($2/$1) w lp pt 6  lt 3 title "DRR (prio 1)",\
-  '../post/netrate-2-dense-drr.dat'  u 1:($2/$1) w lp pt 8  lt 3 title "DRR (prio 2)",\
-  '../post/netrate-4-dense-drr.dat'  u 1:($2/$1) w lp pt 18 lt 3 title "DRR (prio 4)"
+  '../post/netrate-1-dense-drr.dat'  u 1:($2/$1) w lp pt 6  lt 3 title "QDRR ({/Symbol r} = 1)",\
+  '../post/netrate-2-dense-drr.dat'  u 1:($2/$1) w lp pt 8  lt 3 title "QDRR ({/Symbol r} = 2)",\
+  '../post/netrate-4-dense-drr.dat'  u 1:($2/$1) w lp pt 18 lt 3 title "QDRR ({/Symbol r} = 4)"
 #    EOF

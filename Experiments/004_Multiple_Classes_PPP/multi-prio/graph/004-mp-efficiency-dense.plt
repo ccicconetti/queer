@@ -170,7 +170,7 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/netrate-*-dense-random.dat  ../post/grossrate-*-dense-random.dat'  u 1:(($2+$5+$8)/($11+$14+$17)) w lp pt 5  lt 1 title "Random (class avg)",\
   '< paste ../post/netrate-*-dense-bestfit.dat ../post/grossrate-*-dense-bestfit.dat' u 1:(($2+$5+$8)/($11+$14+$17)) w lp pt 13 lt 2 title "Best-fit (class avg)",\
-  '< paste ../post/netrate-1-dense-drr.dat ../post/grossrate-1-dense-drr.dat'  u 1:($2/$5) w lp pt 6  lt 3 title "DRR (prio 1)",\
-  '< paste ../post/netrate-2-dense-drr.dat ../post/grossrate-2-dense-drr.dat'  u 1:($2/$5) w lp pt 8  lt 3 title "DRR (prio 2)",\
-  '< paste ../post/netrate-4-dense-drr.dat ../post/grossrate-4-dense-drr.dat'  u 1:($2/$5) w lp pt 18 lt 3 title "DRR (prio 4)"
+  '< paste ../post/netrate-1-dense-drr.dat ../post/grossrate-1-dense-drr.dat'  u 1:($2/$5) w lp pt 6  lt 3 title "QDRR ({/Symbol r} = 1)",\
+  '< paste ../post/netrate-2-dense-drr.dat ../post/grossrate-2-dense-drr.dat'  u 1:($2/$5) w lp pt 8  lt 3 title "QDRR ({/Symbol r} = 2)",\
+  '< paste ../post/netrate-4-dense-drr.dat ../post/grossrate-4-dense-drr.dat'  u 1:($2/$5) w lp pt 18 lt 3 title "QDRR ({/Symbol r} = 4)"
 #    EOF

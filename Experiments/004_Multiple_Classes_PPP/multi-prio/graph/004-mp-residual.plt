@@ -169,8 +169,8 @@ GNUTERM = "wxt"
 ## Last datafile plotted: "../post/residual-dense-random.dat"
 plot '< paste ../post/capacity-dense-random.dat   ../post/residual-dense-random.dat'   u 1:($5/$2) w lp lt 1 pt 4 title "Dense|Random", \
      '< paste ../post/capacity-dense-bestfit.dat  ../post/residual-dense-bestfit.dat'  u 1:($5/$2) w lp lt 2 pt 6 title "Dense|BestFit", \
-     '< paste ../post/capacity-dense-drr.dat      ../post/residual-dense-drr.dat'      u 1:($5/$2) w lp lt 3 pt 8 title "Dense|Drr", \
+     '< paste ../post/capacity-dense-drr.dat      ../post/residual-dense-drr.dat'      u 1:($5/$2) w lp lt 3 pt 8 title "Dense|QDRR", \
      '< paste ../post/capacity-sparse-random.dat  ../post/residual-sparse-random.dat'  u 1:($5/$2) w lp lt 4 pt 5 title "Sparse|Random", \
      '< paste ../post/capacity-sparse-bestfit.dat ../post/residual-sparse-bestfit.dat' u 1:($5/$2) w lp lt 5 pt 7 title "Sparse|BestFit", \
-     '< paste ../post/capacity-sparse-drr.dat     ../post/residual-sparse-drr.dat'     u 1:($5/$2) w lp lt 6 pt 9 title "Sparse|Drr"
+     '< paste ../post/capacity-sparse-drr.dat     ../post/residual-sparse-drr.dat'     u 1:($5/$2) w lp lt 6 pt 9 title "Sparse|QDRR"
 #    EOF

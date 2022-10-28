@@ -129,7 +129,7 @@ set x2label ""
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback
-set ylabel "Iterations"
+set ylabel "Iterations (x1000)"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
@@ -145,7 +145,6 @@ set rlabel ""
 set rlabel  font "" textcolor lt -1 norotate
 set rrange [ * : * ] noreverse nowriteback
 unset logscale
-set logscale xy
 unset jitter
 set zero 1e-08
 set lmargin  -1
@@ -168,10 +167,10 @@ set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/residual-dense-random.dat"
-plot '< paste ../post/visits-*-dense-random.dat   ' u 1:($1*($2+$5+$8)) w lp lt 1 pt 4 title "Dense|Random", \
-     '< paste ../post/visits-*-dense-bestfit.dat  ' u 1:($1*($2+$5+$8)) w lp lt 2 pt 6 title "Dense|BestFit", \
-     '< paste ../post/visits-*-dense-drr.dat      ' u 1:($1*($2+$5+$8)) w lp lt 3 pt 8 title "Dense|Drr", \
-     '< paste ../post/visits-*-sparse-random.dat  ' u 1:($1*($2+$5+$8)) w lp lt 4 pt 5 title "Sparse|Random", \
-     '< paste ../post/visits-*-sparse-bestfit.dat ' u 1:($1*($2+$5+$8)) w lp lt 5 pt 7 title "Sparse|BestFit", \
-     '< paste ../post/visits-*-sparse-drr.dat     ' u 1:($1*($2+$5+$8)) w lp lt 6 pt 9 title "Sparse|Drr"
+plot '< paste ../post/visits-*-dense-random.dat   ' u 1:(.001*$1*($2+$5+$8)) w lp lt 1 pt 4 title "Dense|Random", \
+     '< paste ../post/visits-*-dense-bestfit.dat  ' u 1:(.001*$1*($2+$5+$8)) w lp lt 2 pt 6 title "Dense|BestFit", \
+     '< paste ../post/visits-*-dense-drr.dat      ' u 1:(.001*$1*($2+$5+$8)) w lp lt 3 pt 8 title "Dense|QDRR", \
+     '< paste ../post/visits-*-sparse-random.dat  ' u 1:(.001*$1*($2+$5+$8)) w lp lt 4 pt 5 title "Sparse|Random", \
+     '< paste ../post/visits-*-sparse-bestfit.dat ' u 1:(.001*$1*($2+$5+$8)) w lp lt 5 pt 7 title "Sparse|BestFit", \
+     '< paste ../post/visits-*-sparse-drr.dat     ' u 1:(.001*$1*($2+$5+$8)) w lp lt 6 pt 9 title "Sparse|QDRR"
 #    EOF
