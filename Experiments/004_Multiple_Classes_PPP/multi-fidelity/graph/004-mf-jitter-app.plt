@@ -47,9 +47,9 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed horizontal noreverse enhanced autotitle nobox
+set key bmargin center horizontal noreverse enhanced autotitle nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
-set key maxcolumns 0 maxrows 0
+set key maxcolumns 2 maxrows 3
 set key noopaque
 unset label
 unset arrow
@@ -170,8 +170,8 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/jitter-*-dense-random.dat'  u 1:(($2+$5+$8)/(3)) w lp pt 4  lt 1 title "Dense|Random",\
   '< paste ../post/jitter-*-dense-bestfit.dat' u 1:(($2+$5+$8)/(3)) w lp pt 6 lt 2 title "Dense|Best-fit",\
-  '< paste ../post/jitter-*-dense-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 8 lt 3 title "Dense|DRR",\
+  '< paste ../post/jitter-*-dense-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 8 lt 3 title "Dense|QDRR",\
   '< paste ../post/jitter-*-sparse-random.dat'  u 1:(($2+$5+$8)/(3)) w lp pt 5  lt 4 title "Sparse|Random",\
   '< paste ../post/jitter-*-sparse-bestfit.dat' u 1:(($2+$5+$8)/(3)) w lp pt 7 lt 5 title "Sparse|Best-fit",\
-  '< paste ../post/jitter-*-sparse-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 9 lt 6 title "Sparse|DRR"
+  '< paste ../post/jitter-*-sparse-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 9 lt 6 title "Sparse|QDRR"
 #    EOF

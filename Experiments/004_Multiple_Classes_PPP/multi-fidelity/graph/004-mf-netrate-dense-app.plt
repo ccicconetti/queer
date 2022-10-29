@@ -170,5 +170,5 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/netrate-*-dense-random.dat'  u 1:(($2+$5+$8)/($1)) w lp pt 5  lt 1 title "Random",\
   '< paste ../post/netrate-*-dense-bestfit.dat' u 1:(($2+$5+$8)/($1)) w lp pt 13 lt 2 title "Best-fit",\
-  '< paste ../post/netrate-*-dense-drr.dat' u 1:(($2+$5+$8)/($1)) w lp pt 6 lt 3 title "DRR"
+  '< paste ../post/netrate-*-dense-drr.dat' u 1:(($2+$5+$8)/($1)) w lp pt 6 lt 3 title "QDRR"
 #    EOF

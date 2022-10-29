@@ -170,8 +170,8 @@ GNUTERM = "wxt"
 plot \
   '< paste ../post/jain-*-dense-random.dat'  u 1:(($2+$5+$8)/(3)) w lp pt 4  lt 1 title "Dense|Random",\
   '< paste ../post/jain-*-dense-bestfit.dat' u 1:(($2+$5+$8)/(3)) w lp pt 6 lt 2 title "Dense|Best-fit",\
-  '< paste ../post/jain-*-dense-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 8 lt 3 title "Dense|DRR",\
+  '< paste ../post/jain-*-dense-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 8 lt 3 title "Dense|QDRR",\
   '< paste ../post/jain-*-sparse-random.dat'  u 1:(($2+$5+$8)/(3)) w lp pt 5  lt 4 title "Sparse|Random",\
   '< paste ../post/jain-*-sparse-bestfit.dat' u 1:(($2+$5+$8)/(3)) w lp pt 7 lt 5 title "Sparse|Best-fit",\
-  '< paste ../post/jain-*-sparse-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 9 lt 6 title "Sparse|DRR"
+  '< paste ../post/jain-*-sparse-drr.dat' u 1:(($2+$5+$8)/(3)) w lp pt 9 lt 6 title "Sparse|QDRR"
 #    EOF
