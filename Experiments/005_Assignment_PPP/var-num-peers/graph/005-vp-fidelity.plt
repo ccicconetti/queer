@@ -22,7 +22,7 @@ set ydata
 set xdata 
 set y2data 
 set x2data 
-set boxwidth 0.5 relative
+set boxwidth 0.5 absolute
 set style fill   solid 1.00 border
 set style rectangle back fc  bgnd fillstyle   solid 1.00 border lt -1
 set style circle radius graph 0.02 
@@ -169,8 +169,11 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "<head -q -n 1 ../post/fidelity-1-dense-*.dat"
 plot \
-  '<head -q -n 1 ../post/fidelity-1-dense-*.dat' u 0:2 w boxes fill pattern 1 title "Dense",\
-  '' u 0:2:3 w yerrorbars lt 1 notitle,\
-  '<head -q -n 1 ../post/fidelity-1-sparse-*.dat' u ($0+7):2 w boxes title "Sparse",\
-  '' u ($0+7):2:3 w yerrorbars lt 1 notitle
-#    EOF
+  '<head -q -n 1 ../post/fidelity-1-dense-*.dat' u ($0*2):2 every 2::0 w boxes fill pattern 1 lt 1 title "Dense|10 apps",\
+  '' u ($0*2):2:3 every 2::0 w yerrorbars lt 1 notitle,\
+  '<head -q -n 1 ../post/fidelity-1-dense-*.dat' u ($0*2+1):2 every 2::1 w boxes fill pattern 2 lt 2 title "Dense|20 apps",\
+  '' u ($0*2+1):2:3 every 2::1 w yerrorbars lt 2 notitle,\
+  '<head -q -n 1 ../post/fidelity-1-sparse-*.dat' u ($0*2+7):2 every 2::0 w boxes fill pattern 3 lt 3 title "Sparse|10 apps",\
+  '' u ($0*2+7):2:3 every 2::0 w yerrorbars lt 3 notitle,\
+  '<head -q -n 1 ../post/fidelity-1-sparse-*.dat' u ($0*2+8):2 every 2::1 w boxes fill pattern 4 lt 4 title "Sparse|20 apps",\
+  '' u ($0*2+8):2:3 every 2::1 w yerrorbars lt 4 notitle
