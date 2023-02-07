@@ -47,6 +47,10 @@ add_executable(testcapacitynetwork testmain.cpp testcapacitynetwork.cpp)
 target_link_libraries(testcapacitynetwork ${LIBS})
 gtest_discover_tests(testcapacitynetwork)
 
+add_executable(testesnetwork testmain.cpp testesnetwork.cpp)
+target_link_libraries(testesnetwork ${LIBS})
+gtest_discover_tests(testesnetwork)
+
 add_executable(testgraphml testmain.cpp testgraphml.cpp)
 target_link_libraries(testgraphml ${LIBS})
 gtest_discover_tests(testgraphml)

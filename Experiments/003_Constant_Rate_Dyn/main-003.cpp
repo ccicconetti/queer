@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
@@ -327,17 +327,17 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                             0,
                             0);
   std::vector<qr::Coordinate> myCoordinates;
-  const auto                  myNetwork =
-      myRaii.in().theGraphMlFilename.empty() ?
-          qr::makeCapacityNetworkPpp(myLinkEprRv,
-                                     myRaii.in().theSeed,
-                                     myRaii.in().theMu,
-                                     myRaii.in().theGridLength,
-                                     myRaii.in().theThreshold,
-                                     myRaii.in().theLinkProbability,
-                                     myCoordinates) :
-          qr::makeCapacityNetworkGraphMl(
-              myLinkEprRv, *myGraphMlStream, myCoordinates);
+  const auto myNetwork = myRaii.in().theGraphMlFilename.empty() ?
+                             qr::makeCapacityNetworkPpp<qr::EsNetwork>(
+                                 myLinkEprRv,
+                                 myRaii.in().theSeed,
+                                 myRaii.in().theMu,
+                                 myRaii.in().theGridLength,
+                                 myRaii.in().theThreshold,
+                                 myRaii.in().theLinkProbability,
+                                 myCoordinates) :
+                             qr::makeCapacityNetworkGraphMl<qr::EsNetwork>(
+                                 myLinkEprRv, *myGraphMlStream, myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   if (not myRaii.in().theTopoFilename.empty()) {
@@ -452,7 +452,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
       const auto myNetRateId = myNetRatesRv();
       assert(myNetRateId < myRaii.in().theNetRates.size());
-      std::vector<qr::CapacityNetwork::FlowDescriptor> myFlows(
+      std::vector<qr::EsNetwork::FlowDescriptor> myFlows(
           {{mySrcDstNodes[0],
             mySrcDstNodes[1],
             myRaii.in().theNetRates[myNetRateId]}});

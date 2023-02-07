@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "QuantumRouting/peerassignment.h"
 #include "Support/tostring.h"
 
@@ -71,8 +71,8 @@ struct TestPeerAssignment : public ::testing::Test {
                                  │     │       │     │
                                  └─────┘       └─────┘
   */
-  CapacityNetwork::WeightVector exampleEdgeWeights() {
-    return CapacityNetwork::WeightVector({
+  EsNetwork::WeightVector exampleEdgeWeights() {
+    return EsNetwork::WeightVector({
         {0, 3, 10},
         {1, 3, 20},
         {2, 3, 40},
@@ -114,7 +114,7 @@ TEST_F(TestPeerAssignment, test_algorithms) {
 }
 
 TEST_F(TestPeerAssignment, test_random) {
-  CapacityNetwork myNetwork(exampleEdgeWeights());
+  EsNetwork myNetwork(exampleEdgeWeights());
 
   auto myAssignment =
       makePeerAssignment(myNetwork,
@@ -147,7 +147,7 @@ TEST_F(TestPeerAssignment, test_random) {
 
 TEST_F(TestPeerAssignment, test_shortest_path) {
   using Set = std::set<unsigned long>;
-  CapacityNetwork myNetwork(exampleEdgeWeights());
+  EsNetwork myNetwork(exampleEdgeWeights());
 
   auto myAssignment =
       makePeerAssignment(myNetwork,
@@ -188,7 +188,7 @@ TEST_F(TestPeerAssignment, test_shortest_path) {
 }
 
 TEST_F(TestPeerAssignment, test_load_balancing) {
-  CapacityNetwork myNetwork(exampleEdgeWeights());
+  EsNetwork myNetwork(exampleEdgeWeights());
   myNetwork.measurementProbability(0.5);
 
   auto myAssignment =
@@ -199,7 +199,7 @@ TEST_F(TestPeerAssignment, test_load_balancing) {
 
   struct Checker {
     bool
-    operator()(const std::vector<CapacityNetwork::AppDescriptor>& aAssigned,
+    operator()(const std::vector<EsNetwork::AppDescriptor>&   aAssigned,
                const std::vector<std::vector<unsigned long>>& aExpected) const {
       auto ret = true;
       if (aAssigned.size() != aExpected.size()) {

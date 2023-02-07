@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
@@ -329,10 +329,10 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   Output myOutput;
 
-  const auto                           MANY_TRIES = 1000000u;
-  std::unique_ptr<qr::CapacityNetwork> myNetwork  = nullptr;
-  qr::CapacityNetwork::ReachableNodes  myReachableNodes;
-  us::UniformRv                        myLinkEprRv(myRaii.in().theLinkMinEpr,
+  const auto                          MANY_TRIES = 1000000u;
+  std::unique_ptr<qr::EsNetwork>      myNetwork  = nullptr;
+  qr::CapacityNetwork::ReachableNodes myReachableNodes;
+  us::UniformRv                       myLinkEprRv(myRaii.in().theLinkMinEpr,
                             myRaii.in().theLinkMaxEpr,
                             myRaii.in().theSeed,
                             1,
@@ -344,13 +344,14 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     const auto mySeed = myRaii.in().theSeed + mySeedOffset;
     // create network
     std::vector<qr::Coordinate> myCoordinates;
-    myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
-                                           mySeed,
-                                           myRaii.in().theMu,
-                                           myRaii.in().theGridLength,
-                                           myRaii.in().theThreshold,
-                                           myRaii.in().theLinkProbability,
-                                           myCoordinates);
+    myNetwork = qr::makeCapacityNetworkPpp<qr::EsNetwork>(
+        myLinkEprRv,
+        mySeed,
+        myRaii.in().theMu,
+        myRaii.in().theGridLength,
+        myRaii.in().theThreshold,
+        myRaii.in().theLinkProbability,
+        myCoordinates);
 
     // network properties
     assert(myNetwork.get() != nullptr);
@@ -420,10 +421,10 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     // at each iteration theNumApps applications are created and routed
     // if there is no target residual, the loop terminates after one iteration,
     // otherwise it continues until it is reached
-    std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
+    std::vector<qr::EsNetwork::AppDescriptor> myApps;
     do {
       // create applications
-      std::vector<qr::CapacityNetwork::AppDescriptor> mySingleRunApps;
+      std::vector<qr::EsNetwork::AppDescriptor> mySingleRunApps;
       for (std::size_t i = 0; i < myRaii.in().theNumApps; i++) {
         const auto myHost = myHostRv();
         const auto it     = myReachableNodes.find(myHost);

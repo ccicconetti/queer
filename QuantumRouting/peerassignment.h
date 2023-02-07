@@ -31,7 +31,7 @@ SOFTWARE.
 
 #pragma once
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "Support/macros.h"
 #include "Support/random.h"
 
@@ -72,10 +72,10 @@ class PeerAssignment;
  * @throw std::runtime_error if aAlgo is not known.
  */
 std::unique_ptr<PeerAssignment>
-makePeerAssignment(const CapacityNetwork&                   aNetwork,
-                   const PeerAssignmentAlgo                 aAlgo,
-                   support::RealRvInterface&                aRv,
-                   const CapacityNetwork::AppCheckFunction& aCheckFunction);
+makePeerAssignment(const EsNetwork&                   aNetwork,
+                   const PeerAssignmentAlgo           aAlgo,
+                   support::RealRvInterface&          aRv,
+                   const EsNetwork::AppCheckFunction& aCheckFunction);
 
 //
 // peer assignment classes
@@ -102,9 +102,9 @@ class PeerAssignment
    * @param aApps The input applications.
    * @param aNumPeers The number of peers to be selected for each app.
    * @param aCandidatePeers The nodes that it is possible to select as peers.
-   * @return std::vector<CapacityNetwork::AppDescriptor>
+   * @return std::vector<EsNetwork::AppDescriptor>
    */
-  virtual std::vector<CapacityNetwork::AppDescriptor>
+  virtual std::vector<EsNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) = 0;
@@ -121,24 +121,23 @@ class PeerAssignment
    * @param aNetwork The reference quantum network for peer assignment.
    * @param aAlgo The assignment algorithm to be used.
    */
-  PeerAssignment(const CapacityNetwork&   aNetwork,
-                 const PeerAssignmentAlgo aAlgo);
+  PeerAssignment(const EsNetwork& aNetwork, const PeerAssignmentAlgo aAlgo);
 
   void throwIfDuplicates(const std::vector<unsigned long>& aCandidatePeers);
 
  protected:
-  const CapacityNetwork&   theNetwork;
+  const EsNetwork&         theNetwork;
   const PeerAssignmentAlgo theAlgo;
 };
 
 class PeerAssignmentRandom final : public PeerAssignment
 {
  public:
-  PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
+  PeerAssignmentRandom(const EsNetwork&          aNetwork,
                        support::RealRvInterface& aRv);
 
   //! Assign peers choosing at random.
-  std::vector<CapacityNetwork::AppDescriptor>
+  std::vector<EsNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) override;
@@ -150,11 +149,11 @@ class PeerAssignmentRandom final : public PeerAssignment
 class PeerAssignmentShortestPath final : public PeerAssignment
 {
  public:
-  PeerAssignmentShortestPath(const CapacityNetwork&    aNetwork,
+  PeerAssignmentShortestPath(const EsNetwork&          aNetwork,
                              support::RealRvInterface& aRv);
 
   //! Pick peers from closest peers.
-  std::vector<CapacityNetwork::AppDescriptor>
+  std::vector<EsNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) override;
@@ -167,17 +166,17 @@ class PeerAssignmentLoadBalancing final : public PeerAssignment
 {
  public:
   PeerAssignmentLoadBalancing(
-      const CapacityNetwork&                   aNetwork,
-      const CapacityNetwork::AppCheckFunction& aCheckFunction);
+      const EsNetwork&                   aNetwork,
+      const EsNetwork::AppCheckFunction& aCheckFunction);
 
   //! Assign peers as the result of a generalized assignment problem.
-  std::vector<CapacityNetwork::AppDescriptor>
+  std::vector<EsNetwork::AppDescriptor>
   assign(const std::vector<AppDescriptor>& aApps,
          const unsigned long               aNumPeers,
          const std::vector<unsigned long>& aCandidatePeers) override;
 
  private:
-  const CapacityNetwork::AppCheckFunction theCheckFunction;
+  const EsNetwork::AppCheckFunction theCheckFunction;
 };
 
 } // namespace qr

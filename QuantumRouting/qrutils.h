@@ -32,6 +32,7 @@ SOFTWARE.
 #pragma once
 
 #include <cinttypes>
+#include <istream>
 #include <tuple>
 #include <utility>
 #include <vector>

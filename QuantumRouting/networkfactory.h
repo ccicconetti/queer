@@ -34,25 +34,91 @@ SOFTWARE.
 #include "QuantumRouting/capacitynetwork.h"
 #include "QuantumRouting/qrutils.h"
 
+#include "QuantumRouting/poissonpointprocess.h"
+#include "QuantumRouting/qrutils.h"
+#include "Support/random.h"
+
+#include <glog/logging.h>
+
+#include <exception>
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 
 namespace uiiit {
 namespace qr {
 
-std::unique_ptr<CapacityNetwork>
+/**
+ * @brief Create a network from a Poisson Point Process.
+ *
+ * @tparam NETWORK The type of network to be create.
+ * @param aEprRv The r.v. to draw the capacity of the edges.
+ * @param aSeed The seed for random number generation.
+ * @param aMu The average number of nodes.
+ * @param aGridLength The grid length.
+ * @param aThreshold The threshold to add an edge between two nodes.
+ * @param aLinkProbability The probability that an edge is added.
+ * @param aCoordinates The coordinateds of the nodes in a grid.
+ * @return std::unique_ptr<CapacityNetwork> The network created.
+ * @throw std::runtime_error if the network could not be generated.
+ */
+template <class NETWORK>
+std::unique_ptr<NETWORK>
 makeCapacityNetworkPpp(support::RealRvInterface& aEprRv,
                        const std::size_t         aSeed,
                        const double              aMu,
                        const double              aGridLength,
                        const double              aThreshold,
                        const double              aLinkProbability,
-                       std::vector<Coordinate>&  aCoordinates);
+                       std::vector<Coordinate>&  aCoordinates) {
+  const auto MANY_TRIES = 1000000u;
 
-std::unique_ptr<CapacityNetwork>
+  auto myPppSeed = aSeed;
+  for (unsigned myTry = 0; myTry < MANY_TRIES; myTry++) {
+    auto myCoordinates =
+        PoissonPointProcessGrid(aMu, myPppSeed, aGridLength, aGridLength)();
+    const auto myEdges =
+        findLinks(myCoordinates, aThreshold, aLinkProbability, aSeed);
+    if (qr::bigraphConnected(myEdges)) {
+      myCoordinates.swap(aCoordinates);
+      return std::make_unique<NETWORK>(myEdges, aEprRv, true);
+
+    } else {
+      VLOG(1) << "graph with seed " << myPppSeed << " not connected, try again";
+      myPppSeed += 1000000;
+    }
+  }
+
+  throw std::runtime_error("Could not find a connected network after " +
+                           std::to_string(MANY_TRIES) + " tries");
+}
+
+/**
+ * @brief Create a network from a GraphML file.
+ *
+ * @tparam NETWORK The type of the network created.
+ * @param aEprRv The r.v. to draw the capacity of the edges.
+ * @param aGraphMl The input GraphML file.
+ * @param aCoordinates The coordinateds of the nodes in a grid.
+ * @return std::unique_ptr<NETWORK> The network created.
+ * @throw std::runtime_error if the network in the file is not connected.
+ */
+template <class NETWORK>
+std::unique_ptr<NETWORK>
 makeCapacityNetworkGraphMl(support::RealRvInterface& aEprRv,
                            std::ifstream&            aGraphMl,
-                           std::vector<Coordinate>&  aCoordinates);
+                           std::vector<Coordinate>&  aCoordinates) {
+  const auto myEdges = findLinks(aGraphMl, aCoordinates);
+  for (const auto& myEdge : myEdges) {
+    VLOG(2) << '(' << myEdge.first << ',' << myEdge.second << ')';
+  }
+  if (qr::bigraphConnected(myEdges)) {
+    return std::make_unique<NETWORK>(myEdges, aEprRv, true);
+  }
+
+  throw std::runtime_error("The GraphML network is not fully connected");
+}
 
 } // namespace qr
 } // namespace uiiit

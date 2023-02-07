@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/qrutils.h"
 #include "Support/experimentdata.h"
@@ -218,13 +218,13 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                             0);
   [[maybe_unused]] std::vector<qr::Coordinate> myCoordinates;
   const auto                                   myNetwork =
-      qr::makeCapacityNetworkPpp(myLinkEprRv,
-                                 myRaii.in().theSeed,
-                                 myRaii.in().theMu,
-                                 myRaii.in().theGridLength,
-                                 myRaii.in().theThreshold,
-                                 myRaii.in().theLinkProbability,
-                                 myCoordinates);
+      qr::makeCapacityNetworkPpp<qr::EsNetwork>(myLinkEprRv,
+                                                myRaii.in().theSeed,
+                                                myRaii.in().theMu,
+                                                myRaii.in().theGridLength,
+                                                myRaii.in().theThreshold,
+                                                myRaii.in().theLinkProbability,
+                                                myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   // network properties
@@ -238,7 +238,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myNetwork->outDegree();
 
   // create traffic flows
-  std::vector<qr::CapacityNetwork::FlowDescriptor> myFlows;
+  std::vector<qr::EsNetwork::FlowDescriptor> myFlows;
   us::UniformRv                   myNetRateRv(myRaii.in().theMinNetRate,
                             myRaii.in().theMaxNetRate,
                             myRaii.in().theSeed,

@@ -83,10 +83,10 @@ PeerAssignmentAlgo peerAssignmentAlgofromString(const std::string& aAlgo) {
 }
 
 std::unique_ptr<PeerAssignment>
-makePeerAssignment(const CapacityNetwork&                   aNetwork,
-                   const PeerAssignmentAlgo                 aAlgo,
-                   support::RealRvInterface&                aRv,
-                   const CapacityNetwork::AppCheckFunction& aCheckFunction) {
+makePeerAssignment(const EsNetwork&                   aNetwork,
+                   const PeerAssignmentAlgo           aAlgo,
+                   support::RealRvInterface&          aRv,
+                   const EsNetwork::AppCheckFunction& aCheckFunction) {
   switch (aAlgo) {
     case PeerAssignmentAlgo::Random:
       return std::make_unique<PeerAssignmentRandom>(aNetwork, aRv);
@@ -111,7 +111,7 @@ PeerAssignment::AppDescriptor::AppDescriptor(
   // noop
 }
 
-PeerAssignment::PeerAssignment(const CapacityNetwork&   aNetwork,
+PeerAssignment::PeerAssignment(const EsNetwork&         aNetwork,
                                const PeerAssignmentAlgo aAlgo)
     : theNetwork(aNetwork)
     , theAlgo(aAlgo) {
@@ -130,24 +130,24 @@ void PeerAssignment::throwIfDuplicates(
   }
 }
 
-PeerAssignmentRandom::PeerAssignmentRandom(const CapacityNetwork&    aNetwork,
+PeerAssignmentRandom::PeerAssignmentRandom(const EsNetwork&          aNetwork,
                                            support::RealRvInterface& aRv)
     : PeerAssignment(aNetwork, PeerAssignmentAlgo::Random)
     , theRv(aRv) {
   // noop
 }
 
-std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
+std::vector<EsNetwork::AppDescriptor> PeerAssignmentRandom::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
   throwIfDuplicates(aCandidatePeers);
-  std::vector<CapacityNetwork::AppDescriptor> ret;
+  std::vector<EsNetwork::AppDescriptor> ret;
   std::transform(aApps.cbegin(),
                  aApps.cend(),
                  std::back_inserter(ret),
                  [&aCandidatePeers, aNumPeers, this](const auto& aApp) {
-                   return CapacityNetwork::AppDescriptor(
+                   return EsNetwork::AppDescriptor(
                        aApp.theHost,
                        support::sample(aCandidatePeers, aNumPeers, theRv),
                        aApp.thePriority,
@@ -157,25 +157,25 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentRandom::assign(
 }
 
 PeerAssignmentShortestPath::PeerAssignmentShortestPath(
-    const CapacityNetwork& aNetwork, support::RealRvInterface& aRv)
+    const EsNetwork& aNetwork, support::RealRvInterface& aRv)
     : PeerAssignment(aNetwork, PeerAssignmentAlgo::ShortestPath)
     , theRv(aRv) {
   // noop
 }
 
-std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
+std::vector<EsNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
   throwIfDuplicates(aCandidatePeers);
-  std::set<unsigned long> myDataCenters(aCandidatePeers.begin(),
+  std::set<unsigned long>               myDataCenters(aCandidatePeers.begin(),
                                         aCandidatePeers.end());
-  std::vector<CapacityNetwork::AppDescriptor> ret;
+  std::vector<EsNetwork::AppDescriptor> ret;
   std::transform(aApps.cbegin(),
                  aApps.cend(),
                  std::back_inserter(ret),
                  [&myDataCenters, aNumPeers, this](const auto& aApp) {
-                   return CapacityNetwork::AppDescriptor(
+                   return EsNetwork::AppDescriptor(
                        aApp.theHost,
                        theNetwork.closestNodes(
                            aApp.theHost, aNumPeers, theRv, myDataCenters),
@@ -186,14 +186,14 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentShortestPath::assign(
 }
 
 PeerAssignmentLoadBalancing::PeerAssignmentLoadBalancing(
-    const CapacityNetwork&                   aNetwork,
-    const CapacityNetwork::AppCheckFunction& aCheckFunction)
+    const EsNetwork&                   aNetwork,
+    const EsNetwork::AppCheckFunction& aCheckFunction)
     : PeerAssignment(aNetwork, PeerAssignmentAlgo::LoadBalancing)
     , theCheckFunction(aCheckFunction) {
   // noop
 }
 
-std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
+std::vector<EsNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
     const std::vector<AppDescriptor>& aApps,
     const unsigned long               aNumPeers,
     const std::vector<unsigned long>& aCandidatePeers) {
@@ -201,7 +201,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
 
   // return immediately if there are no data centers, a.k.a. peer candidates
   if (aCandidatePeers.empty()) {
-    return std::vector<CapacityNetwork::AppDescriptor>();
+    return std::vector<EsNetwork::AppDescriptor>();
   }
 
   // keep the current peer assigned: the inner vectors will grow by
@@ -224,7 +224,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
   for (unsigned long s = 0; s < aApps.size(); s++) {
     for (unsigned long d = 0; d < aCandidatePeers.size(); d++) {
       const auto myNetRate = theNetwork.maxNetRate(
-          CapacityNetwork::AppDescriptor(aApps[s].theHost, {}, 1, 0.5),
+          EsNetwork::AppDescriptor(aApps[s].theHost, {}, 1, 0.5),
           aCandidatePeers[d],
           theCheckFunction);
       myPerRowMaxValues[s] = std::max(myPerRowMaxValues[s], myNetRate);
@@ -305,7 +305,7 @@ std::vector<CapacityNetwork::AppDescriptor> PeerAssignmentLoadBalancing::assign(
 #endif
 
   // copy the last assignment to the return value
-  std::vector<CapacityNetwork::AppDescriptor> ret;
+  std::vector<EsNetwork::AppDescriptor> ret;
   assert(aApps.size() == myCurAssign.size());
   for (unsigned long a = 0; a < aApps.size(); a++) {
     ret.emplace_back(aApps[a].theHost,

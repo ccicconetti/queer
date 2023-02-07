@@ -29,7 +29,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/esnetwork.h"
 #include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/peerassignment.h"
 #include "QuantumRouting/qrutils.h"
@@ -364,13 +364,14 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
                             1,
                             0);
   [[maybe_unused]] std::vector<qr::Coordinate> myCoordinates;
-  auto myNetwork = qr::makeCapacityNetworkPpp(myLinkEprRv,
-                                              myRaii.in().theSeed,
-                                              myRaii.in().theMu,
-                                              myRaii.in().theGridLength,
-                                              myRaii.in().theThreshold,
-                                              myRaii.in().theLinkProbability,
-                                              myCoordinates);
+  auto                                         myNetwork =
+      qr::makeCapacityNetworkPpp<qr::EsNetwork>(myLinkEprRv,
+                                                myRaii.in().theSeed,
+                                                myRaii.in().theMu,
+                                                myRaii.in().theGridLength,
+                                                myRaii.in().theThreshold,
+                                                myRaii.in().theLinkProbability,
+                                                myCoordinates);
   myNetwork->measurementProbability(myRaii.in().theQ);
 
   // define validity of a path based on the minimum fidelity
@@ -473,7 +474,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     // at each iteration theNumApps applications are created and routed
     // if there is no target residual, the loop terminates after one
     // iteration, otherwise it continues until it is reached
-    std::vector<qr::CapacityNetwork::AppDescriptor> myApps;
+    std::vector<qr::EsNetwork::AppDescriptor> myApps;
     do {
       // create applications, with assign QoS class parameters but no peers
       std::vector<qr::PeerAssignment::AppDescriptor> mySingleRunInApps;
