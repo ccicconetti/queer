@@ -30,6 +30,7 @@ SOFTWARE.
 */
 
 #include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/networkfactory.h"
 #include "Support/random.h"
 #include "Support/tostring.h"
 
@@ -292,6 +293,30 @@ TEST_F(TestCapacityNetwork, test_min_capacity_edges) {
                                                G));
   ASSERT_FLOAT_EQ(std::numeric_limits<double>::max(),
                   CapacityNetwork::minCapacity(P(), G));
+}
+
+TEST_F(TestCapacityNetwork, test_make_capacity_network_waxman) {
+  const std::size_t       myNodes       = 50;
+  const double            myMaxDistance = 100;
+  std::vector<Coordinate> myCoordinates;
+  const auto myNetwork = makeCapacityNetworkWaxman<CapacityNetwork>(
+      [myMaxDistance](const double d) {
+        return 100e3 * std::exp(-d / myMaxDistance);
+      },
+      42,
+      myNodes,
+      myMaxDistance,
+      0.5,
+      0.5,
+      myCoordinates);
+
+  ASSERT_EQ(myNodes, myNetwork->numNodes());
+  ASSERT_GT(myNetwork->numEdges(), 0);
+  ASSERT_GT(myNetwork->totalCapacity(), 0);
+  ASSERT_LT(myNetwork->totalCapacity() / myNetwork->numEdges(), 100e3);
+  if (VLOG_IS_ON(1)) {
+    myNetwork->toDot("network.dot");
+  }
 }
 
 } // namespace qr
