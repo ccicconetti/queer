@@ -31,9 +31,13 @@ SOFTWARE.
 
 #include "QuantumRouting/mecqkdnetwork.h"
 
+#include "Support/split.h"
 #include "Support/tostring.h"
 
+#include <fstream>
 #include <glog/logging.h>
+#include <sstream>
+#include <stdexcept>
 
 namespace uiiit {
 namespace qr {
@@ -89,6 +93,66 @@ MecQkdAlgo mecQkdAlgofromString(const std::string& aAlgo) {
                  ",",
                  [](const auto& aAlgo) { return toString(aAlgo); }) +
       ")");
+}
+
+std::string MecQkdWorkload::AppInfo::toString() const {
+  std::stringstream ret;
+  ret << "region " << theRegion << ", weight " << theWeight << ", load "
+      << theLoad << ", rate " << theRate;
+  return ret.str();
+}
+
+MecQkdWorkload::MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
+                               support::RealRvInterface&   aRv)
+    : theAppInfo(aAppInfo)
+    , theRv(aRv)
+    , theWeights(aAppInfo.size()) {
+  if (aAppInfo.empty()) {
+    throw std::runtime_error("invalid empty MecQkd workload");
+  }
+  for (std::size_t i = 0; i < aAppInfo.size(); i++) {
+    theWeights[i] = aAppInfo[i].theWeight;
+  }
+
+  if (VLOG_IS_ON(1)) {
+    for (std::size_t i = 0; i < aAppInfo.size(); i++) {
+      LOG(INFO) << aAppInfo[i].toString();
+    }
+  }
+}
+
+MecQkdWorkload MecQkdWorkload::fromCsvFile(const std::string&        aFilename,
+                                           support::RealRvInterface& aRv) {
+  std::vector<AppInfo> myAppInfo;
+
+  std::ifstream myInfile(aFilename);
+  if (not myInfile) {
+    throw std::runtime_error("could not open file for reading: " + aFilename);
+  }
+
+  std::string myLine;
+  std::size_t myLineNo = 0;
+  while (myInfile) {
+    ++myLineNo;
+    std::getline(myInfile, myLine);
+    const auto myTokens = support::split<std::vector<std::string>>(myLine, ",");
+    if (myTokens.size() != 4) {
+      throw std::runtime_error("invalid input at file '" + aFilename +
+                               "' line: " + std::to_string(myLineNo));
+    }
+    myAppInfo.emplace_back(AppInfo{std::stoull(myTokens[0]),
+                                   std::stod(myTokens[1]),
+                                   std::stod(myTokens[2]),
+                                   std::stod(myTokens[3])});
+  }
+
+  return MecQkdWorkload(myAppInfo, aRv);
+}
+
+MecQkdWorkload::AppInfo MecQkdWorkload::operator()() {
+  const auto res = support::sampleWeighted(theAppInfo, theWeights, 1, theRv);
+  assert(res.size() == 1);
+  return res[0];
 }
 
 MecQkdNetwork::MecQkdNetwork(
