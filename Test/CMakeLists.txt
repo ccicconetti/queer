@@ -55,6 +55,10 @@ add_executable(testgraphml testmain.cpp testgraphml.cpp)
 target_link_libraries(testgraphml ${LIBS})
 gtest_discover_tests(testgraphml)
 
+add_executable(testmecqkdnetwork testmain.cpp testmecqkdnetwork.cpp)
+target_link_libraries(testmecqkdnetwork ${LIBS})
+gtest_discover_tests(testmecqkdnetwork)
+
 add_executable(testqrutils testmain.cpp testqrutils.cpp)
 target_link_libraries(testqrutils ${LIBS})
 gtest_discover_tests(testqrutils)

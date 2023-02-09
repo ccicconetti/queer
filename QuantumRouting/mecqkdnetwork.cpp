@@ -135,6 +135,9 @@ MecQkdWorkload MecQkdWorkload::fromCsvFile(const std::string&        aFilename,
   while (myInfile) {
     ++myLineNo;
     std::getline(myInfile, myLine);
+    if (myLine.empty() or myLine[0] == '#') {
+      continue;
+    }
     const auto myTokens = support::split<std::vector<std::string>>(myLine, ",");
     if (myTokens.size() != 4) {
       throw std::runtime_error("invalid input at file '" + aFilename +
