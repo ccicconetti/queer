@@ -106,11 +106,13 @@ MecQkdWorkload::MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
                                support::RealRvInterface&   aRv)
     : theAppInfo(aAppInfo)
     , theRv(aRv)
+    , theRegions()
     , theWeights(aAppInfo.size()) {
   if (aAppInfo.empty()) {
     throw std::runtime_error("invalid empty MecQkd workload");
   }
   for (std::size_t i = 0; i < aAppInfo.size(); i++) {
+    theRegions.emplace(aAppInfo[i].theRegion);
     theWeights[i] = aAppInfo[i].theWeight;
   }
 

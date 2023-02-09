@@ -88,10 +88,20 @@ class MecQkdWorkload final
    */
   AppInfo operator()();
 
+  /**
+   * @brief Return the regions in the app infos.
+   *
+   * @return std::vector<std::size_t>
+   */
+  const std::set<std::size_t>& regions() const {
+    return theRegions;
+  }
+
  private:
-  std::vector<AppInfo>      theAppInfo;
-  support::RealRvInterface& theRv;
-  std::vector<double>       theWeights;
+  const std::vector<AppInfo> theAppInfo;
+  support::RealRvInterface&  theRv;
+  std::set<std::size_t>      theRegions; // never changed after construction
+  std::vector<double>        theWeights; // same
 };
 
 /**

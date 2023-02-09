@@ -97,6 +97,7 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
       ASSERT_EQ(0.5, myInfo.theLoad);
       ASSERT_EQ(10, myInfo.theRate);
     }
+    ASSERT_EQ(std::set<std::size_t>({0}), myGenerator.regions());
   }
 
   myAppInfo.emplace_back(AppInfo{1, 2, 0.5, 10});
@@ -109,6 +110,7 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
     }
     ASSERT_EQ(std::vector<std::size_t>({0, 1, 0, 1, 1, 1, 1, 0, 0, 1}),
               myRegions);
+    ASSERT_EQ(std::set<std::size_t>({0, 1}), myGenerator.regions());
   }
 }
 
@@ -132,6 +134,7 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload_from_file) {
     myAllValues.emplace(myGenerator().toString());
   }
   ASSERT_EQ(5, myAllValues.size());
+  ASSERT_EQ(std::set<std::size_t>({0, 1, 2, 3, 4}), myGenerator.regions());
 }
 
 } // namespace qr
