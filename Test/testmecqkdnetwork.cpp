@@ -74,9 +74,25 @@ class DeterministicRv : public support::GenericRv,
 
 struct TestMecQkdNetwork : public ::testing::Test {
   using AppInfo = MecQkdWorkload::AppInfo;
+
   TestMecQkdNetwork()
       : theRv({0.1, 0.4, 0.25, 0.9, 0.6, 0.7, 0.7, 0.3}) {
     // noop
+  }
+
+  //   /--> 1 -- >2 -+
+  //  /              v
+  // 0               3   all weights are 4, except 0->4 which is 1
+  //  \              ^
+  //   \---> 4 ------+
+  CapacityNetwork::WeightVector exampleEdgeWeights() {
+    return CapacityNetwork::WeightVector({
+        {0, 1, 4},
+        {1, 2, 4},
+        {2, 3, 4},
+        {0, 4, 1},
+        {4, 3, 4},
+    });
   }
 
   DeterministicRv<std::vector<double>> theRv;
@@ -97,20 +113,20 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
       ASSERT_EQ(0.5, myInfo.theLoad);
       ASSERT_EQ(10, myInfo.theRate);
     }
-    ASSERT_EQ(std::set<std::size_t>({0}), myGenerator.regions());
+    ASSERT_EQ(std::set<unsigned long>({0}), myGenerator.regions());
   }
 
   myAppInfo.emplace_back(AppInfo{1, 2, 0.5, 10});
 
   {
-    std::vector<std::size_t> myRegions;
-    MecQkdWorkload           myGenerator(myAppInfo, theRv);
+    std::vector<unsigned long> myRegions;
+    MecQkdWorkload             myGenerator(myAppInfo, theRv);
     for (auto i = 0; i < 10; i++) {
       myRegions.emplace_back(myGenerator().theRegion);
     }
-    ASSERT_EQ(std::vector<std::size_t>({0, 1, 0, 1, 1, 1, 1, 0, 0, 1}),
+    ASSERT_EQ(std::vector<unsigned long>({0, 1, 0, 1, 1, 1, 1, 0, 0, 1}),
               myRegions);
-    ASSERT_EQ(std::set<std::size_t>({0, 1}), myGenerator.regions());
+    ASSERT_EQ(std::set<unsigned long>({0, 1}), myGenerator.regions());
   }
 }
 
@@ -134,7 +150,21 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload_from_file) {
     myAllValues.emplace(myGenerator().toString());
   }
   ASSERT_EQ(5, myAllValues.size());
-  ASSERT_EQ(std::set<std::size_t>({0, 1, 2, 3, 4}), myGenerator.regions());
+  ASSERT_EQ(std::set<unsigned long>({0, 1, 2, 3, 4}), myGenerator.regions());
+}
+
+TEST_F(TestMecQkdNetwork, test_user_edge_nodes) {
+  MecQkdNetwork myNetwork(exampleEdgeWeights());
+
+  ASSERT_NO_THROW(myNetwork.userNodes({}));
+  ASSERT_NO_THROW(myNetwork.userNodes({1}));
+  ASSERT_NO_THROW(myNetwork.userNodes({0, 1, 2, 3, 4}));
+  ASSERT_THROW(myNetwork.userNodes({99}), std::runtime_error);
+
+  ASSERT_NO_THROW(myNetwork.edgeNodes({}));
+  ASSERT_NO_THROW(myNetwork.edgeNodes({{1, 3.14}, {4, 2.0}}));
+  ASSERT_THROW(myNetwork.edgeNodes({{99, 2.0}}), std::runtime_error);
+  ASSERT_THROW(myNetwork.edgeNodes({{4, -2.0}}), std::runtime_error);
 }
 
 } // namespace qr

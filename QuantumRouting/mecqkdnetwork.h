@@ -54,10 +54,10 @@ class MecQkdWorkload final
 {
  public:
   struct AppInfo {
-    std::size_t theRegion = 0; //!< region identifier
-    double      theWeight = 0; //!< weight to determine occurence probability
-    double      theLoad   = 0; //!< load requested, in operations/second
-    double      theRate   = 0; //!< QKD rate requested, in b/s
+    unsigned long theRegion = 0; //!< region identifier
+    double        theWeight = 0; //!< weight to determine occurence probability
+    double        theLoad   = 0; //!< load requested, in operations/second
+    double        theRate   = 0; //!< QKD rate requested, in b/s
 
     std::string toString() const;
   };
@@ -91,16 +91,16 @@ class MecQkdWorkload final
   /**
    * @brief Return the regions in the app infos.
    *
-   * @return std::vector<std::size_t>
+   * @return std::vector<unsigned long>
    */
-  const std::set<std::size_t>& regions() const {
+  const std::set<unsigned long>& regions() const {
     return theRegions;
   }
 
  private:
   const std::vector<AppInfo> theAppInfo;
   support::RealRvInterface&  theRv;
-  std::set<std::size_t>      theRegions; // never changed after construction
+  std::set<unsigned long>    theRegions; // never changed after construction
   std::vector<double>        theWeights; // same
 };
 
@@ -110,6 +110,21 @@ class MecQkdWorkload final
 class MecQkdNetwork final : public CapacityNetwork
 {
  public:
+  struct EdgeNode {
+    double theProcessing = 0; //!< total processing power of this edge node
+    double theAllocated  = 0; //!< allocated processing power
+
+    double residual() const noexcept {
+      assert(theProcessing >= theAllocated);
+      return theProcessing - theAllocated;
+    }
+  };
+
+  // struct Allocation {
+  //   unsigned long theUserNode = 0;
+  //   unsigned long theEdgeNode = 0;
+  // };
+
   /**
    * @brief Create a network with given links and assign random weights
    *
@@ -133,6 +148,26 @@ class MecQkdNetwork final : public CapacityNetwork
    * (src, dst, w).
    */
   explicit MecQkdNetwork(const WeightVector& aEdgeWeights);
+
+  /**
+   * @brief Set the identifiers of user nodes.
+   *
+   * Clear any previous data.
+   */
+  void userNodes(const std::set<unsigned long>& aUserNodes);
+
+  /**
+   * @brief Set the edge nodes' identifiers and assign processing power values.
+   *
+   * Clear any previous data.
+   *
+   * @param aEdgeProcessing key: edge node identifier, value: processing
+   */
+  void edgeNodes(const std::map<unsigned long, double>& aEdgeProcessing);
+
+ private:
+  std::set<unsigned long>           theUserNodes;
+  std::map<unsigned long, EdgeNode> theEdgeNodes;
 };
 
 } // namespace qr

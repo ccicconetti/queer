@@ -34,6 +34,7 @@ SOFTWARE.
 #include "Support/split.h"
 #include "Support/tostring.h"
 
+#include <boost/graph/subgraph.hpp>
 #include <fstream>
 #include <glog/logging.h>
 #include <sstream>
@@ -171,6 +172,34 @@ MecQkdNetwork::MecQkdNetwork(
 MecQkdNetwork::MecQkdNetwork(const WeightVector& aEdgeWeights)
     : CapacityNetwork(aEdgeWeights) {
   // noop
+}
+
+void MecQkdNetwork::userNodes(const std::set<unsigned long>& aUserNodes) {
+  const auto V = boost::num_vertices(theGraph);
+  for (const auto& v : aUserNodes) {
+    if (v >= V) {
+      throw std::runtime_error("Invalid user node: " + std::to_string(v));
+    }
+  }
+
+  theUserNodes = aUserNodes;
+}
+
+void MecQkdNetwork::edgeNodes(
+    const std::map<unsigned long, double>& aEdgeProcessing) {
+  const auto V = boost::num_vertices(theGraph);
+  theEdgeNodes.clear();
+  for (const auto& elem : aEdgeProcessing) {
+    if (elem.second < 0) {
+      throw std::runtime_error("Invalid negative processing capability: " +
+                               std::to_string(elem.second));
+    }
+    if (elem.first >= V) {
+      throw std::runtime_error("Invalid edge node: " +
+                               std::to_string(elem.first));
+    }
+    theEdgeNodes.emplace(elem.first, EdgeNode{elem.second, 0.0});
+  }
 }
 
 } // namespace qr
