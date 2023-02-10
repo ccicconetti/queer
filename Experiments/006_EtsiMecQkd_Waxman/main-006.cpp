@@ -76,7 +76,8 @@ struct Parameters {
   double      theMaxCapacity; // in secret b/s
 
   // workload generation
-  std::string theApplications;   // file containing the apps' info
+  std::string theAppSpec;        // file containing the apps' specifications
+  std::size_t theApplications;   // num of applications
   std::size_t theEdgeNodes;      // num of edge nodes
   std::string theEdgeProcessing; // r.v. to draw edge node processing power
 
@@ -95,6 +96,7 @@ struct Parameters {
                                          "max-distance",
                                          "max-capacity",
 
+                                         "app-spec",
                                          "applications",
                                          "edge-nodes",
                                          "edge-processing",
@@ -110,7 +112,8 @@ struct Parameters {
              << theAlpha << ", beta " << theBeta << ", grid length "
              << theMaxDistance << " km; number of nodes: " << theNodes
              << "; maximum capacity of the QKD links: " << theMaxCapacity
-             << " b/s; applications' info " << theApplications << ", "
+             << " b/s; " << theApplications
+             << " applications with specifications in " << theAppSpec << ", "
              << theEdgeNodes << " edge nodes with processing power "
              << theEdgeProcessing
              << "; allocation algorithm: " << qr::toString(theAlgo);
@@ -122,9 +125,9 @@ struct Parameters {
     std::stringstream myStream;
     myStream << theSeed << ',' << theNodes << ',' << theAlpha << ',' << theBeta
              << ',' << theMaxDistance << ',' << theMaxCapacity << ','
-             << theApplications << ',' << theEdgeNodes << ','
-             << boost::replace_all_copy(theEdgeProcessing, ",", ";") << ','
-             << qr::toString(theAlgo);
+             << theAppSpec << ',' << theApplications << ',' << theEdgeNodes
+             << ',' << boost::replace_all_copy(theEdgeProcessing, ",", ";")
+             << ',' << qr::toString(theAlgo);
     return myStream.str();
   }
 };
@@ -200,7 +203,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   // load the workload generator parameters from file
   us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
   auto          myWorkload =
-      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theApplications, myAppRv);
+      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv);
 
   // select the user nodes
   if ((myRaii.in().theEdgeNodes + myWorkload.regions().size()) >
@@ -239,7 +242,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   // draw the applications
   std::vector<qr::MecQkdNetwork::Allocation> myApps;
-  // TODO
+  for (std::size_t i = 0; i < myRaii.in().theApplications; i++) {
+    const auto myAppInfo = myWorkload();
+    myApps.emplace_back(qr::MecQkdNetwork::Allocation(
+        myAppInfo.theRegion, myAppInfo.theRate, myAppInfo.theLoad));
+  }
 
   // allocate the apps to edge nodes
   myNetwork->allocate(myApps, myRaii.in().theAlgo);
@@ -322,7 +329,8 @@ int main(int argc, char* argv[]) {
   double      myBeta;
   double      myMaxDistance;
   double      myMaxCapacity;
-  std::string myApplications;
+  std::string myAppSpec;
+  std::size_t myApplications;
   std::size_t myEdgeNodes;
   std::string myEdgeProcessing;
   std::string myAlgo;
@@ -367,9 +375,12 @@ int main(int argc, char* argv[]) {
     ("max-capacity",
      po::value<double>(&myMaxCapacity)->default_value(100e3),
      "Max QKD capacity, in b/s.")
-    ("applications",
-     po::value<std::string>(&myApplications)->default_value("applications.dat"),
+    ("app-spec",
+     po::value<std::string>(&myAppSpec)->default_value("applications.dat"),
      "Name of the CSV file containing the specifications of the applications.")
+    ("applications",
+     po::value<std::size_t>(&myApplications)->default_value(100),
+     "Number of applications.")
     ("edge-nodes",
      po::value<std::size_t>(&myEdgeNodes)->default_value(5),
      "Number of edge nodes.")
@@ -424,6 +435,7 @@ int main(int argc, char* argv[]) {
                                    myBeta,
                                    myMaxDistance,
                                    myMaxCapacity,
+                                   myAppSpec,
                                    myApplications,
                                    myEdgeNodes,
                                    myEdgeProcessing,

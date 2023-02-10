@@ -161,6 +161,15 @@ MecQkdWorkload::AppInfo MecQkdWorkload::operator()() {
   return res[0];
 }
 
+MecQkdNetwork::Allocation::Allocation(const unsigned long aUserNode,
+                                      const double        aRate,
+                                      const double        aLoad)
+    : theUserNode(aUserNode)
+    , theRate(aRate)
+    , theLoad(aLoad) {
+  // noop
+}
+
 std::string MecQkdNetwork::Allocation::toString() const {
   std::stringstream ret;
   ret << "user " << theUserNode << ", rate " << theRate << " kb/s, load "
@@ -218,7 +227,7 @@ void MecQkdNetwork::edgeNodes(
 
 void MecQkdNetwork::allocate(std::vector<Allocation>& aApps,
                              const MecQkdAlgo         aAlgo) {
-  if (VLOG_IS_ON(2)) {
+  if (VLOG_IS_ON(1)) {
     LOG(INFO) << "allocating the followings apps with " << toString(aAlgo);
     for (const auto& myApp : aApps) {
       LOG(INFO) << myApp.toString();
