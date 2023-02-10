@@ -195,6 +195,54 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myRaii.in().theAlpha,
       myRaii.in().theBeta,
       myCoordinates);
+  assert(myNetwork->numNodes() == myRaii.in().theNodes);
+
+  // load the workload generator parameters from file
+  us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
+  auto          myWorkload =
+      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theApplications, myAppRv);
+
+  // select the user nodes
+  if ((myRaii.in().theEdgeNodes + myWorkload.regions().size()) >
+      myRaii.in().theNodes) {
+    throw std::runtime_error(
+        "cannot have " + std::to_string(myRaii.in().theEdgeNodes) +
+        " edge nodes + " + std::to_string(myWorkload.regions().size()) +
+        " user nodes in a network with " +
+        std::to_string(myRaii.in().theNodes) + " nodes");
+  }
+  std::set<unsigned long> myAllNodes;
+  for (unsigned long i = 0; i < myRaii.in().theNodes; i++) {
+    myAllNodes.emplace(i);
+  }
+  assert(myAllNodes.size() == myRaii.in().theNodes);
+  us::UniformRv myNodesRv(0, 1, myRaii.in().theSeed, 4, 0);
+  const auto    myUserNodes =
+      us::sample(myAllNodes, myWorkload.regions().size(), myNodesRv);
+  for (const auto& myNode : myUserNodes) {
+    myAllNodes.erase(myNode);
+  }
+  myNetwork->userNodes(myUserNodes);
+
+  // select the edge nodes from the set of nodes _not_ selected as users
+  // and assign them their processing power
+  assert(myRaii.in().theEdgeNodes <= myAllNodes.size());
+  auto myProcessingRv = us::RealRvInterface::fromString(
+      myRaii.in().theEdgeProcessing, myRaii.in().theSeed, 5, 0);
+  const auto myEdgeNodes =
+      us::sample(myAllNodes, myRaii.in().theEdgeNodes, myNodesRv);
+  std::map<unsigned long, double> myEdgeProcessing;
+  for (const auto& myNode : myEdgeNodes) {
+    myEdgeProcessing.emplace(myNode, (*myProcessingRv)());
+  }
+  myNetwork->edgeNodes(myEdgeProcessing);
+
+  // draw the applications
+  std::vector<qr::MecQkdNetwork::Allocation> myApps;
+  // TODO
+
+  // allocate the apps to edge nodes
+  myNetwork->allocate(myApps, myRaii.in().theAlgo);
 
   // save the network properties
   assert(myNetwork.get() != nullptr);

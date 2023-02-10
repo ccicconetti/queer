@@ -152,8 +152,8 @@ std::unique_ptr<NETWORK> makeCapacityNetworkWaxman(
   for (unsigned myTry = 0; myTry < MANY_TRIES; myTry++) {
 
     // assign nodes to their coordinates
-    support::UniformRv      myRvX(0, myGridLength, aSeed, myTry, 0);
-    support::UniformRv      myRvY(0, myGridLength, aSeed, myTry, 1);
+    support::UniformRv      myRvX(0, myGridLength, aSeed, 0, myTry);
+    support::UniformRv      myRvY(0, myGridLength, aSeed, 1, myTry);
     std::vector<Coordinate> myCoordinates(aNodes, Coordinate{0, 0, 0});
     for (auto& myNode : myCoordinates) {
       std::get<0>(myNode) = myRvX();
@@ -162,7 +162,7 @@ std::unique_ptr<NETWORK> makeCapacityNetworkWaxman(
 
     // create edges
     CapacityNetwork::WeightVector myEdges;
-    support::UniformRv            myRxEdge(0, 1, aSeed, myTry, 2);
+    support::UniformRv            myRxEdge(0, 1, aSeed, 2, myTry);
     for (std::size_t i = 0; i < aNodes; i++) {
       for (std::size_t j = (i + 1); j < aNodes; j++) {
         const auto myDistance = distance(myCoordinates[i], myCoordinates[j]);

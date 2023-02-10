@@ -167,11 +167,8 @@ std::string MecQkdNetwork::Allocation::toString() const {
       << theLoad << ": ";
   if (theAllocated) {
     ret << "allocated to edge " << theEdgeNode << ", path {"
-        << ::toString(
-               thePath,
-               ",",
-               [](const auto& aEdge) { return std::to_string(aEdge.m_target); })
-        << "}, tot rate " << theTotRate << " kb/s";
+        << ::toStringStd(thePath, ",") << "}, tot rate " << theTotRate
+        << " kb/s";
   } else {
     ret << "not allocated";
   }

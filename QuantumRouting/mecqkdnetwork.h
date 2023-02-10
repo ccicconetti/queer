@@ -129,8 +129,8 @@ class MecQkdNetwork final : public CapacityNetwork
     // output
     bool          theAllocated = false; //!< true if the user has been allocated
     unsigned long theEdgeNode  = 0;     //!< the target edge user node assigned
-    Path          thePath;              //!< the path selected from user to edge
-    double        theTotRate = 0;       //!< the  QKD rate consumed in the path
+    std::vector<unsigned long> thePath; //!< the path selected from user to edge
+    double theTotRate = 0;              //!< the  QKD rate consumed in the path
 
     std::string toString() const;
   };
