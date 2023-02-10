@@ -43,6 +43,7 @@ SOFTWARE.
 #include "Support/tostring.h"
 #include "Support/versionutils.h"
 
+#include <boost/algorithm/string/replace.hpp>
 #include <boost/program_options.hpp>
 
 #include <cmath>
@@ -67,17 +68,20 @@ namespace us = uiiit::support;
 struct Parameters {
   std::size_t theSeed;
 
-  // scenario generation
+  // topology generation
   std::size_t theNodes;
   double      theAlpha;
   double      theBeta;
   double      theMaxDistance; // in km
   double      theMaxCapacity; // in secret b/s
 
+  // workload generation
+  std::string theApplications;   // file containing the apps' info
+  std::size_t theEdgeNodes;      // num of edge nodes
+  std::string theEdgeProcessing; // r.v. to draw edge node processing power
+
   // system
   qr::MecQkdAlgo theAlgo;
-
-  // applications
 
   // not part of the experiment
   std::string theDotFile;
@@ -91,6 +95,10 @@ struct Parameters {
                                          "max-distance",
                                          "max-capacity",
 
+                                         "applications",
+                                         "edge-nodes",
+                                         "edge-processing",
+
                                          "algorithm"});
     return ret;
   }
@@ -99,10 +107,13 @@ struct Parameters {
     std::stringstream myStream;
     myStream << "topology randomly generated according to the Waxman model "
                 "with parameters: alpha "
-             << theAlpha << ", beta " << theBeta << ", grid lengt h"
+             << theAlpha << ", beta " << theBeta << ", grid length "
              << theMaxDistance << " km; number of nodes: " << theNodes
              << "; maximum capacity of the QKD links: " << theMaxCapacity
-             << " b/s; allocation algorithm: " << qr::toString(theAlgo);
+             << " b/s; applications' info " << theApplications << ", "
+             << theEdgeNodes << " edge nodes with processing power "
+             << theEdgeProcessing
+             << "; allocation algorithm: " << qr::toString(theAlgo);
     myStream << "; experiment seed " << theSeed;
     return myStream.str();
   }
@@ -111,6 +122,8 @@ struct Parameters {
     std::stringstream myStream;
     myStream << theSeed << ',' << theNodes << ',' << theAlpha << ',' << theBeta
              << ',' << theMaxDistance << ',' << theMaxCapacity << ','
+             << theApplications << ',' << theEdgeNodes << ','
+             << boost::replace_all_copy(theEdgeProcessing, ",", ";") << ','
              << qr::toString(theAlgo);
     return myStream.str();
   }
@@ -261,6 +274,9 @@ int main(int argc, char* argv[]) {
   double      myBeta;
   double      myMaxDistance;
   double      myMaxCapacity;
+  std::string myApplications;
+  std::size_t myEdgeNodes;
+  std::string myEdgeProcessing;
   std::string myAlgo;
 
   std::string myDotFile;
@@ -303,6 +319,15 @@ int main(int argc, char* argv[]) {
     ("max-capacity",
      po::value<double>(&myMaxCapacity)->default_value(100e3),
      "Max QKD capacity, in b/s.")
+    ("applications",
+     po::value<std::string>(&myApplications)->default_value("applications.dat"),
+     "Name of the CSV file containing the specifications of the applications.")
+    ("edge-nodes",
+     po::value<std::size_t>(&myEdgeNodes)->default_value(5),
+     "Number of edge nodes.")
+    ("edge-processing",
+     po::value<std::string>(&myEdgeProcessing)->default_value("U(1.0,3.0)"),
+     "Description of the r.v. to be used to determine the edge node processing power.")
     ("algo",
      po::value<std::string>(&myAlgo)->default_value(qr::toString(qr::MecQkdAlgo::Random)),
      (std::string("Algorithm to be used, one of: ") + toString(qr::allMecQkdAlgos(), ", ", [](const auto& aAlgo) { return toString(aAlgo); })).c_str())
@@ -351,6 +376,9 @@ int main(int argc, char* argv[]) {
                                    myBeta,
                                    myMaxDistance,
                                    myMaxCapacity,
+                                   myApplications,
+                                   myEdgeNodes,
+                                   myEdgeProcessing,
                                    qr::mecQkdAlgofromString(myAlgo),
                                    myDotFile});
     }

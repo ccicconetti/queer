@@ -120,10 +120,20 @@ class MecQkdNetwork final : public CapacityNetwork
     }
   };
 
-  // struct Allocation {
-  //   unsigned long theUserNode = 0;
-  //   unsigned long theEdgeNode = 0;
-  // };
+  struct Allocation {
+    // input
+    unsigned long theUserNode = 0; //!< the user node originating the request
+    double        theRate     = 0; //!< the QKD rates requested
+    double        theLoad     = 0; //!< the amount of processing load requested
+
+    // output
+    bool          theAllocated = false; //!< true if the user has been allocated
+    unsigned long theEdgeNode  = 0;     //!< the target edge user node assigned
+    Path          thePath;              //!< the path selected from user to edge
+    double        theTotRate = 0;       //!< the  QKD rate consumed in the path
+
+    std::string toString() const;
+  };
 
   /**
    * @brief Create a network with given links and assign random weights
@@ -164,6 +174,15 @@ class MecQkdNetwork final : public CapacityNetwork
    * @param aEdgeProcessing key: edge node identifier, value: processing
    */
   void edgeNodes(const std::map<unsigned long, double>& aEdgeProcessing);
+
+  /**
+   * @brief Allocate the given user requests into the MEC/QKD resources.
+   *
+   * @param aApps The list of applications to be allocated, also providing the
+   * structure for the output.
+   * @param aAlgo The algorithm to be used.
+   */
+  void allocate(std::vector<Allocation>& aApps, const MecQkdAlgo aAlgo);
 
  private:
   std::set<unsigned long>           theUserNodes;

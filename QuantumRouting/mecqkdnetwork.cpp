@@ -161,6 +161,23 @@ MecQkdWorkload::AppInfo MecQkdWorkload::operator()() {
   return res[0];
 }
 
+std::string MecQkdNetwork::Allocation::toString() const {
+  std::stringstream ret;
+  ret << "user " << theUserNode << ", rate " << theRate << " kb/s, load "
+      << theLoad << ": ";
+  if (theAllocated) {
+    ret << "allocated to edge " << theEdgeNode << ", path {"
+        << ::toString(
+               thePath,
+               ",",
+               [](const auto& aEdge) { return std::to_string(aEdge.m_target); })
+        << "}, tot rate " << theTotRate << " kb/s";
+  } else {
+    ret << "not allocated";
+  }
+  return ret.str();
+}
+
 MecQkdNetwork::MecQkdNetwork(
     const std::vector<std::pair<unsigned long, unsigned long>>& aEdges,
     support::RealRvInterface&                                   aWeightRv,
@@ -199,6 +216,16 @@ void MecQkdNetwork::edgeNodes(
                                std::to_string(elem.first));
     }
     theEdgeNodes.emplace(elem.first, EdgeNode{elem.second, 0.0});
+  }
+}
+
+void MecQkdNetwork::allocate(std::vector<Allocation>& aApps,
+                             const MecQkdAlgo         aAlgo) {
+  if (VLOG_IS_ON(2)) {
+    LOG(INFO) << "allocating the followings apps with " << toString(aAlgo);
+    for (const auto& myApp : aApps) {
+      LOG(INFO) << myApp.toString();
+    }
   }
 }
 
