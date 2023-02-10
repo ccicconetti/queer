@@ -249,7 +249,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   }
 
   // allocate the apps to edge nodes
-  myNetwork->allocate(myApps, myRaii.in().theAlgo);
+  us::UniformRv myAllocationRv(0, 1, myRaii.in().theSeed, 6, 0);
+  myNetwork->allocate(myApps, myRaii.in().theAlgo, myAllocationRv);
 
   // save the network properties
   assert(myNetwork.get() != nullptr);

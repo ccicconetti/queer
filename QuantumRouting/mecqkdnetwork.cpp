@@ -175,9 +175,8 @@ std::string MecQkdNetwork::Allocation::toString() const {
   ret << "user " << theUserNode << ", rate " << theRate << " kb/s, load "
       << theLoad << ": ";
   if (theAllocated) {
-    ret << "allocated to edge " << theEdgeNode << ", path {"
-        << ::toStringStd(thePath, ",") << "}, tot rate " << theTotRate
-        << " kb/s";
+    ret << "allocated to edge " << theEdgeNode << ", path length "
+        << thePathLength << ", tot rate " << totRate() << " kb/s";
   } else {
     ret << "not allocated";
   }
@@ -221,18 +220,165 @@ void MecQkdNetwork::edgeNodes(
       throw std::runtime_error("Invalid edge node: " +
                                std::to_string(elem.first));
     }
-    theEdgeNodes.emplace(elem.first, EdgeNode{elem.second, 0.0});
+    theEdgeNodes.emplace(elem.first);
+  }
+  theEdgeProcessing = aEdgeProcessing;
+}
+
+double MecQkdNetwork::totProcessing() const {
+  return std::accumulate(
+      theEdgeProcessing.begin(),
+      theEdgeProcessing.end(),
+      0.0,
+      [](auto aSum, const auto& aElem) { return aSum + aElem.second; });
+}
+
+void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
+                             const MecQkdAlgo          aAlgo,
+                             support::RealRvInterface& aRv) {
+  if (theUserNodes.empty()) {
+    throw std::runtime_error("invalid empty set of user nodes");
+  }
+  if (theEdgeNodes.empty()) {
+    throw std::runtime_error("invalid empty set of edge nodes");
+  }
+
+  if (VLOG_IS_ON(1)) {
+    LOG(INFO) << "allocation is about to start with " << toString(aAlgo);
+    LOG(INFO) << "network capacity   : " << totalCapacity() << " b/s";
+    LOG(INFO) << "processing capacity: " << totProcessing();
+    LOG(INFO) << "user nodes         : " << ::toStringStd(theUserNodes, ",");
+    LOG(INFO) << "edge nodes         : "
+              << ::toString(theEdgeProcessing, ",", [](const auto& elem) {
+                   return std::to_string(elem.first) + " (" +
+                          std::to_string(elem.second) + ")";
+                 });
+  }
+
+  std::vector<EdgeNode> myCandidates;
+  for (auto& elem : theEdgeProcessing) {
+    myCandidates.emplace_back(
+        EdgeNode{elem.first, elem.second, 0, 0, std::vector<unsigned long>()});
+  }
+
+  for (auto& myApp : aApps) {
+    // compute for each candidate the residual capacity, which can be negative,
+    // and the constrained shortest path length, which can be empty
+    const auto myPaths = cspf(myApp.theUserNode, myApp.theRate, theEdgeNodes);
+    for (auto& myCandidate : myCandidates) {
+      const auto it = myPaths.find(myCandidate.theId);
+      assert(it != myPaths.end());
+      myCandidate.thePath = it->second;
+      myCandidate.thePathSize =
+          it->second.empty() ? 0.0 : (it->second.size() + aRv() * 0.1);
+
+      myCandidate.theResidual = myCandidate.theAvailable - myApp.theLoad;
+    }
+
+    auto mySelected = selectCandidate(myCandidates, aAlgo, aRv);
+    if (mySelected != myCandidates.end() and mySelected->feasible()) {
+      // save the allocation data into the output
+      myApp.theAllocated  = true;
+      myApp.theEdgeNode   = mySelected->theId;
+      myApp.thePathLength = static_cast<std::size_t>(mySelected->thePathSize);
+
+      // update the available processing capacity on the node selected
+      assert(mySelected->theAvailable >= myApp.theLoad);
+      mySelected->theAvailable -= myApp.theLoad;
+
+      // update the network capacities
+      assert(mySelected->thePath.size() == myApp.thePathLength);
+      removeCapacityFromPath(myApp.theUserNode,
+                             mySelected->thePath,
+                             myApp.theRate,
+                             std::nullopt, // XXX
+                             theGraph);
+    }
+
+    VLOG(1) << myApp.toString();
+  }
+
+  // update the edge node available processing power after the allocation
+  for (const auto& myCandidate : myCandidates) {
+    auto it = theEdgeProcessing.find(myCandidate.theId);
+    assert(it != theEdgeProcessing.end());
+    it->second = myCandidate.theAvailable;
   }
 }
 
-void MecQkdNetwork::allocate(std::vector<Allocation>& aApps,
-                             const MecQkdAlgo         aAlgo) {
-  if (VLOG_IS_ON(1)) {
-    LOG(INFO) << "allocating the followings apps with " << toString(aAlgo);
-    for (const auto& myApp : aApps) {
-      LOG(INFO) << myApp.toString();
-    }
+MecQkdNetwork::Candidates::iterator
+MecQkdNetwork::selectCandidate(std::vector<EdgeNode>&    aCandidates,
+                               const MecQkdAlgo          aAlgo,
+                               support::RealRvInterface& aRv) {
+  // return immediately a pointer beyond the end if there are no candidates
+  if (aCandidates.begin() == aCandidates.end()) {
+    return aCandidates.end();
   }
+
+  // random algorithms
+  if (aAlgo == MecQkdAlgo::Random or aAlgo == MecQkdAlgo::RandomBlind) {
+    // with non-blind: retrieve the intersection of edge nodes that feasible
+    // according to both rate and processing constraints
+    // with blind: just return a candidate truly at random
+    std::set<Candidates::iterator> myFilteredCandidates;
+    for (auto it = aCandidates.begin(); it != aCandidates.end(); ++it) {
+      if (aAlgo == MecQkdAlgo::RandomBlind or it->feasible()) {
+        myFilteredCandidates.emplace(it);
+      }
+    }
+    if (myFilteredCandidates.empty()) {
+      return aCandidates.end();
+    }
+    return support::choice(myFilteredCandidates, aRv);
+  }
+
+  // for the other algorithms, just loop through the vector and keep an iterator
+  // to the current best solution found to be returned at the end
+  assert(aAlgo == MecQkdAlgo::BestFit or aAlgo == MecQkdAlgo::BestFitBlind or
+         aAlgo == MecQkdAlgo::Spf or aAlgo == MecQkdAlgo::SpfBlind);
+  struct Compare {
+    Compare(const MecQkdAlgo aAlgo)
+        : theAlgo(aAlgo) {
+      // noop
+    }
+    Candidates::iterator best(const Candidates::iterator aLhs,
+                              const Candidates::iterator aRhs) const noexcept {
+      assert(theAlgo != MecQkdAlgo::Random and
+             theAlgo != MecQkdAlgo::RandomBlind);
+      switch (theAlgo) {
+        case MecQkdAlgo::Random:
+          return aLhs;
+        case MecQkdAlgo::Spf:
+          return (aRhs->feasible() and
+                  (not aLhs->feasible() or
+                   aLhs->thePathSize > aRhs->thePathSize)) ?
+                     aRhs :
+                     aLhs;
+        case MecQkdAlgo::BestFit:
+          return (aRhs->feasible() and
+                  (not aLhs->feasible() or
+                   aLhs->theResidual > aRhs->theResidual)) ?
+                     aRhs :
+                     aLhs;
+        case MecQkdAlgo::SpfBlind:
+          return aLhs->thePathSize > aRhs->thePathSize ? aRhs : aLhs;
+        case MecQkdAlgo::BestFitBlind:
+          return aLhs->theResidual > aRhs->theResidual ? aRhs : aLhs;
+        case MecQkdAlgo::RandomBlind:
+          return aLhs;
+      }
+      assert(false);
+      return aLhs;
+    }
+    const MecQkdAlgo theAlgo;
+  };
+  Compare              myCmp(aAlgo);
+  Candidates::iterator myBest = aCandidates.begin();
+  for (auto myCurr = aCandidates.begin() + 1; myCurr != aCandidates.end();
+       ++myCurr) {
+    myBest = myCmp.best(myBest, myCurr);
+  }
+  return myBest;
 }
 
 } // namespace qr

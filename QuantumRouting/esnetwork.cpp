@@ -332,8 +332,11 @@ void EsNetwork::route(std::vector<FlowDescriptor>& aFlows,
       VLOG(2) << "flow admitted " << myFlow.toString();
       // flow admissible: remove the gross capacity from the edges along the
       // path and then move to the next flow in the list
-      removeCapacityFromPath(
-          myFlow.theSrc, myFlow.thePath, myFlow.theGrossRate, theGraph);
+      removeCapacityFromPath(myFlow.theSrc,
+                             myFlow.thePath,
+                             myFlow.theGrossRate,
+                             std::nullopt,
+                             theGraph);
     }
   }
 }

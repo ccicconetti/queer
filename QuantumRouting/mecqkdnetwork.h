@@ -109,17 +109,24 @@ class MecQkdWorkload final
  */
 class MecQkdNetwork final : public CapacityNetwork
 {
- public:
+  // used within allocate()
   struct EdgeNode {
-    double theProcessing = 0; //!< total processing power of this edge node
-    double theAllocated  = 0; //!< allocated processing power
+    // initialized from theEdgeProcessing
+    unsigned long theId        = 0;
+    double        theAvailable = 0;
 
-    double residual() const noexcept {
-      assert(theProcessing >= theAllocated);
-      return theProcessing - theAllocated;
+    // working variables
+    double                     theResidual = 0;
+    double                     thePathSize = 0;
+    std::vector<unsigned long> thePath; //!< the path from user to edge
+
+    bool feasible() const noexcept {
+      return thePathSize > 0 and theResidual > 0;
     }
   };
+  using Candidates = std::vector<EdgeNode>;
 
+ public:
   struct Allocation {
     // input
     unsigned long theUserNode = 0; //!< the user node originating the request
@@ -129,13 +136,18 @@ class MecQkdNetwork final : public CapacityNetwork
     // output
     bool          theAllocated = false; //!< true if the user has been allocated
     unsigned long theEdgeNode  = 0;     //!< the target edge user node assigned
-    std::vector<unsigned long> thePath; //!< the path selected from user to edge
-    double theTotRate = 0;              //!< the  QKD rate consumed in the path
+    std::size_t   thePathLength = 0;    //!< the path length from user to edge
 
     explicit Allocation(const unsigned long aUserNode,
                         const double        aRate,
                         const double        aLoad);
     std::string toString() const;
+    double      totRate() const noexcept {
+      if (theAllocated) {
+        return thePathLength * theRate;
+      }
+      return 0.0;
+    }
   };
 
   /**
@@ -184,12 +196,32 @@ class MecQkdNetwork final : public CapacityNetwork
    * @param aApps The list of applications to be allocated, also providing the
    * structure for the output.
    * @param aAlgo The algorithm to be used.
+   * @param aRv A r.v. in [0,1] to break ties.
    */
-  void allocate(std::vector<Allocation>& aApps, const MecQkdAlgo aAlgo);
+  void allocate(std::vector<Allocation>&  aApps,
+                const MecQkdAlgo          aAlgo,
+                support::RealRvInterface& aRv);
+
+  //! @return the total processing power of the edge nodes.
+  double totProcessing() const;
 
  private:
-  std::set<unsigned long>           theUserNodes;
-  std::map<unsigned long, EdgeNode> theEdgeNodes;
+  std::set<unsigned long>         theUserNodes;
+  std::map<unsigned long, double> theEdgeProcessing;
+  std::set<unsigned long>         theEdgeNodes;
+
+  /**
+   * @brief Select the candidate edge node to be assigned.
+   *
+   * @param aCandidates The possible edge nodes.
+   * @param aAlgo The algorithm used.
+   * @param aRv A r.v. in [0,1] to break ties.
+   * @return std::vector<EdgeNode>::const_iterator
+   */
+  static Candidates::iterator
+  selectCandidate(std::vector<EdgeNode>&    aCandidates,
+                  const MecQkdAlgo          aAlgo,
+                  support::RealRvInterface& aRv);
 };
 
 } // namespace qr
