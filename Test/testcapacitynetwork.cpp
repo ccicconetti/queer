@@ -319,5 +319,22 @@ TEST_F(TestCapacityNetwork, test_make_capacity_network_waxman) {
   }
 }
 
+TEST_F(TestCapacityNetwork, test_cspf) {
+  CapacityNetwork         myNetwork(exampleEdgeWeights());
+  std::set<unsigned long> myDestinations({3, 4});
+  using CspfRes = std::map<unsigned long, std::vector<unsigned long>>;
+
+  ASSERT_EQ(CspfRes({{3, {4, 3}}, {4, {4}}}),
+            myNetwork.cspf(0, 0, myDestinations));
+  ASSERT_EQ(CspfRes({{3, {4, 3}}, {4, {4}}}),
+            myNetwork.cspf(0, 1, myDestinations));
+  ASSERT_EQ(CspfRes({{3, {1, 2, 3}}, {4, {}}}),
+            myNetwork.cspf(0, 2, myDestinations));
+  ASSERT_EQ(CspfRes({{3, {}}, {4, {}}}), myNetwork.cspf(0, 99, myDestinations));
+  myDestinations = std::set<unsigned long>({0, 1, 2, 4});
+  ASSERT_EQ(CspfRes({{0, {}}, {1, {}}, {2, {}}, {4, {}}}),
+            myNetwork.cspf(3, 0, myDestinations));
+}
+
 } // namespace qr
 } // namespace uiiit

@@ -99,6 +99,54 @@ CapacityNetwork::WeightVector CapacityNetwork::weights() const {
   return ret;
 }
 
+std::map<unsigned long, std::vector<unsigned long>>
+CapacityNetwork::cspf(const unsigned long            aSource,
+                      const double                   aCapacity,
+                      const std::set<unsigned long>& aDestinations) const {
+  const auto V = boost::num_vertices(theGraph);
+  assert(aSource < V);
+  for (const auto& v : aDestinations) {
+    assert(v < V);
+  }
+
+  // make a working copy of the graph
+  auto myGraph = theGraph;
+
+  // remove all edges without enough capacity to satisfy the requirement
+  const auto myWeights = boost::get(boost::edge_weight, myGraph);
+  {
+    boost::graph_traits<Graph>::edge_iterator it, end, next;
+    std::tie(it, end) = boost::edges(myGraph);
+    for (next = it; it != end; it = next) {
+      next++;
+      if (myWeights[*it] < aCapacity) {
+        boost::remove_edge(*it, myGraph);
+      }
+    }
+  }
+
+  // run Dijkstra with distance measured in hops
+  std::vector<VertexDescriptor> myPredecessors(V);
+  boost::dijkstra_shortest_paths(
+      myGraph,
+      aSource,
+      boost::predecessor_map(myPredecessors.data())
+          .weight_map(
+              boost::make_static_property_map<Graph::edge_descriptor>(1)));
+
+  // save the shortest paths found
+  std::map<unsigned long, std::vector<unsigned long>> ret;
+  for (const auto myDestination : aDestinations) {
+    auto it = ret.emplace(myDestination, std::vector<unsigned long>()).first;
+    if (myPredecessors[myDestination] != myDestination) {
+      HopsFinder myHopsFinder(myPredecessors, aSource);
+      myHopsFinder(it->second, myDestination);
+    }
+  }
+
+  return ret;
+}
+
 std::size_t CapacityNetwork::numNodes() const {
   return boost::num_vertices(theGraph);
 }

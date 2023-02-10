@@ -127,6 +127,24 @@ class CapacityNetwork : public Network
   WeightVector weights() const;
 
   /**
+   * @brief Find the shortest path, in number of hops, from a source node to all
+   * possible destinations passed, by following only the paths that satisfy a
+   * minimum capacity requirement.
+   *
+   * @param aSource The source node.
+   * @param aCapacity The capacity requirement.
+   * @param aDestinations The set of destinations.
+   * @return std::map<unsigned long, std::vector<unsigned long>> The constrained
+   * shortest path found for each node. If there is no feasible path or if the
+   * destination node is the same as the source, then the value in the map is
+   * empty.
+   */
+  std::map<unsigned long, std::vector<unsigned long>>
+  cspf(const unsigned long            aSource,
+       const double                   aCapacity,
+       const std::set<unsigned long>& aDestinations) const;
+
+  /**
    * @brief For each node, find the reachable nodes with min/max distance.
    *
    * @param aMinHops The minimum distance, in hops.
