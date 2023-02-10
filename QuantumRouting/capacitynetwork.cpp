@@ -46,6 +46,7 @@ SOFTWARE.
 
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 
@@ -270,7 +271,7 @@ void CapacityNetwork::addCapacityToPath(
     const VertexDescriptor               aSrc,
     const std::vector<VertexDescriptor>& aPath,
     const double                         aCapacity) {
-  removeCapacityFromPath(aSrc, aPath, -aCapacity, theGraph);
+  removeCapacityFromPath(aSrc, aPath, -aCapacity, std::nullopt, theGraph);
 }
 
 std::vector<double> CapacityNetwork::nodeCapacities() const {
@@ -407,6 +408,7 @@ void CapacityNetwork::removeCapacityFromPath(
     const VertexDescriptor               aSrc,
     const std::vector<VertexDescriptor>& aPath,
     const double                         aCapacity,
+    const std::optional<double>          aMinCapacity,
     Graph&                               aGraph) {
   auto mySrc     = aSrc;
   auto myWeights = boost::get(boost::edge_weight, aGraph);
@@ -419,13 +421,18 @@ void CapacityNetwork::removeCapacityFromPath(
     if (not myFound) {
       throw std::runtime_error("edge not in the graph: " + ::toString(myEdge));
     }
-    if (myWeights[myEdge] < aCapacity) {
+    auto& myWeight = myWeights[myEdge];
+    if (myWeight < aCapacity) {
       throw std::runtime_error("cannot remove capacity " +
                                std::to_string(aCapacity) + " > " +
                                std::to_string(myWeights[myEdge]) +
                                " for edge " + ::toString(myEdge));
     }
-    myWeights[myEdge] -= aCapacity;
+    myWeight -= aCapacity;
+
+    if (aMinCapacity.has_value() and myWeight < aMinCapacity.value()) {
+      boost::remove_edge(myEdge, aGraph);
+    }
 
     // move to the next edge
     mySrc = myDst;

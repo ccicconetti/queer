@@ -336,5 +336,9 @@ TEST_F(TestCapacityNetwork, test_cspf) {
             myNetwork.cspf(3, 0, myDestinations));
 }
 
+TEST_F(TestCapacityNetwork, test_remove_capacity_from_path) {
+  FAIL() << "to be implemented";
+}
+
 } // namespace qr
 } // namespace uiiit

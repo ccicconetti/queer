@@ -255,10 +255,20 @@ class CapacityNetwork : public Network
                              const std::vector<VertexDescriptor>& aPath,
                              Graph&                               aGraph);
 
+  /**
+   * @brief Remove the capacity from all the edges along a path.
+   *
+   * @param aSrc The source node.
+   * @param aPath The path.
+   * @param aCapacity The capacity to be subtracted.
+   * @param aMinCapacity If specified,remove the edge with a smaller residual.
+   * @param aGraph The graph.
+   */
   static void removeCapacityFromPath(const VertexDescriptor               aSrc,
                                      const std::vector<VertexDescriptor>& aPath,
-                                     const double aCapacity,
-                                     Graph&       aGraph);
+                                     const double                aCapacity,
+                                     const std::optional<double> aMinCapacity,
+                                     Graph&                      aGraph);
 
   std::pair<std::size_t, std::size_t> minMaxVertexProp(
       const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
