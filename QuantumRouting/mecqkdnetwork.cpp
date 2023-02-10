@@ -48,9 +48,9 @@ std::vector<MecQkdAlgo> allMecQkdAlgos() {
       MecQkdAlgo::Random,
       MecQkdAlgo::Spf,
       MecQkdAlgo::BestFit,
-      MecQkdAlgo::RandomFeas,
-      MecQkdAlgo::SpfFeas,
-      MecQkdAlgo::BestFitFeas,
+      MecQkdAlgo::RandomBlind,
+      MecQkdAlgo::SpfBlind,
+      MecQkdAlgo::BestFitBlind,
   });
   return myAlgos;
 }
@@ -63,12 +63,12 @@ std::string toString(const MecQkdAlgo aAlgo) {
       return "spf";
     case MecQkdAlgo::BestFit:
       return "bestfit";
-    case MecQkdAlgo::RandomFeas:
-      return "randomfeas";
-    case MecQkdAlgo::SpfFeas:
-      return "spffeas";
-    case MecQkdAlgo::BestFitFeas:
-      return "bestfitfeas";
+    case MecQkdAlgo::RandomBlind:
+      return "random-blind";
+    case MecQkdAlgo::SpfBlind:
+      return "spf-blind";
+    case MecQkdAlgo::BestFitBlind:
+      return "bestfit-blind";
     default:; /* fall-through */
   }
   return "unknown";
@@ -81,12 +81,12 @@ MecQkdAlgo mecQkdAlgofromString(const std::string& aAlgo) {
     return MecQkdAlgo::BestFit;
   } else if (aAlgo == "spf") {
     return MecQkdAlgo::Spf;
-  } else if (aAlgo == "randomfeas") {
-    return MecQkdAlgo::RandomFeas;
-  } else if (aAlgo == "bestfitfeas") {
-    return MecQkdAlgo::BestFitFeas;
-  } else if (aAlgo == "spffeas") {
-    return MecQkdAlgo::SpfFeas;
+  } else if (aAlgo == "random-blind") {
+    return MecQkdAlgo::RandomBlind;
+  } else if (aAlgo == "bestfit-blind") {
+    return MecQkdAlgo::BestFitBlind;
+  } else if (aAlgo == "spf-blind") {
+    return MecQkdAlgo::SpfBlind;
   }
   throw std::runtime_error(
       "invalid edge QKD algorithm: " + aAlgo + " (valid options are: " +

@@ -37,12 +37,12 @@ namespace uiiit {
 namespace qr {
 
 enum class MecQkdAlgo {
-  Random      = 0, //!< pick a random edge node
-  Spf         = 1, //!< shortest path first
-  BestFit     = 2, //!< best-fit allocation
-  RandomFeas  = 3, //!< pick a random edge node among those feasible
-  SpfFeas     = 4, //!< shortest path first, only on feasible edge nodes
-  BestFitFeas = 5, //!< best-fit allocation, only along feasible paths
+  Random       = 0, //!< pick a random edge node, among those feasible
+  Spf          = 1, //!< shortest path first, among those feasible
+  BestFit      = 2, //!< best-fit allocation, among those feasible
+  RandomBlind  = 3, //!< pick a random edge node
+  SpfBlind     = 4, //!< shortest path first
+  BestFitBlind = 5, //!< best-fit allocation
 
 };
 
