@@ -133,7 +133,7 @@ struct Parameters {
 };
 
 struct Output {
-  // graph properties
+  // topology properties
   std::size_t theNumNodes      = 0;
   std::size_t theNumEdges      = 0;
   std::size_t theMinInDegree   = 0;
@@ -142,6 +142,19 @@ struct Output {
   std::size_t theMaxOutDegree  = 0;
   std::size_t theDiameter      = 0;
   double      theTotalCapacity = 0;
+
+  // workload properties
+  double theTotalProcessing = 0;
+
+  // output
+  double      theResidualCapacity   = 0;
+  double      theResidualProcessing = 0;
+  std::size_t theAllocatedApps      = 0;
+  double      theAvgPathLength      = 0;
+  double      theTotalNetRate       = 0;
+  double      theStdDevEdgeNodeUtil = 0;
+  double      theJainEdgeNodeUtil   = 0;
+  double      theSpreadEdgeNodeUtil = 0;
 
   static std::vector<std::string> names() {
     static std::vector<std::string> myStaticNames({
@@ -154,6 +167,19 @@ struct Output {
         "max-out-degree",
         "diameter",
         "capacity-tot",
+
+        // workload properties
+        "processing-tot",
+
+        // output
+        "capacity-res",
+        "processing-res",
+        "num-apps-allocated",
+        "path-length-avg",
+        "net-rate-tot",
+        "edge-node-util-stddev",
+        "edge-node-util-jain",
+        "edge-node-util-spread",
     });
     return myStaticNames;
   }
@@ -164,7 +190,15 @@ struct Output {
              << theMinInDegree << "-" << theMaxOutDegree << ", out-degree "
              << theMinOutDegree << "-" << theMaxOutDegree << ", diameter "
              << theDiameter << ", total capacity " << theTotalCapacity
-             << " EPR-pairs/s";
+             << " b/s, total processing " << theTotalProcessing
+             << ", residual capacity " << theResidualCapacity
+             << " b/s, residual processing " << theResidualProcessing << ", "
+             << theAllocatedApps << " apps allocated, avg path length "
+             << theAvgPathLength << ", total net rate " << theTotalNetRate
+             << " b/s, edge node utilization " << theStdDevEdgeNodeUtil
+             << " (std dev) " << theJainEdgeNodeUtil
+             << " (Jain's fairness index) " << theSpreadEdgeNodeUtil
+             << " (max-min spread)";
     return myStream.str();
   }
 
@@ -172,8 +206,12 @@ struct Output {
     std::stringstream myStream;
     myStream << theNumNodes << ',' << theNumEdges << ',' << theMinInDegree
              << ',' << theMaxInDegree << ',' << theMinOutDegree << ','
-             << theMaxOutDegree << ',' << theDiameter << ','
-             << theTotalCapacity;
+             << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
+             << ',' << theTotalProcessing << ',' << theResidualCapacity << ','
+             << theResidualProcessing << ',' << theAllocatedApps << ','
+             << theAvgPathLength << ',' << theTotalNetRate << ','
+             << theStdDevEdgeNodeUtil << ',' << theJainEdgeNodeUtil << ','
+             << theSpreadEdgeNodeUtil;
     return myStream.str();
   }
 };
@@ -248,9 +286,8 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         myAppInfo.theRegion, myAppInfo.theRate, myAppInfo.theLoad));
   }
 
-  // allocate the apps to edge nodes
-  us::UniformRv myAllocationRv(0, 1, myRaii.in().theSeed, 6, 0);
-  myNetwork->allocate(myApps, myRaii.in().theAlgo, myAllocationRv);
+  // save the workload properties
+  myOutput.theTotalProcessing = myNetwork->totProcessing();
 
   // save the network properties
   assert(myNetwork.get() != nullptr);
@@ -263,6 +300,44 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myNetwork->outDegree();
   myNetwork->reachableNodes(
       0, std::numeric_limits<std::size_t>::max(), myOutput.theDiameter);
+
+  // allocate the apps to edge nodes
+  us::UniformRv myAllocationRv(0, 1, myRaii.in().theSeed, 6, 0);
+  myNetwork->allocate(myApps, myRaii.in().theAlgo, myAllocationRv);
+
+  // save the output statistics
+  myOutput.theResidualCapacity   = myNetwork->totalCapacity();
+  myOutput.theResidualProcessing = myNetwork->totProcessing();
+
+  us::SummaryStat myPathLength;
+  for (const auto& myApp : myApps) {
+    if (not myApp.theAllocated) {
+      continue;
+    }
+    myOutput.theAllocatedApps++;
+    myPathLength(myApp.thePathLength);
+    myOutput.theTotalNetRate += myApp.theRate;
+  }
+  myOutput.theAvgPathLength = myPathLength.mean();
+
+  const auto& myEdgeNodeUtils = myNetwork->edgeNodes();
+  VLOG(1) << "edge node utilizations: "
+          << ::toString(myEdgeNodeUtils, ",", [](const auto& elem) {
+               return std::to_string(elem.second);
+             });
+
+  if (not myEdgeNodeUtils.empty()) {
+    myOutput.theJainEdgeNodeUtil = us::jainFairnessIndex(
+        myEdgeNodeUtils, [](const auto& elem) { return elem.second; });
+
+    us::SummaryStat myEdgeNodeUtil;
+    for (const auto& elem : myEdgeNodeUtils) {
+      myEdgeNodeUtil(elem.second);
+    }
+    myOutput.theStdDevEdgeNodeUtil = myEdgeNodeUtil.stddev();
+    myOutput.theSpreadEdgeNodeUtil =
+        myEdgeNodeUtil.max() - myEdgeNodeUtil.mean();
+  }
 
   // save to Graphviz, if needed
   if (not myRaii.in().theDotFile.empty()) {

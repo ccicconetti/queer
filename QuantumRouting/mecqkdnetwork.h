@@ -197,6 +197,11 @@ class MecQkdNetwork final : public CapacityNetwork
    */
   void edgeNodes(const std::map<unsigned long, double>& aEdgeProcessing);
 
+  //! @return the current availability on the edge nodes.
+  const std::map<unsigned long, double>& edgeNodes() const {
+    return theEdgeProcessing;
+  }
+
   /**
    * @brief Allocate the given user requests into the MEC/QKD resources.
    *
