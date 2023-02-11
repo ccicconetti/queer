@@ -410,24 +410,46 @@ void CapacityNetwork::removeCapacityFromPath(
     const double                         aCapacity,
     const std::optional<double>          aMinCapacity,
     Graph&                               aGraph) {
-  auto mySrc     = aSrc;
+  const auto V = boost::num_vertices(aGraph);
+  if (aSrc >= V) {
+    throw std::runtime_error("source node does not exist: " +
+                             std::to_string(aSrc));
+  }
   auto myWeights = boost::get(boost::edge_weight, aGraph);
+
+  // first pass: only checks, throw if needed
+  auto mySrc = aSrc;
   for (std::size_t i = 0; i < aPath.size(); i++) {
     auto myDst = aPath[i];
+    if (myDst >= V) {
+      throw std::runtime_error("intermediate node does not exist: " +
+                               std::to_string(myDst));
+    }
 
-    EdgeDescriptor        myEdge;
-    [[maybe_unused]] auto myFound = false;
-    std::tie(myEdge, myFound)     = boost::edge(mySrc, myDst, aGraph);
+    EdgeDescriptor myEdge;
+    auto           myFound    = false;
+    std::tie(myEdge, myFound) = boost::edge(mySrc, myDst, aGraph);
     if (not myFound) {
       throw std::runtime_error("edge not in the graph: " + ::toString(myEdge));
     }
     auto& myWeight = myWeights[myEdge];
     if (myWeight < aCapacity) {
-      throw std::runtime_error("cannot remove capacity " +
-                               std::to_string(aCapacity) + " > " +
-                               std::to_string(myWeights[myEdge]) +
-                               " for edge " + ::toString(myEdge));
+      throw std::runtime_error(
+          "cannot remove capacity " + std::to_string(aCapacity) + " > " +
+          std::to_string(myWeight) + " for edge " + ::toString(myEdge));
     }
+
+    // move to the next edge
+    mySrc = myDst;
+  }
+
+  // second pass: no checks, just to the job
+  mySrc = aSrc;
+  for (std::size_t i = 0; i < aPath.size(); i++) {
+    auto myDst = aPath[i];
+
+    auto  myEdge   = boost::edge(mySrc, myDst, aGraph).first;
+    auto& myWeight = myWeights[myEdge];
     myWeight -= aCapacity;
 
     if (aMinCapacity.has_value() and myWeight < aMinCapacity.value()) {

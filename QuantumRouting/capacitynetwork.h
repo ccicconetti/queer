@@ -64,6 +64,7 @@ class CapacityNetwork : public Network
 {
  public:
   FRIEND_TEST(TestCapacityNetwork, test_min_capacity_edges);
+  FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path);
 
   using Graph =
       boost::adjacency_list<boost::listS,
