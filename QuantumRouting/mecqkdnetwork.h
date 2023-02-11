@@ -120,9 +120,16 @@ class MecQkdNetwork final : public CapacityNetwork
     double                     thePathSize = 0;
     std::vector<unsigned long> thePath; //!< the path from user to edge
 
-    bool feasible() const noexcept {
-      return thePathSize > 0 and theResidual > 0;
+    bool feasiblePath() const noexcept {
+      return thePathSize > 0;
     }
+    bool feasibleResidual() const noexcept {
+      return theResidual >= 0;
+    }
+    bool feasible() const noexcept {
+      return feasiblePath() and feasibleResidual();
+    }
+    std::string toString() const;
   };
   using Candidates = std::vector<EdgeNode>;
 

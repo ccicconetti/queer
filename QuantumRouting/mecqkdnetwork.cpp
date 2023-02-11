@@ -161,6 +161,14 @@ MecQkdWorkload::AppInfo MecQkdWorkload::operator()() {
   return res[0];
 }
 
+std::string MecQkdNetwork::EdgeNode::toString() const {
+  std::stringstream ret;
+  ret << "#" << theId << ", residual " << theResidual << " (tot "
+      << theAvailable << "), path [" << thePathSize << "] {"
+      << ::toStringStd(thePath, ",") << "} " << (feasible() ? "v" : "x");
+  return ret.str();
+}
+
 MecQkdNetwork::Allocation::Allocation(const unsigned long aUserNode,
                                       const double        aRate,
                                       const double        aLoad)
@@ -236,6 +244,7 @@ double MecQkdNetwork::totProcessing() const {
 void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
                              const MecQkdAlgo          aAlgo,
                              support::RealRvInterface& aRv) {
+  static const auto EPSILON = 1e-5;
   if (theUserNodes.empty()) {
     throw std::runtime_error("invalid empty set of user nodes");
   }
@@ -262,8 +271,8 @@ void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
   }
 
   for (auto& myApp : aApps) {
-    // compute for each candidate the residual capacity, which can be negative,
-    // and the constrained shortest path length, which can be empty
+    // compute, for each candidate, the residual capacity, which can be
+    // negative, and the constrained shortest path length, which can be empty
     const auto myPaths = cspf(myApp.theUserNode, myApp.theRate, theEdgeNodes);
     for (auto& myCandidate : myCandidates) {
       const auto it = myPaths.find(myCandidate.theId);
@@ -273,6 +282,13 @@ void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
           it->second.empty() ? 0.0 : (it->second.size() + aRv() * 0.1);
 
       myCandidate.theResidual = myCandidate.theAvailable - myApp.theLoad;
+    }
+
+    if (VLOG_IS_ON(2)) {
+      LOG(INFO) << "candidates for " << myApp.toString();
+      for (const auto& myCandidate : myCandidates) {
+        LOG(INFO) << myCandidate.toString();
+      }
     }
 
     auto mySelected = selectCandidate(myCandidates, aAlgo, aRv);
@@ -291,7 +307,7 @@ void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
       removeCapacityFromPath(myApp.theUserNode,
                              mySelected->thePath,
                              myApp.theRate,
-                             std::nullopt, // XXX
+                             EPSILON,
                              theGraph);
     }
 
@@ -361,9 +377,17 @@ MecQkdNetwork::selectCandidate(std::vector<EdgeNode>&    aCandidates,
                      aRhs :
                      aLhs;
         case MecQkdAlgo::SpfBlind:
-          return aLhs->thePathSize > aRhs->thePathSize ? aRhs : aLhs;
+          return (aRhs->feasiblePath() and
+                  (not aLhs->feasiblePath() or
+                   aLhs->thePathSize > aRhs->thePathSize)) ?
+                     aRhs :
+                     aLhs;
         case MecQkdAlgo::BestFitBlind:
-          return aLhs->theResidual > aRhs->theResidual ? aRhs : aLhs;
+          return (aRhs->feasibleResidual() and
+                  (not aLhs->feasibleResidual() or
+                   aLhs->theResidual > aRhs->theResidual)) ?
+                     aRhs :
+                     aLhs;
         case MecQkdAlgo::RandomBlind:
           return aLhs;
       }
