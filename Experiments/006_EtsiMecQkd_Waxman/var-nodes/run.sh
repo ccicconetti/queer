@@ -23,25 +23,25 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-apps="100 200 300 400 500"
+nodes="50 70 90 110 130"
 algos="random spf bestfit random-blind spf-blind bestfit-blind"
 
-for a in $apps ; do
+for n in $nodes ; do
 for x in $algos ; do
 
-  output=out-$a-$x
+  output=out-$n-$x
   cmd="$MAIN \
     --output data/$output.csv \
     --num-threads $NUM_THREADS \
     --seed-start $SEED_START \
     --seed-end $SEED_END  \
-    --nodes 50 \
+    --nodes $n \
     --alpha 0.4 \
     --beta 0.4 \
     --max-distance 100 \
     --max-capacity 30 \
     --app-spec ../applications.dat \
-    --applications $a \
+    --applications 500 \
     --edge-nodes 10 \
     --edge-processing 5 \
     --algo $x \

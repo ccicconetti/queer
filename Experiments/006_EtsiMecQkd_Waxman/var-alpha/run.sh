@@ -23,10 +23,10 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-apps="100 200 300 400 500"
+alphas="0.2 0.3 0.4 0.5 0.6"
 algos="random spf bestfit random-blind spf-blind bestfit-blind"
 
-for a in $apps ; do
+for a in $alphas ; do
 for x in $algos ; do
 
   output=out-$a-$x
@@ -36,12 +36,12 @@ for x in $algos ; do
     --seed-start $SEED_START \
     --seed-end $SEED_END  \
     --nodes 50 \
-    --alpha 0.4 \
+    --alpha $a \
     --beta 0.4 \
     --max-distance 100 \
     --max-capacity 30 \
     --app-spec ../applications.dat \
-    --applications $a \
+    --applications 300 \
     --edge-nodes 10 \
     --edge-processing 5 \
     --algo $x \

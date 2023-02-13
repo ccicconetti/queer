@@ -7,7 +7,7 @@ if [ "$SEED_START" == "" ] ; then
 fi
 
 if [ "$SEED_END" == "" ] ; then
-  SEED_END=1000
+  SEED_END=5000
 fi
 
 if [ "$NUM_THREADS" == "" ] ; then
