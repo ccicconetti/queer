@@ -105,10 +105,12 @@ CapacityNetwork::cspf(const unsigned long            aSource,
                       const double                   aCapacity,
                       const std::set<unsigned long>& aDestinations) const {
   const auto V = boost::num_vertices(theGraph);
+#ifndef NDEBUG
   assert(aSource < V);
   for (const auto& v : aDestinations) {
     assert(v < V);
   }
+#endif
 
   // make a working copy of the graph
   auto myGraph = theGraph;
