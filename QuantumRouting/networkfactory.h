@@ -176,15 +176,17 @@ std::unique_ptr<NETWORK> makeCapacityNetworkWaxman(
         }
       }
     }
-
     std::vector<std::pair<unsigned long, unsigned long>> myEdgesUnweighted(
         myEdges.size());
+    std::set<unsigned long> myNodes;
     for (std::size_t i = 0; i < myEdges.size(); i++) {
+      myNodes.insert(std::get<0>(myEdges[i]));
+      myNodes.insert(std::get<1>(myEdges[i]));
       std::tie(myEdgesUnweighted[i].first, myEdgesUnweighted[i].second) = {
           std::get<0>(myEdges[i]), std::get<1>(myEdges[i])};
     }
 
-    if (bigraphConnected(myEdgesUnweighted)) {
+    if (myNodes.size() == aNodes and bigraphConnected(myEdgesUnweighted)) {
       myCoordinates.swap(aCoordinates);
       return std::make_unique<NETWORK>(myEdges);
 
