@@ -162,13 +162,13 @@ std::unique_ptr<NETWORK> makeCapacityNetworkWaxman(
 
     // create edges
     CapacityNetwork::WeightVector myEdges;
-    support::UniformRv            myRxEdge(0, 1, aSeed, 2, myTry);
+    support::UniformRv            myRvEdge(0, 1, aSeed, 2, myTry);
     for (std::size_t i = 0; i < aNodes; i++) {
       for (std::size_t j = (i + 1); j < aNodes; j++) {
         const auto myDistance = distance(myCoordinates[i], myCoordinates[j]);
         const auto myEdgeProb = myProbLambda(myDistance);
         assert(myEdgeProb >= 0 and myEdgeProb <= 1);
-        if (myRxEdge() < myEdgeProb) {
+        if (myRvEdge() < myEdgeProb) {
           // add an edge between the two nodes in both directions
           const auto myCapacity = aCapacityLambda(myDistance);
           myEdges.push_back({i, j, myCapacity});
