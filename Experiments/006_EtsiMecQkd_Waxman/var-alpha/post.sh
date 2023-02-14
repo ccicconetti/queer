@@ -24,7 +24,7 @@ if [ "$VERBOSE" != "" ] ; then
 fi
 
 alphas="0.2 0.3 0.4 0.5 0.6"
-algos="random spf bestfit random-blind spf-blind bestfit-blind"
+algos="random spf bestfit random-blind spf-blind bestfit-blind spf-static"
 
 for x in $algos ; do
 
@@ -33,7 +33,7 @@ for x in $algos ; do
     echo "$outmangle"
     outfile=post/$outmangle.dat
     rm -f $outfile 2> /dev/null
-    for a in $apps ; do
+    for a in $alphas ; do
       datafile=data/out-$a-$x.csv
       value=$($percentile_script --delimiter , --column ${columns[$i]} --mean < $datafile | cut -f 1,3 -d ' ')
       echo $a $value >> $outfile

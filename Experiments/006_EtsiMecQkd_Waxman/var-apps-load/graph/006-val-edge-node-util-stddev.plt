@@ -170,6 +170,7 @@ GNUTERM = "wxt"
 plot  \
  '../post/edge-node-util-stddev-random.dat'       u 1:($2) w lp pt 4 lt 1 title "ANY",\
  '../post/edge-node-util-stddev-bestfit.dat'      u 1:($2) w lp pt 6 lt 2 title "BF",\
- '../post/edge-node-util-stddev-spf.dat'          u 1:($2) w lp pt 8 lt 3 title "SPF",\
- '../post/edge-node-util-stddev-random-blind.dat' u 1:($2) w lp pt 5 lt 4 title "RND"
+ '../post/edge-node-util-stddev-spf.dat'          u 1:($2) w lp pt 3 lt 3 title "SPF",\
+ '../post/edge-node-util-stddev-spf-static.dat'   u 1:($2) w lp pt 5 lt 4 title "STATIC",\
+ '../post/edge-node-util-stddev-random-blind.dat' u 1:($2) w lp pt 7 lt 5 title "RND"
 #    EOF

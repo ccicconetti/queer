@@ -170,6 +170,7 @@ GNUTERM = "wxt"
 plot  \
  '< paste -d " " ../post/processing-tot-random.dat       ../post/processing-res-random.dat'       u 1:(($2-$5)) w lp pt 4 lt 1 title "ANY",\
  '< paste -d " " ../post/processing-tot-bestfit.dat      ../post/processing-res-bestfit.dat'      u 1:(($2-$5)) w lp pt 6 lt 2 title "BF",\
- '< paste -d " " ../post/processing-tot-spf.dat          ../post/processing-res-spf.dat'          u 1:(($2-$5)) w lp pt 8 lt 3 title "SPF",\
- '< paste -d " " ../post/processing-tot-random-blind.dat ../post/processing-res-random-blind.dat' u 1:(($2-$5)) w lp pt 5 lt 4 title "RND"
+ '< paste -d " " ../post/processing-tot-spf.dat          ../post/processing-res-spf.dat'          u 1:(($2-$5)) w lp pt 3 lt 3 title "SPF",\
+ '< paste -d " " ../post/processing-tot-spf-static.dat   ../post/processing-res-spf-static.dat'   u 1:(($2-$5)) w lp pt 5 lt 4 title "STATIC",\
+ '< paste -d " " ../post/processing-tot-random-blind.dat ../post/processing-res-random-blind.dat' u 1:(($2-$5)) w lp pt 7 lt 5 title "RND"
 #    EOF

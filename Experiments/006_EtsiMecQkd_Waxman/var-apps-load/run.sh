@@ -24,7 +24,7 @@ if [ ! -x $MAIN ] ; then
 fi
 
 apps="100 200 300 400 500 600 700"
-algos="random spf bestfit random-blind spf-blind bestfit-blind"
+algos="random spf bestfit random-blind spf-blind bestfit-blind spf-static"
 
 for a in $apps ; do
 for x in $algos ; do

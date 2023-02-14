@@ -171,5 +171,6 @@ plot  \
  '../post/num-apps-allocated-random.dat' u 1:($2/$1) w lp pt 4 lt 1 title "ANY",\
  '../post/num-apps-allocated-bestfit.dat' u 1:($2/$1) w lp pt 6 lt 2 title "BF",\
  '../post/num-apps-allocated-spf.dat' u 1:($2/$1) w lp pt 8 lt 3 title "SPF",\
- '../post/num-apps-allocated-random-blind.dat' u 1:($2/$1) w lp pt 5 lt 4 title "RND"
+ '../post/num-apps-allocated-spf-static.dat' u 1:($2/$1) w lp pt 5 lt 4 title "STATIC",\
+ '../post/num-apps-allocated-random-blind.dat' u 1:($2/$1) w lp pt 7 lt 5 title "RND"
 #    EOF

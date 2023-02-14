@@ -24,7 +24,7 @@ if [ ! -x $MAIN ] ; then
 fi
 
 alphas="0.2 0.3 0.4 0.5 0.6"
-algos="random spf bestfit random-blind spf-blind bestfit-blind"
+algos="random spf bestfit random-blind spf-blind bestfit-blind spf-static"
 
 for a in $alphas ; do
 for x in $algos ; do

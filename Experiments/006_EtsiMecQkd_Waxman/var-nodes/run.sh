@@ -24,7 +24,7 @@ if [ ! -x $MAIN ] ; then
 fi
 
 nodes="50 70 90 110 130"
-algos="random spf bestfit random-blind spf-blind bestfit-blind"
+algos="random spf bestfit random-blind spf-blind bestfit-blind spf-static"
 
 for n in $nodes ; do
 for x in $algos ; do

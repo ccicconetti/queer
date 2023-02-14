@@ -170,6 +170,7 @@ GNUTERM = "wxt"
 plot  \
  '< paste -d " " ../post/net-rate-tot-random.dat       ' u 1:(($2)) w lp pt 4 lt 1 title "ANY",\
  '< paste -d " " ../post/net-rate-tot-bestfit.dat      ' u 1:(($2)) w lp pt 6 lt 2 title "BF",\
- '< paste -d " " ../post/net-rate-tot-spf.dat          ' u 1:(($2)) w lp pt 8 lt 3 title "SPF",\
- '< paste -d " " ../post/net-rate-tot-random-blind.dat ' u 1:(($2)) w lp pt 5 lt 4 title "RND"
+ '< paste -d " " ../post/net-rate-tot-spf.dat          ' u 1:(($2)) w lp pt 3 lt 3 title "SPF",\
+ '< paste -d " " ../post/net-rate-tot-spf-static.dat   ' u 1:(($2)) w lp pt 5 lt 4 title "STATIC",\
+ '< paste -d " " ../post/net-rate-tot-random-blind.dat ' u 1:(($2)) w lp pt 7 lt 5 title "RND"
 #    EOF
