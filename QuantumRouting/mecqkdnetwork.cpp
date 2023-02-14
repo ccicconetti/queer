@@ -34,9 +34,12 @@ SOFTWARE.
 #include "Support/split.h"
 #include "Support/tostring.h"
 
+#include <algorithm>
 #include <boost/graph/subgraph.hpp>
 #include <fstream>
 #include <glog/logging.h>
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 
@@ -51,6 +54,7 @@ std::vector<MecQkdAlgo> allMecQkdAlgos() {
       MecQkdAlgo::RandomBlind,
       MecQkdAlgo::SpfBlind,
       MecQkdAlgo::BestFitBlind,
+      MecQkdAlgo::SpfStatic,
   });
   return myAlgos;
 }
@@ -69,6 +73,8 @@ std::string toString(const MecQkdAlgo aAlgo) {
       return "spf-blind";
     case MecQkdAlgo::BestFitBlind:
       return "bestfit-blind";
+    case MecQkdAlgo::SpfStatic:
+      return "spf-static";
     default:; /* fall-through */
   }
   return "unknown";
@@ -87,6 +93,8 @@ MecQkdAlgo mecQkdAlgofromString(const std::string& aAlgo) {
     return MecQkdAlgo::BestFitBlind;
   } else if (aAlgo == "spf-blind") {
     return MecQkdAlgo::SpfBlind;
+  } else if (aAlgo == "spf-static") {
+    return MecQkdAlgo::SpfStatic;
   }
   throw std::runtime_error(
       "invalid edge QKD algorithm: " + aAlgo + " (valid options are: " +
@@ -270,10 +278,17 @@ void MecQkdNetwork::allocate(std::vector<Allocation>&  aApps,
         EdgeNode{elem.first, elem.second, 0, 0, std::vector<unsigned long>()});
   }
 
+  // special allocation with SpfStatic
+  if (aAlgo == MecQkdAlgo::SpfStatic) {
+    allocateSpfStatic(aApps);
+    return;
+  }
+
   for (auto& myApp : aApps) {
     // compute, for each candidate, the residual capacity, which can be
     // negative, and the constrained shortest path length, which can be empty
     const auto myPaths = cspf(myApp.theUserNode, myApp.theRate, theEdgeNodes);
+    assert(myPaths.size() == theEdgeNodes.size());
     for (auto& myCandidate : myCandidates) {
       const auto it = myPaths.find(myCandidate.theId);
       assert(it != myPaths.end());
@@ -390,6 +405,9 @@ MecQkdNetwork::selectCandidate(std::vector<EdgeNode>&    aCandidates,
                      aLhs;
         case MecQkdAlgo::RandomBlind:
           return aLhs;
+        case MecQkdAlgo::SpfStatic:
+          assert(false);
+          return aLhs;
       }
       assert(false);
       return aLhs;
@@ -403,6 +421,77 @@ MecQkdNetwork::selectCandidate(std::vector<EdgeNode>&    aCandidates,
     myBest = myCmp.best(myBest, myCurr);
   }
   return myBest;
+}
+
+void MecQkdNetwork::allocateSpfStatic(std::vector<Allocation>& aApps) {
+  assert(not theEdgeNodes.empty());
+
+  // find the static paths for the source nodes of the applications
+  std::map<unsigned long, std::vector<unsigned long>> myStatic;
+  for (const auto& myApp : aApps) {
+    auto cur =
+        myStatic.emplace(myApp.theUserNode, std::vector<unsigned long>());
+    if (not cur.second) {
+      // static path already found for this source node
+      continue;
+    }
+    const auto myPaths = cspf(cur.first->first, 0, theEdgeNodes);
+    const auto min     = std::min_element(
+        myPaths.begin(), myPaths.end(), [](const auto& aLhs, const auto& aRhs) {
+          return aLhs.second.size() < aRhs.second.size();
+        });
+    assert(min != myPaths.end());
+    cur.first->second = min->second;
+  }
+
+#ifndef NDEBUG
+  VLOG(2) << "static paths:";
+  for (const auto& myPath : myStatic) {
+    VLOG(2) << myPath.first << " -> " << ::toStringStd(myPath.second, ",");
+  }
+#endif
+
+  // allocate the applications
+  for (auto& myApp : aApps) {
+    auto myCandidate = myStatic.find(myApp.theUserNode);
+    assert(myCandidate != myStatic.end());
+
+    // if there is no path available, then skip immediately this app
+    if (myCandidate->second.empty()) {
+      VLOG(1) << myApp.toString();
+      continue;
+    }
+    const auto myEdgeNode = myCandidate->second.back();
+
+    auto myProcIt = theEdgeProcessing.find(myEdgeNode);
+    assert(myProcIt != theEdgeProcessing.end());
+
+    const auto myMinCapacity =
+        minCapacity(myApp.theUserNode, myCandidate->second);
+
+    // if feasible for both capacity and load, allocate the app
+    VLOG(2) << "user node " << myApp.theUserNode << ", edge node " << myEdgeNode
+            << ", path " << ::toStringStd(myCandidate->second, ",")
+            << ", capacity requested " << myApp.theRate << " vs. available "
+            << myMinCapacity << ", load requested " << myApp.theLoad
+            << " vs. available " << myProcIt->second;
+    if (myApp.theRate <= myMinCapacity and myApp.theLoad < myProcIt->second) {
+      myApp.theAllocated  = true;
+      myApp.theEdgeNode   = myEdgeNode;
+      myApp.thePathLength = myCandidate->second.size();
+
+      // remove the load from the target edge node
+      myProcIt->second -= myApp.theLoad;
+
+      // remove the capacity along the path
+      removeCapacityFromPath(myApp.theUserNode,
+                             myCandidate->second,
+                             myApp.theRate,
+                             std::nullopt,
+                             theGraph);
+    }
+    VLOG(1) << myApp.toString();
+  }
 }
 
 } // namespace qr

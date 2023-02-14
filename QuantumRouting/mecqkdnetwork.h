@@ -43,7 +43,7 @@ enum class MecQkdAlgo {
   RandomBlind  = 3, //!< pick a random edge node
   SpfBlind     = 4, //!< shortest path first
   BestFitBlind = 5, //!< best-fit allocation
-
+  SpfStatic    = 6, //!< assign based on initial shortest-path
 };
 
 std::vector<MecQkdAlgo> allMecQkdAlgos();
@@ -234,6 +234,13 @@ class MecQkdNetwork final : public CapacityNetwork
   selectCandidate(std::vector<EdgeNode>&    aCandidates,
                   const MecQkdAlgo          aAlgo,
                   support::RealRvInterface& aRv);
+
+  /**
+   * @brief Allocate using MecQkdAlgo::SpfStatic.
+   *
+   * @param aApps The applications.
+   */
+  void allocateSpfStatic(std::vector<Allocation>& aApps);
 };
 
 } // namespace qr

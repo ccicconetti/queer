@@ -84,7 +84,7 @@ struct TestMecQkdNetwork : public ::testing::Test {
 
 TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
   std::vector<AppInfo> myAppInfo;
-  EXPECT_THROW(MecQkdWorkload(myAppInfo, theRv), std::runtime_error);
+  ASSERT_THROW(MecQkdWorkload(myAppInfo, theRv), std::runtime_error);
 
   myAppInfo.emplace_back(AppInfo{0, 1, 0.5, 10});
 
@@ -92,12 +92,12 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
     MecQkdWorkload myGenerator(myAppInfo, theRv);
     for (auto i = 0; i < 10; i++) {
       const auto myInfo = myGenerator();
-      EXPECT_EQ(0, myInfo.theRegion);
-      EXPECT_EQ(1, myInfo.theWeight);
-      EXPECT_EQ(0.5, myInfo.theLoad);
-      EXPECT_EQ(10, myInfo.theRate);
+      ASSERT_EQ(0, myInfo.theRegion);
+      ASSERT_EQ(1, myInfo.theWeight);
+      ASSERT_EQ(0.5, myInfo.theLoad);
+      ASSERT_EQ(10, myInfo.theRate);
     }
-    EXPECT_EQ(std::set<unsigned long>({0}), myGenerator.regions());
+    ASSERT_EQ(std::set<unsigned long>({0}), myGenerator.regions());
   }
 
   myAppInfo.emplace_back(AppInfo{1, 2, 0.5, 10});
@@ -108,9 +108,9 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload) {
     for (auto i = 0; i < 10; i++) {
       myRegions.emplace_back(myGenerator().theRegion);
     }
-    EXPECT_EQ(std::vector<unsigned long>({0, 1, 0, 1, 1, 1, 1, 0, 0, 1}),
+    ASSERT_EQ(std::vector<unsigned long>({0, 1, 0, 1, 1, 1, 1, 0, 0, 1}),
               myRegions);
-    EXPECT_EQ(std::set<unsigned long>({0, 1}), myGenerator.regions());
+    ASSERT_EQ(std::set<unsigned long>({0, 1}), myGenerator.regions());
   }
 }
 
@@ -133,22 +133,22 @@ TEST_F(TestMecQkdNetwork, test_mec_qkd_workload_from_file) {
   for (auto i = 0; i < 10; i++) {
     myAllValues.emplace(myGenerator().toString());
   }
-  EXPECT_EQ(5, myAllValues.size());
-  EXPECT_EQ(std::set<unsigned long>({0, 1, 2, 3, 4}), myGenerator.regions());
+  ASSERT_EQ(5, myAllValues.size());
+  ASSERT_EQ(std::set<unsigned long>({0, 1, 2, 3, 4}), myGenerator.regions());
 }
 
 TEST_F(TestMecQkdNetwork, test_user_edge_nodes) {
   MecQkdNetwork myNetwork(exampleEdgeWeights());
 
-  EXPECT_NO_THROW(myNetwork.userNodes({}));
-  EXPECT_NO_THROW(myNetwork.userNodes({1}));
-  EXPECT_NO_THROW(myNetwork.userNodes({0, 1, 2, 3, 4}));
-  EXPECT_THROW(myNetwork.userNodes({99}), std::runtime_error);
+  ASSERT_NO_THROW(myNetwork.userNodes({}));
+  ASSERT_NO_THROW(myNetwork.userNodes({1}));
+  ASSERT_NO_THROW(myNetwork.userNodes({0, 1, 2, 3, 4}));
+  ASSERT_THROW(myNetwork.userNodes({99}), std::runtime_error);
 
-  EXPECT_NO_THROW(myNetwork.edgeNodes({}));
-  EXPECT_NO_THROW(myNetwork.edgeNodes({{1, 3.14}, {4, 2.0}}));
-  EXPECT_THROW(myNetwork.edgeNodes({{99, 2.0}}), std::runtime_error);
-  EXPECT_THROW(myNetwork.edgeNodes({{4, -2.0}}), std::runtime_error);
+  ASSERT_NO_THROW(myNetwork.edgeNodes({}));
+  ASSERT_NO_THROW(myNetwork.edgeNodes({{1, 3.14}, {4, 2.0}}));
+  ASSERT_THROW(myNetwork.edgeNodes({{99, 2.0}}), std::runtime_error);
+  ASSERT_THROW(myNetwork.edgeNodes({{4, -2.0}}), std::runtime_error);
 }
 
 TEST_F(TestMecQkdNetwork, test_allocation_single) {
@@ -160,6 +160,7 @@ TEST_F(TestMecQkdNetwork, test_allocation_single) {
           {MecQkdAlgo::RandomBlind, true, 6, 2},
           {MecQkdAlgo::SpfBlind, false, 7, 1},
           {MecQkdAlgo::BestFitBlind, false, 4, 4},
+          {MecQkdAlgo::SpfStatic, false, 4, 4},
       });
 
   for (const auto& myExpected : myExpectedAllocs) {
@@ -170,34 +171,34 @@ TEST_F(TestMecQkdNetwork, test_allocation_single) {
     std::tie(myAlgo, myAllocated, myEdgeNode, myPathLength) = myExpected;
 
     auto myNetwork = makeNetwork();
-    EXPECT_FLOAT_EQ(18.0, myNetwork->totProcessing());
-    EXPECT_FLOAT_EQ(13.0, myNetwork->totalCapacity());
+    ASSERT_FLOAT_EQ(18.0, myNetwork->totProcessing());
+    ASSERT_FLOAT_EQ(13.0, myNetwork->totalCapacity());
 
     std::vector<MecQkdNetwork::Allocation> myOutput;
     myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.5, 2.0});
 
     myNetwork->allocate(myOutput, myAlgo, theRv);
-    EXPECT_EQ(1, myOutput.size());
+    ASSERT_EQ(1, myOutput.size());
     const auto& myAlloc = myOutput[0];
-    EXPECT_EQ(myAllocated, myAlloc.theAllocated);
+    ASSERT_EQ(myAllocated, myAlloc.theAllocated);
     if (myAllocated) {
-      EXPECT_EQ(myEdgeNode, myAlloc.theEdgeNode);
-      EXPECT_EQ(myPathLength, myAlloc.thePathLength);
-      EXPECT_FLOAT_EQ(13.0 - myAlloc.totRate(), myNetwork->totalCapacity());
-      EXPECT_FLOAT_EQ(18.0 - 2.0, myNetwork->totProcessing());
+      ASSERT_EQ(myEdgeNode, myAlloc.theEdgeNode);
+      ASSERT_EQ(myPathLength, myAlloc.thePathLength);
+      ASSERT_FLOAT_EQ(13.0 - myAlloc.totRate(), myNetwork->totalCapacity());
+      ASSERT_FLOAT_EQ(18.0 - 2.0, myNetwork->totProcessing());
     }
 
     myOutput.front() = MecQkdNetwork::Allocation{0, 0.1, 99.0};
     myNetwork->allocate(myOutput, myAlgo, theRv);
-    EXPECT_FALSE(myOutput[0].theAllocated);
+    ASSERT_FALSE(myOutput[0].theAllocated);
 
     myOutput.front() = MecQkdNetwork::Allocation{0, 99.0, 0.1};
     myNetwork->allocate(myOutput, myAlgo, theRv);
-    EXPECT_FALSE(myOutput[0].theAllocated);
+    ASSERT_FALSE(myOutput[0].theAllocated);
 
     myOutput.front() = MecQkdNetwork::Allocation{0, 0.1, 0.1};
     myNetwork->allocate(myOutput, myAlgo, theRv);
-    EXPECT_TRUE(myOutput[0].theAllocated);
+    ASSERT_TRUE(myOutput[0].theAllocated);
   }
 }
 
@@ -213,16 +214,16 @@ TEST_F(TestMecQkdNetwork, test_allocation_multi_spf) {
   myOutput.emplace_back(MecQkdNetwork::Allocation{0, 99.0, 0.1}); // unfeas
 
   myNetwork->allocate(myOutput, MecQkdAlgo::SpfBlind, theRv);
-  EXPECT_EQ(6, myOutput.size());
-  EXPECT_EQ(7, myOutput[0].theEdgeNode);
-  EXPECT_EQ(7, myOutput[1].theEdgeNode);
-  EXPECT_EQ(6, myOutput[2].theEdgeNode);
-  EXPECT_EQ(3, myOutput[3].theEdgeNode);
-  EXPECT_EQ(3, myOutput[4].theEdgeNode);
-  EXPECT_FALSE(myOutput[5].theAllocated);
+  ASSERT_EQ(6, myOutput.size());
+  ASSERT_EQ(7, myOutput[0].theEdgeNode);
+  ASSERT_EQ(7, myOutput[1].theEdgeNode);
+  ASSERT_EQ(6, myOutput[2].theEdgeNode);
+  ASSERT_EQ(3, myOutput[3].theEdgeNode);
+  ASSERT_EQ(3, myOutput[4].theEdgeNode);
+  ASSERT_FALSE(myOutput[5].theAllocated);
 
-  EXPECT_FLOAT_EQ(18.0 - 0.5, myNetwork->totProcessing());
-  EXPECT_FLOAT_EQ(1.0, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(18.0 - 0.5, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(1.0, myNetwork->totalCapacity());
 }
 
 TEST_F(TestMecQkdNetwork, test_allocation_multi_bf) {
@@ -237,16 +238,38 @@ TEST_F(TestMecQkdNetwork, test_allocation_multi_bf) {
   myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 99.0});
 
   myNetwork->allocate(myOutput, MecQkdAlgo::BestFitBlind, theRv);
-  EXPECT_EQ(6, myOutput.size());
+  ASSERT_EQ(6, myOutput.size());
 
-  EXPECT_FLOAT_EQ(18.0 - 6.0, myNetwork->totProcessing());
-  EXPECT_FLOAT_EQ(11.5, myNetwork->totalCapacity());
-  EXPECT_EQ(7, myOutput[0].theEdgeNode);
-  EXPECT_EQ(4, myOutput[1].theEdgeNode);
-  EXPECT_EQ(3, myOutput[2].theEdgeNode);
-  EXPECT_EQ(4, myOutput[3].theEdgeNode);
-  EXPECT_EQ(3, myOutput[4].theEdgeNode);
-  EXPECT_FALSE(myOutput[5].theAllocated);
+  ASSERT_FLOAT_EQ(18.0 - 6.0, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(11.5, myNetwork->totalCapacity());
+  ASSERT_EQ(7, myOutput[0].theEdgeNode);
+  ASSERT_EQ(4, myOutput[1].theEdgeNode);
+  ASSERT_EQ(3, myOutput[2].theEdgeNode);
+  ASSERT_EQ(4, myOutput[3].theEdgeNode);
+  ASSERT_EQ(3, myOutput[4].theEdgeNode);
+  ASSERT_FALSE(myOutput[5].theAllocated);
+}
+
+TEST_F(TestMecQkdNetwork, test_allocation_spf_static) {
+  auto myNetwork = makeNetwork();
+
+  std::vector<MecQkdNetwork::Allocation> myOutput;
+  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 3.0, 0.1});
+  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 8.0});
+  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
+  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
+  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 0.1});
+
+  myNetwork->allocate(myOutput, MecQkdAlgo::SpfStatic, theRv);
+  ASSERT_EQ(5, myOutput.size());
+
+  ASSERT_FLOAT_EQ(18.0 - 0.2, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(13.0 - 2.0, myNetwork->totalCapacity());
+  ASSERT_FALSE(myOutput[0].theAllocated);
+  ASSERT_FALSE(myOutput[1].theAllocated);
+  ASSERT_EQ(7, myOutput[2].theEdgeNode);
+  ASSERT_EQ(7, myOutput[3].theEdgeNode);
+  ASSERT_FALSE(myOutput[4].theAllocated);
 }
 
 } // namespace qr
