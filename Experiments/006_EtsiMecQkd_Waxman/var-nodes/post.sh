@@ -23,7 +23,7 @@ if [ "$VERBOSE" != "" ] ; then
   done
 fi
 
-nodes="50 70 90 110 130"
+nodes="50 60 70 80 90 100 110 120 130"
 algos="random spf bestfit random-blind spf-blind bestfit-blind spf-static"
 
 for x in $algos ; do

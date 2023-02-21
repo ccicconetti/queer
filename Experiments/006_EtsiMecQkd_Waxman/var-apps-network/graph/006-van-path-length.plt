@@ -170,7 +170,7 @@ GNUTERM = "wxt"
 plot  \
  '../post/path-length-avg-random.dat'       u 1:($2) w lp pt 4 lt 1 title "ANY",\
  '../post/path-length-avg-bestfit.dat'      u 1:($2) w lp pt 6 lt 2 title "BF",\
- '../post/path-length-avg-spf.dat'          u 1:($2) w lp pt 3 lt 3 title "SPF",\
+ '../post/path-length-avg-spf.dat'          u 1:($2) w lp pt 8 lt 3 title "SPF",\
  '../post/path-length-avg-spf-static.dat'   u 1:($2) w lp pt 5 lt 4 title "STATIC",\
  '../post/path-length-avg-random-blind.dat' u 1:($2) w lp pt 7 lt 5 title "RND"
 #    EOF

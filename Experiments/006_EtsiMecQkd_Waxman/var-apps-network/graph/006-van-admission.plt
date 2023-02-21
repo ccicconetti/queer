@@ -106,6 +106,7 @@ set xtics border in scale 1,0.5 mirror norotate  autojustify
 set xtics  norangelimit autofreq 
 set ytics border in scale 1,0.5 mirror norotate  autojustify
 set ytics  norangelimit autofreq 
+set ytics 0.1
 set ztics border in scale 1,0.5 nomirror norotate  autojustify
 set ztics  norangelimit autofreq 
 unset x2tics
@@ -125,6 +126,7 @@ set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
 set xlabel "Load (number of applications)" 
 set xlabel  font "" textcolor lt -1 norotate
+unset xlabel
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse nowriteback
@@ -133,7 +135,7 @@ set ylabel "Admission ratio"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ * : * ] noreverse nowriteback
+set yrange [ 0.6 : 1 ] noreverse nowriteback
 set y2range [ * : * ] noreverse nowriteback
 set zlabel "" 
 set zlabel  font "" textcolor lt -1 norotate
