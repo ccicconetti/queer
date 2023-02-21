@@ -1,7 +1,16 @@
-# quantum-routing
-Quantum routing simulations
+# QueeR
 
-## Building instructions
+![](Docs/queer-logo.png)
+
+A quantum end-to-end entanglement routing simulator.
+
+A C++ simulator to evaluate the performance of networks of quantum repeaters to enable end-to-end entanglement of qubits in remote nodes (e.g., for distributed/blind quantum computing, QKD, or distributed consensus).
+
+cThe software is released as open source with a permissive MIT license (use the code, modify/share it, enjoy life and be happy).
+The repository also contains several scripts to run complete simulation campaigns in selected scenarios whose results have been published in scientific paper (see Bibliography at the bottom).
+The simulator uses the Boost Graph Library (BGL), which is known to be very efficient, and it is designed to be run with (many) parallel threads.
+
+## Build instructions
 
 Dependencies:
 
@@ -13,8 +22,8 @@ Dependencies:
 Clone repository:
 
 ```
-git clone https://github.com/ccicconetti/quantum-routing.git
-cd quantum-routing
+git clone https://github.com/ccicconetti/queer.git
+cd queer
 git submodule update --init --recursive
 ```
 
@@ -78,3 +87,12 @@ gnuplot -persist admission-cdf.plt
 The command above will show:
 
 ![](Docs/var-flows-admission-rate.png)
+
+## Bibliography
+
+Results obtained with the QueeR simulator have been published in the following peer-reviewed scientific papers:
+
+- C. Cicconetti, M. Conti, and A. Passarella, _Service differentiation and fair sharing in distributed quantum computing_, Elsevier Pervasive and Mobile Computing, 2023, [Elsevier](https://doi.org/10.1016/j.pmcj.2023.101758), [BibTeX](bib/pmc2023.bib), [arXiv](https://arxiv.org/abs/2301.03977)
+- C. Cicconetti, M. Conti, and A. Passarella, _Resource Allocation in Quantum Networks for Distributed Quantum Computing_, IEEE SMARTCOMP 2022,
+[IEEE](https://ieeexplore.ieee.org/document/9820750), [arXiv](https://arxiv.org/abs/2203.06385), [BibTeX](bib/smartcomp2022stateless.bib)
+- C. Cicconetti, M. Conti, and A. Passarella, _Quality of Service in Quantum Networks_, IEEE Network, vol. 36, no. 5, pp. 24-31, September/October 2022, [IEEE](https://ieeexplore.ieee.org/document/9964002), [arXiv](https://arxiv.org/abs/2204.09538), [BibTeX](bib/network2022.bib)
