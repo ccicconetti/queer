@@ -170,7 +170,7 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/num-apps-allocated-spf.dat"
 plot  \
- '../post/num-apps-allocated-spf.dat' u 1:($2/500) w lp pt 10 lt 1 title "Admission rate" axis x1y1,\
+ '../post/num-apps-allocated-spf.dat' u 1:($2/500) w lp pt 10 lt 1 title "Admission ratio" axis x1y1,\
  '< paste -d " " ../post/capacity-res-spf.dat ../post/capacity-tot-random.dat' u 1:(1-$2/$5) w lp pt 12 lt 2 title "Capacity used" axis x1y2
 
 #    EOF
