@@ -130,18 +130,29 @@ void MecQkdOnlineNetwork::configure(
     const std::set<unsigned long>&              aUserNodes,
     const std::map<unsigned long, double>&      aEdgeProcessing) {
 
+  const auto V = boost::num_vertices(theGraph);
+
+  // consistency checks
+  if ((aUserNodes.size() + aEdgeProcessing.size()) > V) {
+    throw std::runtime_error("too many user+edge nodes requested");
+  }
+
   // throw if the caller is trying to reconfigure an operational network
+  // XXX
 
   // set the algoritm and r.v.
   theAlgorithm = aAlgorithm;
   aRv          = std::move(theRv);
 
   // set the user and edge nodes
-  const auto V = boost::num_vertices(theGraph);
 
   for (const auto& v : aUserNodes) {
     if (v >= V) {
       throw std::runtime_error("Invalid user node: " + std::to_string(v));
+    }
+    if (aEdgeProcessing.find(v) != aEdgeProcessing.end()) {
+      throw std::runtime_error("node " + std::to_string(v) +
+                               " defined both as a user and as an edge");
     }
   }
 
