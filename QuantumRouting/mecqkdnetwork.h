@@ -32,6 +32,7 @@ SOFTWARE.
 #pragma once
 
 #include "QuantumRouting/capacitynetwork.h"
+#include "QuantumRouting/mecqkdworkload.h"
 
 namespace uiiit {
 namespace qr {
@@ -49,60 +50,6 @@ enum class MecQkdAlgo {
 std::vector<MecQkdAlgo> allMecQkdAlgos();
 std::string             toString(const MecQkdAlgo aAlgo);
 MecQkdAlgo              mecQkdAlgofromString(const std::string& aAlgo);
-
-class MecQkdWorkload final
-{
- public:
-  struct AppInfo {
-    unsigned long theRegion = 0; //!< region identifier
-    double        theWeight = 0; //!< weight to determine occurence probability
-    double        theLoad   = 0; //!< load requested, in operations/second
-    double        theRate   = 0; //!< QKD rate requested, in b/s
-
-    std::string toString() const;
-  };
-
-  /**
-   * @brief Construct a new MecQkdWorkload object from its app info data.
-   *
-   * @param aAppInfo The info to be copied into this data structure.
-   * @param aRv The r.v. to draw randomly the apps.
-   *
-   * @throw std::runtime_error if no apps are passed.
-   */
-  MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
-                 support::RealRvInterface&   aRv);
-
-  /**
-   * @brief Make a new MecQkdWorkload object from a csv file.
-   *
-   * @param aFilename The csv file where to read the data from.
-   * @param aRv The r.v. to draw randomly the apps.
-   * @return MecQkdWorkload
-   */
-  static MecQkdWorkload fromCsvFile(const std::string&        aFilename,
-                                    support::RealRvInterface& aRv);
-
-  /**
-   * @brief Draw randomly an app.
-   */
-  AppInfo operator()();
-
-  /**
-   * @brief Return the regions in the app infos.
-   *
-   * @return std::vector<unsigned long>
-   */
-  const std::set<unsigned long>& regions() const {
-    return theRegions;
-  }
-
- private:
-  const std::vector<AppInfo> theAppInfo;
-  support::RealRvInterface&  theRv;
-  std::set<unsigned long>    theRegions; // never changed after construction
-  std::vector<double>        theWeights; // same
-};
 
 /**
  * @brief A QKD network where some nodes also offer edge computing resources.
