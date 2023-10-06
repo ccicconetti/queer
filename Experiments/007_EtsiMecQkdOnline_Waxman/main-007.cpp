@@ -68,6 +68,8 @@ namespace us = uiiit::support;
 
 struct Parameters {
   std::size_t theSeed;
+  double      theDuration; // not recorded in output
+  double      theWarmup;   // same
 
   // topology generation
   std::size_t theNodes;
@@ -120,8 +122,9 @@ struct Parameters {
              << theAppSpec << " arriving at an average rate of "
              << theArrivalRate << " Hz, " << theEdgeNodes
              << " edge nodes with processing power " << theEdgeProcessing
-             << "; allocation algorithm: " << qr::toString(theAlgo);
-    myStream << "; experiment seed " << theSeed;
+             << "; allocation algorithm: " << qr::toString(theAlgo)
+             << "; experiment seed " << theSeed << ", simulation duration "
+             << theDuration << " s (warm-up period " << theWarmup << " s)";
     return myStream.str();
   }
 
@@ -235,11 +238,6 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myCoordinates);
   assert(myNetwork->numNodes() == myRaii.in().theNodes);
 
-  // load the workload generator parameters from file
-  us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
-  auto          myWorkload =
-      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv);
-
   // initialize myAllNodes with all the nodes in the network, from which we will
   // remove the user and edge nodes
   std::set<unsigned long> myAllNodes;
@@ -289,6 +287,19 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       myNetwork->outDegree();
   myNetwork->reachableNodes(
       0, std::numeric_limits<std::size_t>::max(), myOutput.theDiameter);
+
+  //
+  // dynamic simulation
+  //
+
+  // load the workload generator parameters from file
+  us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
+  auto          myWorkload =
+      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv);
+
+  // double myTime = 0; // simulated time
+
+  // XXX
 
   // // allocate the apps to edge nodes
   // myNetwork->allocate(myApps, myRaii.in().theAlgo, myAllocationRv);
@@ -388,6 +399,8 @@ int main(int argc, char* argv[]) {
   std::size_t mySeedStart;
   std::size_t mySeedEnd;
 
+  double      myDuration;
+  double      myWarmup;
   std::size_t myNodes;
   double      myAlpha;
   double      myBeta;
@@ -425,6 +438,12 @@ int main(int argc, char* argv[]) {
      po::value<std::size_t>(&mySeedEnd)->default_value(1),
     "Next seed after the last one to be used, i.e., the number of simulations is (seed-end - seed-start).")
     ("append", "Append to the output file.")
+    ("duration",
+     po::value<double>(&myDuration)->default_value(120),
+     "Simulation duration, in s.")
+    ("warmup",
+     po::value<double>(&myWarmup)->default_value(20),
+     "Warm-up period, in s.")
     ("nodes",
      po::value<std::size_t>(&myNodes)->default_value(50),
      "Number of nodes.")
@@ -498,6 +517,8 @@ int main(int argc, char* argv[]) {
     us::Queue<Parameters> myParameters;
     for (auto mySeed = mySeedStart; mySeed < mySeedEnd; ++mySeed) {
       myParameters.push(Parameters{mySeed,
+                                   myDuration,
+                                   myWarmup,
 
                                    myNodes,
                                    myAlpha,
