@@ -59,6 +59,10 @@ add_executable(testmecqkdnetwork testmain.cpp testmecqkdnetwork.cpp)
 target_link_libraries(testmecqkdnetwork ${LIBS})
 gtest_discover_tests(testmecqkdnetwork)
 
+add_executable(testmecqkdonlinenetwork testmain.cpp testmecqkdonlinenetwork.cpp)
+target_link_libraries(testmecqkdonlinenetwork ${LIBS})
+gtest_discover_tests(testmecqkdonlinenetwork)
+
 add_executable(testmecqkdworkload testmain.cpp testmecqkdworkload.cpp)
 target_link_libraries(testmecqkdworkload ${LIBS})
 gtest_discover_tests(testmecqkdworkload)

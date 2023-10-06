@@ -32,30 +32,32 @@ SOFTWARE.
 #pragma once
 
 #include "QuantumRouting/capacitynetwork.h"
-#include "QuantumRouting/mecqkdworkload.h"
+
+#include <limits>
 
 namespace uiiit {
 namespace qr {
 
-enum class MecQkdAlgo {
-  Random       = 0, //!< pick a random edge node, among those feasible
-  Spf          = 1, //!< shortest path first, among those feasible
-  BestFit      = 2, //!< best-fit allocation, among those feasible
-  RandomBlind  = 3, //!< pick a random edge node
-  SpfBlind     = 4, //!< shortest path first
-  BestFitBlind = 5, //!< best-fit allocation
-  SpfStatic    = 6, //!< assign based on initial shortest-path
+enum class MecQkdOnlineAlgo {
+  NotInitialized  = 0,
+  Policy014_k1    = 11, //!< all applications follow the same path
+  Policy014_k3    = 13, //!< same as above, but keep k=3 alternatives
+  Policy015       = 20, //!< each application is assigned own path
+  Policy015_reuse = 21, //!< same as above, but try to re-use allocations
 };
 
-std::vector<MecQkdAlgo> allMecQkdAlgos();
-std::string             toString(const MecQkdAlgo aAlgo);
-MecQkdAlgo              mecQkdAlgofromString(const std::string& aAlgo);
+std::vector<MecQkdOnlineAlgo> allMecQkdOnlineAlgos();
+std::string                   toString(const MecQkdOnlineAlgo aAlgo);
+MecQkdOnlineAlgo mecQkdOnlineAlgofromString(const std::string& aAlgo);
 
 /**
  * @brief A QKD network where some nodes also offer edge computing resources.
+ *
+ * Applications enter/leave the system dynamically.
  */
-class MecQkdNetwork final : public CapacityNetwork
+class MecQkdOnlineNetwork final : public CapacityNetwork
 {
+
   // used within allocate()
   struct EdgeNode {
     // initialized from theEdgeProcessing
@@ -105,85 +107,63 @@ class MecQkdNetwork final : public CapacityNetwork
   };
 
   /**
-   * @brief Create a network with given links and assign random weights
-   *
-   * @param aEdges The edges of the network (src, dst).
-   * @param aWeightRv The r.v. to draw the edge weights.
-   * @param aMakeBidirectional If true then for each pair (A,B) two edges are
-   * added A->B and B->A, with the same weight.
-   */
-  explicit MecQkdNetwork(const EdgeVector&         aEdges,
-                         support::RealRvInterface& aWeightRv,
-                         const bool                aMakeBidirectional);
-
-  /**
    * @brief Create a network with given links and weights
    *
    * @param aEdgeWeights The unidirectional edges and weights of the network
    * (src, dst, w).
    */
-  explicit MecQkdNetwork(const WeightVector& aEdgeWeights);
+  explicit MecQkdOnlineNetwork(const WeightVector& aEdgeWeights);
 
   /**
-   * @brief Set the identifiers of user nodes.
+   * @brief Configure the network.
    *
-   * Clear any previous data.
+   * @param aAlgorithm The algorithm to be used for the allocation.
+   * @param aUserNodes The set of user node identifies.
+   * @param aEdgeProcessing key: edge node identifier, value: processing.
+   * @param aRv A r.v. in [0,1] to break ties.
+   *
+   * Clear any previous data. Can only be called before the arrival of apps.
+   *
+   * @throws std::runtime_error if trying to reconfigure an operational network.
    */
-  void userNodes(const std::set<unsigned long>& aUserNodes);
-
-  /**
-   * @brief Set the edge nodes' identifiers and assign processing power values.
-   *
-   * Clear any previous data.
-   *
-   * @param aEdgeProcessing key: edge node identifier, value: processing
-   */
-  void edgeNodes(const std::map<unsigned long, double>& aEdgeProcessing);
+  void configure(const MecQkdOnlineAlgo&                     aAlgorithm,
+                 std::unique_ptr<support::RealRvInterface>&& aRv,
+                 const std::set<unsigned long>&              aUserNodes,
+                 const std::map<unsigned long, double>&      aEdgeProcessing);
 
   //! @return the current availability on the edge nodes.
   const std::map<unsigned long, double>& edgeNodes() const {
     return theEdgeProcessing;
   }
 
-  /**
-   * @brief Allocate the given user requests into the MEC/QKD resources.
-   *
-   * @param aApps The list of applications to be allocated, also providing the
-   * structure for the output.
-   * @param aAlgo The algorithm to be used.
-   * @param aRv A r.v. in [0,1] to break ties.
-   */
-  void allocate(std::vector<Allocation>&  aApps,
-                const MecQkdAlgo          aAlgo,
-                support::RealRvInterface& aRv);
-
   //! @return the total processing power of the edge nodes.
   double totProcessing() const;
 
+  /**
+   * @brief Allocate a new application, if possible.
+   *
+   * @param aApps The parameters of the application to be allocated, also
+   * providing the structure for the output.
+   *
+   * @return an identifier of this application to delete it later; if the
+   * application was not allocated it returns BLOCKED
+   */
+  uint64_t add(Allocation& aApp);
+
+  /**
+   * @brief Remove the allocated application with the given identifier.
+   */
+  void del(const uint64_t aAppId);
+
+  static constexpr uint64_t BLOCKED = std::numeric_limits<uint64_t>::max();
+
  private:
-  std::set<unsigned long>         theUserNodes;
-  std::map<unsigned long, double> theEdgeProcessing;
-  std::set<unsigned long>         theEdgeNodes;
-
-  /**
-   * @brief Select the candidate edge node to be assigned.
-   *
-   * @param aCandidates The possible edge nodes.
-   * @param aAlgo The algorithm used.
-   * @param aRv A r.v. in [0,1] to break ties.
-   * @return std::vector<EdgeNode>::const_iterator
-   */
-  static Candidates::iterator
-  selectCandidate(std::vector<EdgeNode>&    aCandidates,
-                  const MecQkdAlgo          aAlgo,
-                  support::RealRvInterface& aRv);
-
-  /**
-   * @brief Allocate using MecQkdAlgo::SpfStatic.
-   *
-   * @param aApps The applications.
-   */
-  void allocateSpfStatic(std::vector<Allocation>& aApps);
+  // data members initialized in configure()
+  MecQkdOnlineAlgo                          theAlgorithm;
+  std::unique_ptr<support::RealRvInterface> theRv;
+  std::set<unsigned long>                   theUserNodes;
+  std::map<unsigned long, double>           theEdgeProcessing;
+  std::set<unsigned long>                   theEdgeNodes;
 };
 
 } // namespace qr
