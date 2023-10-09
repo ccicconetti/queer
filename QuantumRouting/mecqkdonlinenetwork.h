@@ -174,6 +174,17 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   // internal data structure
   uint64_t    theNextId     = 0;
   std::size_t theSignalling = 0;
+
+  // used only with Policy014
+  // key: user node
+  // value:
+  //   key: edge node
+  //   value: vector of paths (at most K elements)
+  // map of K paths from all user nodes to all edge nodes
+  std::map<unsigned long, std::map<unsigned long, std::vector<Path>>> thePaths;
+
+  // Used with Policy04 to compute at most aK paths from user to edge nodes.
+  void computeAllUserEdgePaths(const std::size_t aK);
 };
 
 } // namespace qr

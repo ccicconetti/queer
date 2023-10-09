@@ -33,6 +33,8 @@ SOFTWARE.
 
 #include "Support/tostring.h"
 
+#include "yen/yen_ksp.hpp"
+
 #include <boost/graph/subgraph.hpp>
 #include <glog/logging.h>
 #include <sstream>
@@ -119,7 +121,8 @@ MecQkdOnlineNetwork::MecQkdOnlineNetwork(const WeightVector& aEdgeWeights)
     , theRv()
     , theUserNodes()
     , theEdgeProcessing()
-    , theEdgeNodes() {
+    , theEdgeNodes()
+    , thePaths() {
   // noop
 }
 
@@ -132,19 +135,26 @@ void MecQkdOnlineNetwork::configure(
   const auto V = boost::num_vertices(theGraph);
 
   // consistency checks
+  if (aUserNodes.empty()) {
+    throw std::runtime_error("empty set of user nodes");
+  }
+  if (aEdgeProcessing.empty()) {
+    throw std::runtime_error("empty set of edge nodes");
+  }
   if ((aUserNodes.size() + aEdgeProcessing.size()) > V) {
     throw std::runtime_error("too many user+edge nodes requested");
   }
 
   // throw if the caller is trying to reconfigure an operational network
-  // XXX
+  if (theNextId > 0) {
+    throw std::runtime_error("cannot reconfigure a network while operating");
+  }
 
   // set the algoritm and r.v.
   theAlgorithm = aAlgorithm;
   aRv          = std::move(theRv);
 
   // set the user and edge nodes
-
   for (const auto& v : aUserNodes) {
     if (v >= V) {
       throw std::runtime_error("Invalid user node: " + std::to_string(v));
@@ -170,6 +180,13 @@ void MecQkdOnlineNetwork::configure(
     theEdgeNodes.emplace(elem.first);
   }
   theEdgeProcessing = aEdgeProcessing;
+
+  if (theAlgorithm == MecQkdOnlineAlgo::Policy014_k1 or
+      theAlgorithm == MecQkdOnlineAlgo::Policy014_k3) {
+    computeAllUserEdgePaths(theAlgorithm == MecQkdOnlineAlgo::Policy014_k1 ? 1 :
+                                                                             3);
+    assert(not thePaths.empty());
+  }
 
   LOG(INFO) << "configured network with algorithm " << toString(theAlgorithm)
             << ", user nodes [" << ::toStringStd(theUserNodes, ",")
@@ -204,6 +221,28 @@ void MecQkdOnlineNetwork::add(Allocation& aApp) {
 
 void MecQkdOnlineNetwork::del(const uint64_t aAppId) {
   VLOG(2) << "request to del app #" << aAppId;
+}
+
+void MecQkdOnlineNetwork::computeAllUserEdgePaths(const std::size_t aK) {
+  for (const auto& myUserNode : theUserNodes) {
+    for (const auto& myEdgeNode : theEdgeNodes) {
+      auto myIndexMap = boost::get(boost::vertex_index, theGraph);
+      auto myResults  = boost::yen_ksp(
+          theGraph,
+          myUserNode,
+          myEdgeNode,
+          boost::make_static_property_map<Graph::edge_descriptor>(1),
+          myIndexMap,
+          aK);
+      assert(myResults.size() <= aK);
+      for (const auto& myResult : myResults) {
+        assert(static_cast<std::size_t>(myResult.first) ==
+               myResult.second.size()); // path length
+        thePaths[myUserNode][myEdgeNode].emplace_back(myResult.second);
+        assert(thePaths[myUserNode][myEdgeNode].size() <= aK);
+      }
+    }
+  }
 }
 
 } // namespace qr
