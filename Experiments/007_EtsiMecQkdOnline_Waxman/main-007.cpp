@@ -33,6 +33,7 @@ SOFTWARE.
 #include "QuantumRouting/mecqkdworkload.h"
 #include "QuantumRouting/networkfactory.h"
 #include "QuantumRouting/qrutils.h"
+#include "Support/chrono.h"
 #include "Support/experimentdata.h"
 #include "Support/fairness.h"
 #include "Support/glograii.h"
@@ -161,6 +162,7 @@ struct Output {
   double theAvgPathLength       = 0;
   double theTotalNetRate        = 0;
   double theSignallingRate      = 0;
+  double theExecutionTime       = 0;
 
   static std::vector<std::string> names() {
     static std::vector<std::string> myStaticNames({
@@ -185,6 +187,7 @@ struct Output {
         "path-length-avg",
         "net-rate-tot",
         "signalling-rate",
+        "execution-time",
     });
     return myStaticNames;
   }
@@ -201,7 +204,8 @@ struct Output {
              << ", blocking probability " << theBlockingProbability
              << ", avg apps active " << theAvgActiveApps << ", avg path length "
              << theAvgPathLength << ", total net rate " << theTotalNetRate
-             << " b/s, signalling rate " << theSignallingRate << " links/s";
+             << " b/s, signalling rate " << theSignallingRate
+             << " links/s, execution time " << theExecutionTime << " s";
     return myStream.str();
   }
 
@@ -213,7 +217,8 @@ struct Output {
              << ',' << theTotalProcessing << ',' << theResidualCapacity << ','
              << theResidualProcessing << ',' << theBlockingProbability << ','
              << theAvgActiveApps << ',' << theAvgPathLength << ','
-             << theTotalNetRate << ',' << theSignallingRate;
+             << theTotalNetRate << ',' << theSignallingRate << ','
+             << theExecutionTime;
     return myStream.str();
   }
 };
@@ -318,6 +323,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   us::SummaryStat            myPathLength;
   std::size_t mySignallingInitial = std::numeric_limits<std::size_t>::max();
   double      myTimeInitial       = 0.0;
+  us::Chrono  myExecutionTimeChrono(false);
 
   const auto myDuration = myRaii.in().theDuration;
   const auto myWarmup   = myRaii.in().theWarmup;
@@ -339,6 +345,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       if (mySignallingInitial == std::numeric_limits<std::size_t>::max()) {
         myTimeInitial       = myTime;
         mySignallingInitial = myNetwork->signalling();
+        myExecutionTimeChrono.start();
       }
     }
 
@@ -402,6 +409,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   }
 
   // save the output statistics
+  myOutput.theExecutionTime      = myExecutionTimeChrono.stop();
   const auto myEffectiveDuration = myTime - myTimeInitial;
   if (myEffectiveDuration > 0) {
     myOutput.theResidualCapacity   = myResidualCapacity / myEffectiveDuration;
