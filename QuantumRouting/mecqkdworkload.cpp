@@ -51,9 +51,11 @@ std::string MecQkdWorkload::AppInfo::toString() const {
 }
 
 MecQkdWorkload::MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
-                               support::RealRvInterface&   aRv)
+                               support::RealRvInterface&   aRv,
+                               const bool                  aWeighted)
     : theAppInfo(aAppInfo)
     , theRv(aRv)
+    , theWeighted(aWeighted)
     , theRegions()
     , theWeights(aAppInfo.size()) {
   if (aAppInfo.empty()) {
@@ -65,14 +67,15 @@ MecQkdWorkload::MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
   }
 
   if (VLOG_IS_ON(1)) {
-    for (std::size_t i = 0; i < aAppInfo.size(); i++) {
-      LOG(INFO) << aAppInfo[i].toString();
+    for (const auto& myAppInfo : aAppInfo) {
+      LOG(INFO) << myAppInfo.toString();
     }
   }
 }
 
 MecQkdWorkload MecQkdWorkload::fromCsvFile(const std::string&        aFilename,
-                                           support::RealRvInterface& aRv) {
+                                           support::RealRvInterface& aRv,
+                                           const bool aWeighted) {
   std::vector<AppInfo> myAppInfo;
 
   std::ifstream myInfile(aFilename);
@@ -93,19 +96,26 @@ MecQkdWorkload MecQkdWorkload::fromCsvFile(const std::string&        aFilename,
       throw std::runtime_error("invalid input at file '" + aFilename +
                                "' line: " + std::to_string(myLineNo));
     }
-    myAppInfo.emplace_back(AppInfo{std::stoull(myTokens[0]),
-                                   std::stod(myTokens[1]),
-                                   std::stod(myTokens[2]),
-                                   std::stod(myTokens[3])});
+    const auto myWeight = std::stod(myTokens[1]);
+    if (myWeight > 0) {
+      myAppInfo.emplace_back(AppInfo{std::stoull(myTokens[0]),
+                                     myWeight,
+                                     std::stod(myTokens[2]),
+                                     std::stod(myTokens[3])});
+    }
   }
 
-  return MecQkdWorkload(myAppInfo, aRv);
+  return {myAppInfo, aRv, aWeighted};
 }
 
 MecQkdWorkload::AppInfo MecQkdWorkload::operator()() {
-  const auto res = support::sampleWeighted(theAppInfo, theWeights, 1, theRv);
-  assert(res.size() == 1);
-  return res[0];
+  if (theWeighted) {
+    const auto res = support::sampleWeighted(theAppInfo, theWeights, 1, theRv);
+    assert(res.size() == 1);
+    return res[0];
+  } else {
+    return support::choice(theAppInfo, theRv);
+  }
 }
 
 } // namespace qr

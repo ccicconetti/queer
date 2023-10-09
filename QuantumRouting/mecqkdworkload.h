@@ -56,21 +56,26 @@ class MecQkdWorkload final
    *
    * @param aAppInfo The info to be copied into this data structure.
    * @param aRv The r.v. to draw randomly the apps.
+   * @param aWeighted If true then sampling is based on the app's weights.
    *
    * @throw std::runtime_error if no apps are passed.
    */
   MecQkdWorkload(const std::vector<AppInfo>& aAppInfo,
-                 support::RealRvInterface&   aRv);
+                 support::RealRvInterface&   aRv,
+                 const bool                  aWeighted);
 
   /**
    * @brief Make a new MecQkdWorkload object from a csv file.
    *
    * @param aFilename The csv file where to read the data from.
    * @param aRv The r.v. to draw randomly the apps.
+   * @param aWeighted If true then sampling is based on the app's weights.
+   *
    * @return MecQkdWorkload
    */
   static MecQkdWorkload fromCsvFile(const std::string&        aFilename,
-                                    support::RealRvInterface& aRv);
+                                    support::RealRvInterface& aRv,
+                                    const bool                aWeighted);
 
   /**
    * @brief Draw randomly an app.
@@ -89,6 +94,7 @@ class MecQkdWorkload final
  private:
   const std::vector<AppInfo> theAppInfo;
   support::RealRvInterface&  theRv;
+  const bool                 theWeighted;
   std::set<unsigned long>    theRegions; // never changed after construction
   std::vector<double>        theWeights; // same
 };

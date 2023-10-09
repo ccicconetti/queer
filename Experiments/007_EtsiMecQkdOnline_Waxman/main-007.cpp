@@ -157,6 +157,7 @@ struct Output {
   double theResidualCapacity    = 0;
   double theResidualProcessing  = 0;
   double theBlockingProbability = 0;
+  double theAvgActiveApps       = 0;
   double theAvgPathLength       = 0;
   double theTotalNetRate        = 0;
   double theSignallingRate      = 0;
@@ -180,6 +181,7 @@ struct Output {
         "capacity-res",
         "processing-res",
         "blocking-probability",
+        "avg-active-apps",
         "path-length-avg",
         "net-rate-tot",
         "signalling-rate",
@@ -195,10 +197,10 @@ struct Output {
              << theDiameter << ", total capacity " << theTotalCapacity
              << " b/s, total processing " << theTotalProcessing
              << ", residual capacity " << theResidualCapacity
-             << " b/s, residual processing " << theResidualProcessing << ", "
-             << theBlockingProbability
-             << " blocking probability, avg path length " << theAvgPathLength
-             << ", total net rate " << theTotalNetRate
+             << " b/s, residual processing " << theResidualProcessing
+             << ", blocking probability " << theBlockingProbability
+             << ", avg apps active " << theAvgActiveApps << ", avg path length "
+             << theAvgPathLength << ", total net rate " << theTotalNetRate
              << " b/s, signalling rate " << theSignallingRate << " links/s";
     return myStream.str();
   }
@@ -210,8 +212,8 @@ struct Output {
              << theMaxOutDegree << ',' << theDiameter << ',' << theTotalCapacity
              << ',' << theTotalProcessing << ',' << theResidualCapacity << ','
              << theResidualProcessing << ',' << theBlockingProbability << ','
-             << theAvgPathLength << ',' << theTotalNetRate << ','
-             << theSignallingRate;
+             << theAvgActiveApps << ',' << theAvgPathLength << ','
+             << theTotalNetRate << ',' << theSignallingRate;
     return myStream.str();
   }
 };
@@ -292,51 +294,128 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   // dynamic simulation
   //
 
-  // load the workload generator parameters from file
-  us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
-  auto          myWorkload =
-      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv);
+  // load the workload generator parameters from file, sampling is unweighted
+  us::UniformRv myWorloadRv(0, 1, myRaii.in().theSeed, 3, 0);
+  auto          myWorkload = qr::MecQkdWorkload::fromCsvFile(
+      myRaii.in().theAppSpec, myWorloadRv, false);
 
-  // double myTime = 0; // simulated time
+  double myTime = 0; // simulated time
 
-  // XXX
+  // the first app always starts at t=0, then the others are scheduled based on
+  // the average arrival time
+  double            myNextArrival = 0;
+  us::ExponentialRv myArrivalRv(
+      myRaii.in().theArrivalRate, myRaii.in().theSeed, 4, 0);
+  us::UniformRv              myLeavingRv(0, 1, myRaii.in().theSeed, 5, 0);
+  us::UniformRv              mySourceRv(0, 1, myRaii.in().theSeed, 6, 0);
+  std::map<double, uint64_t> myActiveApps; // key: end time, value: ID
+  std::size_t                myBlockedApps        = 0;
+  std::size_t                myAcceptedApps       = 0;
+  double                     myResidualCapacity   = 0;
+  double                     myResidualProcessing = 0;
+  double                     myAvgActiveApps      = 0;
+  us::SummaryStat            myPathLength;
+  std::size_t mySignallingInitial = std::numeric_limits<std::size_t>::max();
+  double      myTimeInitial       = 0.0;
 
-  // // allocate the apps to edge nodes
-  // myNetwork->allocate(myApps, myRaii.in().theAlgo, myAllocationRv);
+  const auto myDuration = myRaii.in().theDuration;
+  const auto myWarmup   = myRaii.in().theWarmup;
+  while (myTime < myDuration) {
+    // check which event comes first: a new app arrives vs. an old one leaves
+    const auto myEarliestIsArrival =
+        myActiveApps.empty() or myNextArrival < myActiveApps.begin()->first;
+    const auto myNewTime =
+        myEarliestIsArrival ? myNextArrival : myActiveApps.begin()->first;
 
-  // // save the output statistics
-  // myOutput.theResidualCapacity   = myNetwork->totalCapacity();
-  // myOutput.theResidualProcessing = myNetwork->totProcessing();
+    // update stats for previous time interval
+    if (myTime >= myWarmup) {
+      const auto myLastInterval = myNewTime - myTime;
+      myResidualCapacity += myNetwork->totalCapacity() * myLastInterval;
+      myResidualProcessing += myNetwork->totProcessing() * myLastInterval;
+      myAvgActiveApps +=
+          static_cast<double>(myActiveApps.size()) * myLastInterval;
+      if (mySignallingInitial == std::numeric_limits<std::size_t>::max()) {
+        myTimeInitial       = myTime;
+        mySignallingInitial = myNetwork->signalling();
+      }
+    }
 
-  // us::SummaryStat myPathLength;
-  // for (const auto& myApp : myApps) {
-  //   if (not myApp.theAllocated) {
-  //     continue;
-  //   }
-  //   myOutput.theAllocatedApps++;
-  //   myPathLength(myApp.thePathLength);
-  //   myOutput.theTotalNetRate += myApp.theRate;
-  // }
-  // myOutput.theAvgPathLength = myPathLength.mean();
+    // move the clock forward to the next event
+    myTime = myNewTime;
+    if (myEarliestIsArrival) {
+      //
+      // a new app arrives
+      //
 
-  // const auto& myEdgeNodeUtils = myNetwork->edgeNodes();
-  // VLOG(1) << "edge node utilizations: "
-  //         << ::toString(myEdgeNodeUtils, ",", [](const auto& elem) {
-  //              return std::to_string(elem.second);
-  //            });
+      // set the app's requirements
+      const auto                          myNewAppInfo = myWorkload();
+      qr::MecQkdOnlineNetwork::Allocation myNewApp(
+          us::choice(myUserNodes, mySourceRv),
+          myNewAppInfo.theRate,
+          myNewAppInfo.theLoad);
 
-  // if (not myEdgeNodeUtils.empty()) {
-  //   myOutput.theJainEdgeNodeUtil = us::jainFairnessIndex(
-  //       myEdgeNodeUtils, [](const auto& elem) { return elem.second; });
+      // try to allocate the app
+      myNetwork->add(myNewApp);
+      if (myNewApp.allocated()) {
+        // draw randomly the time when the app will leave
+        double myAppDuration = 0;
+        assert(myNewAppInfo.theWeight > 0);
+        while (myAppDuration == 0) {
+          const auto myUnifValue = myLeavingRv();
+          if (myUnifValue > 0) {
+            myAppDuration = -std::log(myLeavingRv()) * myNewAppInfo.theWeight;
+          }
+        }
+        assert(myAppDuration > 0);
+        myActiveApps.emplace(myTime + myAppDuration, myNewApp.theId);
 
-  //   us::SummaryStat myEdgeNodeUtil;
-  //   for (const auto& elem : myEdgeNodeUtils) {
-  //     myEdgeNodeUtil(elem.second);
-  //   }
-  //   myOutput.theStdDevEdgeNodeUtil = myEdgeNodeUtil.stddev();
-  //   myOutput.theSpreadEdgeNodeUtil =
-  //       myEdgeNodeUtil.max() - myEdgeNodeUtil.mean();
-  // }
+        VLOG(1) << myTime << " app allocated: " << myNewApp.toString()
+                << ", will remain active for " << myAppDuration << " s";
+
+        if (myTime >= myWarmup) {
+          myAcceptedApps++;
+          myPathLength(static_cast<double>(myNewApp.thePathLength));
+          myOutput.theTotalNetRate += myNewApp.theRate;
+        }
+      } else {
+        VLOG(1) << myTime << " app blocked";
+
+        if (myTime >= myWarmup) {
+          myBlockedApps++;
+        }
+      }
+
+      // drawn randomly the arrival of the next app
+      myNextArrival = myTime + myArrivalRv();
+
+    } else {
+      //
+      // an old app leaves
+      //
+      auto myLeavingAppIt = myActiveApps.begin();
+      assert(myLeavingAppIt != myActiveApps.end());
+      VLOG(1) << myTime << " app #" << myLeavingAppIt->second << " terminated";
+      myNetwork->del(myLeavingAppIt->second);
+      myActiveApps.erase(myLeavingAppIt);
+    }
+  }
+
+  // save the output statistics
+  const auto myEffectiveDuration = myTime - myTimeInitial;
+  myOutput.theResidualCapacity   = myResidualCapacity / myEffectiveDuration;
+  myOutput.theResidualProcessing = myResidualProcessing / myEffectiveDuration;
+  if (myBlockedApps + myAcceptedApps == 0) {
+    myOutput.theBlockingProbability = -1;
+  } else {
+    myOutput.theBlockingProbability =
+        static_cast<double>(myBlockedApps) /
+        static_cast<double>(myBlockedApps + myAcceptedApps);
+  }
+  myOutput.theAvgActiveApps = myAvgActiveApps / myEffectiveDuration;
+  myOutput.theAvgPathLength = myPathLength.mean();
+  myOutput.theSignallingRate =
+      static_cast<double>(myNetwork->signalling() - mySignallingInitial) /
+      myEffectiveDuration;
 
   // save to Graphviz, if needed
   if (not myRaii.in().theDotFile.empty()) {
@@ -357,7 +436,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
           << myRaii.in().toString() << '\n'
           << myOutput.toString();
 
-  myRaii.finish(std::move(myOutput));
+  myRaii.finish(std::forward<decltype(myOutput)>(myOutput));
 }
 
 bool explainOrPrint(const po::variables_map& aVarMap) {
@@ -485,12 +564,12 @@ int main(int argc, char* argv[]) {
     po::store(po::parse_command_line(argc, argv, myDesc), myVarMap);
     po::notify(myVarMap);
 
-    if (myVarMap.count("help")) {
+    if (myVarMap.count("help") != 0u) {
       std::cout << myDesc << std::endl;
       return EXIT_FAILURE;
     }
 
-    if (myVarMap.count("version")) {
+    if (myVarMap.count("version") != 0u) {
       std::cout << us::version() << std::endl;
       return EXIT_SUCCESS;
     }
@@ -538,7 +617,8 @@ int main(int argc, char* argv[]) {
     }
     us::ParallelBatch<Parameters> myWorkers(
         myNumThreads, myParameters, [&myData](auto&& aParameters) {
-          runExperiment(myData, std::move(aParameters));
+          runExperiment(myData,
+                        std::forward<decltype(aParameters)>(aParameters));
         });
     const auto myExceptions = myWorkers.wait();
     LOG_IF(ERROR, not myExceptions.empty()) << "there were exceptions:";

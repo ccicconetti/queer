@@ -84,12 +84,12 @@ struct TestMecQkdWorkload : public ::testing::Test {
 
 TEST_F(TestMecQkdWorkload, test_mec_qkd_workload) {
   std::vector<AppInfo> myAppInfo;
-  ASSERT_THROW(MecQkdWorkload(myAppInfo, theRv), std::runtime_error);
+  ASSERT_THROW(MecQkdWorkload(myAppInfo, theRv, true), std::runtime_error);
 
   myAppInfo.emplace_back(AppInfo{0, 1, 0.5, 10});
 
   {
-    MecQkdWorkload myGenerator(myAppInfo, theRv);
+    MecQkdWorkload myGenerator(myAppInfo, theRv, true);
     for (auto i = 0; i < 10; i++) {
       const auto myInfo = myGenerator();
       ASSERT_EQ(0, myInfo.theRegion);
@@ -104,7 +104,7 @@ TEST_F(TestMecQkdWorkload, test_mec_qkd_workload) {
 
   {
     std::vector<unsigned long> myRegions;
-    MecQkdWorkload             myGenerator(myAppInfo, theRv);
+    MecQkdWorkload             myGenerator(myAppInfo, theRv, true);
     for (auto i = 0; i < 10; i++) {
       myRegions.emplace_back(myGenerator().theRegion);
     }
@@ -125,7 +125,7 @@ TEST_F(TestMecQkdWorkload, test_mec_qkd_workload_from_file) {
                  "4,1,0.9177905729976219,5\n";
   }
 
-  auto myGenerator = MecQkdWorkload::fromCsvFile("removeme.csv", theRv);
+  auto myGenerator = MecQkdWorkload::fromCsvFile("removeme.csv", theRv, true);
 
   boost::filesystem::remove(boost::filesystem::current_path() / "removeme.csv");
 

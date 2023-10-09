@@ -90,19 +90,19 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
     double        theLoad     = 0; //!< the amount of processing load requested
 
     // output
-    bool          theAllocated = false; //!< true if the user has been allocated
-    unsigned long theEdgeNode  = 0;     //!< the target edge user node assigned
-    std::size_t   thePathLength = 0;    //!< the path length from user to edge
+    uint64_t      theId         = BLOCKED; //!< app id, if allocated
+    unsigned long theEdgeNode   = 0; //!< the target edge user node assigned
+    std::size_t   thePathLength = 0; //!< the path length from user to edge
 
     explicit Allocation(const unsigned long aUserNode,
                         const double        aRate,
                         const double        aLoad);
     std::string toString() const;
-    double      totRate() const noexcept {
-      if (theAllocated) {
-        return thePathLength * theRate;
-      }
-      return 0.0;
+    bool        allocated() const noexcept {
+      return theId != BLOCKED;
+    }
+    double totRate() const noexcept {
+      return allocated() ? (static_cast<double>(thePathLength) * theRate) : 0.0;
     }
   };
 
@@ -143,17 +143,20 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
    * @brief Allocate a new application, if possible.
    *
    * @param aApps The parameters of the application to be allocated, also
-   * providing the structure for the output.
-   *
-   * @return an identifier of this application to delete it later; if the
-   * application was not allocated it returns BLOCKED
+   * providing the structure for the output and an identifier of this
+   * application to delete it later (set to BLOCKED if not allocated).
    */
-  uint64_t add(Allocation& aApp);
+  void add(Allocation& aApp);
 
   /**
    * @brief Remove the allocated application with the given identifier.
    */
   void del(const uint64_t aAppId);
+
+  //! @return the number of links affected by signalling changes.
+  std::size_t signalling() const noexcept {
+    return theSignalling;
+  }
 
   static constexpr uint64_t BLOCKED = std::numeric_limits<uint64_t>::max();
 
@@ -164,6 +167,10 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   std::set<unsigned long>                   theUserNodes;
   std::map<unsigned long, double>           theEdgeProcessing;
   std::set<unsigned long>                   theEdgeNodes;
+
+  // internal data structure
+  uint64_t    theNextId     = 0;
+  std::size_t theSignalling = 0;
 };
 
 } // namespace qr

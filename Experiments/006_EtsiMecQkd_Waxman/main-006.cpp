@@ -241,7 +241,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   // load the workload generator parameters from file
   us::UniformRv myAppRv(0, 1, myRaii.in().theSeed, 3, 0);
   auto          myWorkload =
-      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv);
+      qr::MecQkdWorkload::fromCsvFile(myRaii.in().theAppSpec, myAppRv, true);
 
   // select the user nodes
   if ((myRaii.in().theEdgeNodes + myWorkload.regions().size()) >

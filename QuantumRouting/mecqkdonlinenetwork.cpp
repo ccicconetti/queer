@@ -104,12 +104,11 @@ MecQkdOnlineNetwork::Allocation::Allocation(const unsigned long aUserNode,
 std::string MecQkdOnlineNetwork::Allocation::toString() const {
   std::stringstream ret;
   ret << "user " << theUserNode << ", rate " << theRate << " kb/s, load "
-      << theLoad << ": ";
-  if (theAllocated) {
-    ret << "allocated to edge " << theEdgeNode << ", path length "
-        << thePathLength << ", tot rate " << totRate() << " kb/s";
-  } else {
-    ret << "not allocated";
+      << theLoad;
+  if (allocated()) {
+    ret << ", #" << theId << ", allocated to edge " << theEdgeNode
+        << ", path length " << thePathLength << ", tot rate " << totRate()
+        << " kb/s";
   }
   return ret.str();
 }
@@ -194,14 +193,13 @@ double MecQkdOnlineNetwork::totProcessing() const {
       [](auto aSum, const auto& aElem) { return aSum + aElem.second; });
 }
 
-uint64_t MecQkdOnlineNetwork::add(Allocation& aApp) {
-  VLOG(1) << "request add new app: " << aApp.toString();
-
-  return BLOCKED;
+void MecQkdOnlineNetwork::add(Allocation& aApp) {
+  VLOG(2) << "request to add new app: " << aApp.toString();
+  aApp.theId = theNextId++;
 }
 
 void MecQkdOnlineNetwork::del(const uint64_t aAppId) {
-  VLOG(1) << "request to del app #" << aAppId;
+  VLOG(2) << "request to del app #" << aAppId;
 }
 
 } // namespace qr
