@@ -193,6 +193,10 @@ double MecQkdOnlineNetwork::totProcessing() const {
       [](auto aSum, const auto& aElem) { return aSum + aElem.second; });
 }
 
+double MecQkdOnlineNetwork::totNetRate() const {
+  return 0.0; // XXX
+}
+
 void MecQkdOnlineNetwork::add(Allocation& aApp) {
   VLOG(2) << "request to add new app: " << aApp.toString();
   aApp.theId = theNextId++;

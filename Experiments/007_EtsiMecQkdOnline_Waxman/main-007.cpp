@@ -313,6 +313,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
   std::size_t                myAcceptedApps       = 0;
   double                     myResidualCapacity   = 0;
   double                     myResidualProcessing = 0;
+  double                     myTotNetRate         = 0;
   double                     myAvgActiveApps      = 0;
   us::SummaryStat            myPathLength;
   std::size_t mySignallingInitial = std::numeric_limits<std::size_t>::max();
@@ -332,6 +333,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
       const auto myLastInterval = myNewTime - myTime;
       myResidualCapacity += myNetwork->totalCapacity() * myLastInterval;
       myResidualProcessing += myNetwork->totProcessing() * myLastInterval;
+      myTotNetRate += myNetwork->totNetRate() * myLastInterval;
       myAvgActiveApps +=
           static_cast<double>(myActiveApps.size()) * myLastInterval;
       if (mySignallingInitial == std::numeric_limits<std::size_t>::max()) {
@@ -375,7 +377,6 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         if (myTime >= myWarmup) {
           myAcceptedApps++;
           myPathLength(static_cast<double>(myNewApp.thePathLength));
-          myOutput.theTotalNetRate += myNewApp.theRate;
         }
       } else {
         VLOG(1) << myTime << " app blocked";
@@ -402,8 +403,15 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   // save the output statistics
   const auto myEffectiveDuration = myTime - myTimeInitial;
-  myOutput.theResidualCapacity   = myResidualCapacity / myEffectiveDuration;
-  myOutput.theResidualProcessing = myResidualProcessing / myEffectiveDuration;
+  if (myEffectiveDuration > 0) {
+    myOutput.theResidualCapacity   = myResidualCapacity / myEffectiveDuration;
+    myOutput.theResidualProcessing = myResidualProcessing / myEffectiveDuration;
+    myOutput.theTotalNetRate       = myTotNetRate / myEffectiveDuration;
+    myOutput.theAvgActiveApps      = myAvgActiveApps / myEffectiveDuration;
+    myOutput.theSignallingRate =
+        static_cast<double>(myNetwork->signalling() - mySignallingInitial) /
+        myEffectiveDuration;
+  }
   if (myBlockedApps + myAcceptedApps == 0) {
     myOutput.theBlockingProbability = -1;
   } else {
@@ -411,11 +419,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
         static_cast<double>(myBlockedApps) /
         static_cast<double>(myBlockedApps + myAcceptedApps);
   }
-  myOutput.theAvgActiveApps = myAvgActiveApps / myEffectiveDuration;
   myOutput.theAvgPathLength = myPathLength.mean();
-  myOutput.theSignallingRate =
-      static_cast<double>(myNetwork->signalling() - mySignallingInitial) /
-      myEffectiveDuration;
 
   // save to Graphviz, if needed
   if (not myRaii.in().theDotFile.empty()) {

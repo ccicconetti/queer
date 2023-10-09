@@ -139,6 +139,9 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   //! @return the total processing power of the edge nodes.
   double totProcessing() const;
 
+  //! @return the totale net rate of currently active applications.
+  double totNetRate() const;
+
   /**
    * @brief Allocate a new application, if possible.
    *
