@@ -383,7 +383,7 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
         if (myTime >= myWarmup) {
           myAcceptedApps++;
-          myPathLength(static_cast<double>(myNewApp.thePathLength));
+          myPathLength(static_cast<double>(myNewApp.thePath.size()));
         }
       } else {
         VLOG(1) << myTime << " app blocked";

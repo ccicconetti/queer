@@ -90,9 +90,8 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
     double        theLoad     = 0; //!< the amount of processing load requested
 
     // output
-    uint64_t      theId         = BLOCKED; //!< app id, if allocated
-    unsigned long theEdgeNode   = 0; //!< the target edge user node assigned
-    std::size_t   thePathLength = 0; //!< the path length from user to edge
+    uint64_t theId = BLOCKED; //!< app id, if allocated
+    Path     thePath;         //!< the current path, if allocated
 
     explicit Allocation(const unsigned long aUserNode,
                         const double        aRate,
@@ -102,7 +101,12 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
       return theId != BLOCKED;
     }
     double totRate() const noexcept {
-      return allocated() ? (static_cast<double>(thePathLength) * theRate) : 0.0;
+      return allocated() ? (static_cast<double>(thePath.size()) * theRate) :
+                           0.0;
+    }
+    unsigned long edgeNode() const noexcept {
+      assert(not allocated() or not thePath.empty());
+      return allocated() ? thePath.rbegin()->m_target : 0;
     }
   };
 
@@ -137,10 +141,14 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   }
 
   //! @return the total processing power of the edge nodes.
-  double totProcessing() const;
+  double totProcessing() const noexcept {
+    return theTotProcessing;
+  }
 
   //! @return the totale net rate of currently active applications.
-  double totNetRate() const;
+  double totNetRate() const noexcept {
+    return theTotNetRate;
+  }
 
   /**
    * @brief Allocate a new application, if possible.
@@ -164,6 +172,9 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   static constexpr uint64_t BLOCKED = std::numeric_limits<uint64_t>::max();
 
  private:
+  static constexpr double EPSILON      = 1e-5; // to break ties arbitrarily
+  static constexpr double MIN_CAPACITY = 0.1;
+
   // data members initialized in configure()
   MecQkdOnlineAlgo                          theAlgorithm;
   std::unique_ptr<support::RealRvInterface> theRv;
@@ -172,8 +183,11 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   std::set<unsigned long>                   theEdgeNodes;
 
   // internal data structure
-  uint64_t    theNextId     = 0;
-  std::size_t theSignalling = 0;
+  uint64_t                       theNextId     = 0;
+  std::size_t                    theSignalling = 0;
+  std::map<uint64_t, Allocation> theActiveApps;
+  double                         theTotProcessing = 0;
+  double                         theTotNetRate    = 0;
 
   // used only with Policy014
   // key: user node
@@ -183,8 +197,14 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   // map of K paths from all user nodes to all edge nodes
   std::map<unsigned long, std::map<unsigned long, std::vector<Path>>> thePaths;
 
-  // Used with Policy04 to compute at most aK paths from user to edge nodes.
+  // Used with Policy014 to compute at most aK paths from user to edge nodes.
   void computeAllUserEdgePaths(const std::size_t aK);
+
+  // Try to allocate app with Policy014.
+  void addPolicy014(Allocation& aApp);
+
+  // Print the paths.
+  std::string pathsToString();
 };
 
 } // namespace qr
