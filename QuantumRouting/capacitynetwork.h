@@ -65,6 +65,7 @@ class CapacityNetwork : public Network
  public:
   FRIEND_TEST(TestCapacityNetwork, test_min_capacity_edges);
   FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path);
+  FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path_alt);
 
   using Graph =
       boost::adjacency_list<boost::listS,
@@ -267,6 +268,22 @@ class CapacityNetwork : public Network
    */
   static void removeCapacityFromPath(const VertexDescriptor               aSrc,
                                      const std::vector<VertexDescriptor>& aPath,
+                                     const double                aCapacity,
+                                     const std::optional<double> aMinCapacity,
+                                     Graph&                      aGraph);
+
+  /**
+   * @brief Remove the capacity from all the edges along a path.
+   *
+   * @param aPath The path
+   * @param aCapacity The capacity to be removed (if negative it is added).
+   * @param aMinCapacity If specified,remove the edge with a smaller residual.
+   * @param aGraph The network.
+   *
+   * @throw std::runtime_error if one of the edges in the path does not exist in
+   * the graph.
+   */
+  static void removeCapacityFromPath(const Path&                 aPath,
                                      const double                aCapacity,
                                      const std::optional<double> aMinCapacity,
                                      Graph&                      aGraph);

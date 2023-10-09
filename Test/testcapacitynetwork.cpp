@@ -396,5 +396,62 @@ TEST_F(TestCapacityNetwork, test_remove_capacity_from_path) {
   ASSERT_EQ(0, myNetwork.numEdges());
 }
 
+TEST_F(TestCapacityNetwork, test_remove_capacity_from_path_alt) {
+  std::size_t     myDiameter;
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  ASSERT_FLOAT_EQ(17.0, myNetwork.totalCapacity());
+  ASSERT_EQ(Set({1, 2, 3, 4}), myNetwork.reachableNodes(0, 99, myDiameter)[0]);
+  const auto& myGraph = myNetwork.theGraph;
+
+  // cannot remove that much capacity from 0->1
+  ASSERT_THROW(CapacityNetwork::removeCapacityFromPath(
+                   {boost::edge(0, 1, myGraph).first},
+                   99.0,
+                   std::nullopt,
+                   myNetwork.theGraph),
+               std::runtime_error);
+
+  // remove completely the capacity from 0->1, but leave the edge
+  CapacityNetwork::removeCapacityFromPath({boost::edge(0, 1, myGraph).first},
+                                          4.0,
+                                          std::nullopt,
+                                          myNetwork.theGraph);
+  ASSERT_FLOAT_EQ(13.0, myNetwork.totalCapacity());
+  ASSERT_EQ(Set({1, 2, 3, 4}), myNetwork.reachableNodes(0, 99, myDiameter)[0]);
+
+  // add some capacity to 0->1
+  CapacityNetwork::removeCapacityFromPath({boost::edge(0, 1, myGraph).first},
+                                          -1.0,
+                                          std::nullopt,
+                                          myNetwork.theGraph);
+  ASSERT_FLOAT_EQ(14.0, myNetwork.totalCapacity());
+
+  // remove completely the capacity from 0->1 and prune the edge, too
+  CapacityNetwork::removeCapacityFromPath(
+      0, Vec({1}), 1.0, 0.1, myNetwork.theGraph);
+  ASSERT_FLOAT_EQ(13.0, myNetwork.totalCapacity());
+  ASSERT_EQ(Set({3, 4}), myNetwork.reachableNodes(0, 99, myDiameter)[0]);
+
+  // remove capacity from 1->4->3 and prune the edges, as needed
+  CapacityNetwork::removeCapacityFromPath(
+      {boost::edge(0, 4, myGraph).first, boost::edge(4, 3, myGraph).first},
+      1.0,
+      0.1,
+      myNetwork.theGraph);
+  ASSERT_FLOAT_EQ(11.0, myNetwork.totalCapacity());
+  ASSERT_EQ(Set({}), myNetwork.reachableNodes(0, 99, myDiameter)[0]);
+
+  // remove all edges, the graph is now empty
+  CapacityNetwork::removeCapacityFromPath(
+      {boost::edge(4, 3, myGraph).first}, 0.0, 99, myNetwork.theGraph);
+  CapacityNetwork::removeCapacityFromPath(
+      {boost::edge(1, 2, myGraph).first, boost::edge(2, 3, myGraph).first},
+      0.0,
+      99,
+      myNetwork.theGraph);
+  ASSERT_FLOAT_EQ(0.0, myNetwork.totalCapacity());
+  ASSERT_EQ(0, myNetwork.numEdges());
+}
+
 } // namespace qr
 } // namespace uiiit

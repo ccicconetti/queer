@@ -61,10 +61,10 @@ CapacityNetwork::CapacityNetwork(
     , theGraph() {
   std::set<std::string> myFound;
   for (const auto& myEdge : aEdges) {
-    if (myFound
-            .emplace(std::to_string(myEdge.first) + "-" +
-                     std::to_string(myEdge.second))
-            .second == false) {
+    if (not myFound
+                .emplace(std::to_string(myEdge.first) + "-" +
+                         std::to_string(myEdge.second))
+                .second) {
       VLOG(2) << "duplicate edge found: (" << myEdge.first << ','
               << myEdge.second;
       continue;
@@ -460,6 +460,47 @@ void CapacityNetwork::removeCapacityFromPath(
 
     // move to the next edge
     mySrc = myDst;
+  }
+}
+
+void CapacityNetwork::removeCapacityFromPath(
+    const Path&                 aPath,
+    const double                aCapacity,
+    const std::optional<double> aMinCapacity,
+    Graph&                      aGraph) {
+  const auto V            = boost::num_vertices(aGraph);
+  auto       myCapacities = boost::get(boost::edge_weight, aGraph);
+
+  // first pass: only checks, throw if needed
+  for (const auto& edge : aPath) {
+    if (edge.m_source >= V) {
+      throw std::runtime_error("vertex does not exist: " +
+                               std::to_string(edge.m_source));
+    }
+    if (edge.m_target >= V) {
+      throw std::runtime_error("vertex does not exist: " +
+                               std::to_string(edge.m_target));
+    }
+    if (not boost::edge(edge.m_source, edge.m_target, aGraph).second) {
+      throw std::runtime_error("edge (" + std::to_string(edge.m_source) + "," +
+                               std::to_string(edge.m_target) +
+                               ") does not exist");
+    }
+    const auto& myCapacity = myCapacities[edge];
+    if (myCapacity < aCapacity) {
+      throw std::runtime_error(
+          "cannot remove capacity " + std::to_string(aCapacity) + " > " +
+          std::to_string(myCapacity) + " for edge " + ::toString(edge));
+    }
+  }
+
+  // second pass: no checks, just to the job
+  for (const auto& edge : aPath) {
+    auto& myCapacity = myCapacities[edge];
+    myCapacity -= aCapacity;
+    if (aMinCapacity.has_value() and myCapacity < aMinCapacity.value()) {
+      boost::remove_edge(edge, aGraph);
+    }
   }
 }
 
