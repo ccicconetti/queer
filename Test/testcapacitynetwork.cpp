@@ -47,7 +47,7 @@ namespace uiiit {
 namespace qr {
 
 struct TestCapacityNetwork : public ::testing::Test {
-  CapacityNetwork::EdgeVector exampleEdges() {
+  static CapacityNetwork::EdgeVector exampleEdges() {
     return CapacityNetwork::EdgeVector({
         {0, 1},
         {1, 2},
@@ -81,7 +81,7 @@ struct TestCapacityNetwork : public ::testing::Test {
   //  |             | |           |
   //  +----> 2 <----+ +---> 5 ----+
   //
-  CapacityNetwork::WeightVector anotherExampleEdgeWeights() {
+  static CapacityNetwork::WeightVector anotherExampleEdgeWeights() {
     return CapacityNetwork::WeightVector({
         {0, 1, 1},
         {0, 2, 1},
@@ -100,14 +100,14 @@ struct TestCapacityNetwork : public ::testing::Test {
 
   using Vec = std::vector<unsigned long>;
   using Set = std::set<unsigned long>;
-  Set vecToSet(const Vec& aVec) {
+  static Set vecToSet(const Vec& aVec) {
     Set ret;
     for (const auto& elem : aVec) {
       ret.insert(elem);
     }
     return ret;
   }
-  bool setInSet(const Set& aOuter, const Set& aInner) {
+  static bool setInSet(const Set& aOuter, const Set& aInner) {
     for (const auto& elem : aInner) {
       if (aOuter.count(elem) > 0) {
         return true;
@@ -294,6 +294,20 @@ TEST_F(TestCapacityNetwork, test_min_capacity_edges) {
                                                G));
   ASSERT_FLOAT_EQ(std::numeric_limits<double>::max(),
                   CapacityNetwork::minCapacity(P(), G));
+
+  // non-consecutive edges
+  ASSERT_FLOAT_EQ(4,
+                  CapacityNetwork::minCapacity(P({
+                                                   boost::edge(0, 1, G).first,
+                                                   boost::edge(2, 3, G).first,
+                                               }),
+                                               G));
+  ASSERT_FLOAT_EQ(1,
+                  CapacityNetwork::minCapacity(P({
+                                                   boost::edge(0, 1, G).first,
+                                                   boost::edge(0, 4, G).first,
+                                               }),
+                                               G));
 }
 
 TEST_F(TestCapacityNetwork, test_make_capacity_network_waxman) {
