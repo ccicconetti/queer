@@ -300,9 +300,11 @@ class CapacityNetwork : public Network
       const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
           aPropFunctor) const;
 
- protected:
   Graph theGraph;
 };
+
+//! @return a human-readable single-line representation of the path.
+std::string toString(const CapacityNetwork::Path& aPath);
 
 } // namespace qr
 } // namespace uiiit

@@ -42,12 +42,38 @@ namespace uiiit {
 namespace qr {
 
 struct TestMecQkdOnlineNetwork : public ::testing::Test {
-  TestMecQkdOnlineNetwork()
-      : theRv({0.1, 0.4, 0.25, 0.9, 0.6, 0.7, 0.7, 0.3}) {
+  TestMecQkdOnlineNetwork() {
     // noop
   }
 
-  support::DeterministicRv<std::vector<double>> theRv;
+  //   +--> 1 --> 2 --> 3 --> 4
+  //  /
+  // 0 --> 5 --> 6
+  //  \                   all weights are 2, except 3->4 which is 1
+  //   +---> 7
+  static CapacityNetwork::WeightVector exampleEdgeWeights() {
+    return CapacityNetwork::WeightVector({
+        {0, 1, 2},
+        {1, 2, 2},
+        {2, 3, 2},
+        {3, 4, 1},
+        {0, 5, 2},
+        {5, 6, 2},
+        {0, 7, 2},
+    });
+  }
+
+  static std::unique_ptr<MecQkdOnlineNetwork>
+  makeNetwork(const MecQkdOnlineAlgo aAlgo) {
+    auto ret = std::make_unique<MecQkdOnlineNetwork>(exampleEdgeWeights());
+    ret->configure(
+        aAlgo,
+        std::make_unique<support::DeterministicRv<std::vector<double>>>(
+            std::vector<double>({0.1, 0.4, 0.25, 0.9, 0.6, 0.7, 0.7, 0.3})),
+        {0},
+        {{3, 5}, {4, 2}, {6, 10}, {7, 1}});
+    return ret;
+  }
 };
 
 TEST_F(TestMecQkdOnlineNetwork, test_algorithms) {
@@ -55,6 +81,10 @@ TEST_F(TestMecQkdOnlineNetwork, test_algorithms) {
     const auto myAlgoString = toString(myAlgo);
     ASSERT_EQ(myAlgo, mecQkdOnlineAlgofromString(myAlgoString));
   }
+}
+
+TEST_F(TestMecQkdOnlineNetwork, test_policy014_k_1) {
+  auto myNetwork = makeNetwork(MecQkdOnlineAlgo::Policy014_k1);
 }
 
 } // namespace qr

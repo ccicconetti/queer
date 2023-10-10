@@ -203,6 +203,9 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   // Try to allocate app with Policy014.
   void addPolicy014(Allocation& aApp);
 
+  // Allocate a given app to a path.
+  void allocate(Allocation& aApp, const Path& aPath);
+
   // Print the paths.
   std::string pathsToString();
 };

@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "yen/yen_ksp.hpp"
 
+#include <algorithm>
 #include <boost/graph/subgraph.hpp>
 #include <glog/logging.h>
 #include <optional>
@@ -250,6 +251,7 @@ void MecQkdOnlineNetwork::del(const uint64_t aAppId) {
 }
 
 void MecQkdOnlineNetwork::computeAllUserEdgePaths(const std::size_t aK) {
+  thePaths.clear(); // clear from previous assignment
   for (const auto& myUserNode : theUserNodes) {
     for (const auto& myEdgeNode : theEdgeNodes) {
       auto myIndexMap = boost::get(boost::vertex_index, theGraph);
@@ -261,12 +263,19 @@ void MecQkdOnlineNetwork::computeAllUserEdgePaths(const std::size_t aK) {
           myIndexMap,
           aK);
       assert(myResults.size() <= aK);
+      assert(thePaths.find(myUserNode) == thePaths.end() or
+             thePaths[myUserNode].find(myEdgeNode) ==
+                 thePaths[myUserNode].end());
       for (const auto& myResult : myResults) {
         assert(static_cast<std::size_t>(myResult.first) ==
                myResult.second.size()); // path length
         thePaths[myUserNode][myEdgeNode].emplace_back(myResult.second);
         assert(thePaths[myUserNode][myEdgeNode].size() <= aK);
       }
+      assert(not myResults.empty() or
+             thePaths.find(myUserNode) == thePaths.end() or
+             thePaths[myUserNode].find(myEdgeNode) ==
+                 thePaths[myUserNode].end());
     }
   }
   if (VLOG_IS_ON(2)) {
@@ -287,35 +296,117 @@ void MecQkdOnlineNetwork::addPolicy014(Allocation& aApp) {
   // value: the candidate edge node
   std::map<double, Path> myCandidates;
   for (const auto& elem : it->second) {
-    if (elem.second.empty()) {
-      // skip edge nodes for which there are not paths
-      continue;
-    }
-    auto jt = theEdgeProcessing.find(elem.first);
-    assert(jt != theEdgeProcessing.end());
+    assert(not elem.second.empty());
+    auto kt = theEdgeProcessing.find(elem.first);
+    assert(kt != theEdgeProcessing.end());
     if (minCapacity(elem.second.front(), theGraph) >= aApp.theRate and
-        jt->second >= aApp.theLoad) {
-      myCandidates.emplace(jt->second - aApp.theLoad + (*theRv)() * EPSILON,
+        kt->second >= aApp.theLoad) {
+      myCandidates.emplace(kt->second - aApp.theLoad + (*theRv)() * EPSILON,
                            elem.second.front());
     }
   }
 
-  // select the candidate that minimizes the residual processing, if any
   if (not myCandidates.empty()) {
-    aApp.theId   = theNextId++;
-    aApp.thePath = myCandidates.begin()->second;
-    assert(theEdgeProcessing[aApp.edgeNode()] >= aApp.theLoad);
-    theEdgeProcessing[aApp.edgeNode()] -= aApp.theLoad;
-    theTotProcessing -= aApp.theLoad;
-    assert(minCapacity(aApp.thePath, theGraph) >= aApp.theRate);
-    removeCapacityFromPath(aApp.thePath, aApp.theRate, MIN_CAPACITY, theGraph);
-    theTotNetRate += aApp.theRate;
-    theActiveApps.emplace(aApp.theId,
-                          aApp); // keep a copy in the active apps
-  }
+    // select the candidate that minimizes the residual processing
+    allocate(aApp, myCandidates.begin()->second);
 
-  // if not found, then search in the secondary paths
-  // XXX
+  } else {
+    // if not found, then search in the secondary paths
+    for (const auto& elem : it->second) {
+      assert(not elem.second.empty());
+
+      // skip all the paths if the edge node cannot allocate the new app
+      auto kt = theEdgeProcessing.find(elem.first);
+      assert(kt != theEdgeProcessing.end());
+      if (kt->second < aApp.theLoad) {
+        continue;
+      }
+
+      // look into all the secondary paths, if any
+      for (auto jt = std::next(elem.second.begin()); jt != elem.second.end();
+           ++jt) {
+        // compute the total rate from all other applications that would have
+        // to be migrated to this path, if selected
+        const auto myMigrationRate = std::accumulate(
+            theActiveApps.begin(),
+            theActiveApps.end(),
+            0.0,
+            [&aApp, &elem](auto aSum, const auto& aAnotherApp) {
+              if (aAnotherApp.second.theUserNode == aApp.theUserNode and
+                  aAnotherApp.second.edgeNode() == elem.first) {
+                assert(aAnotherApp.second.thePath == elem.second.front());
+                return aSum + aAnotherApp.second.theRate;
+              }
+              return aSum;
+            });
+
+        const auto myIntersection = intersect(*jt, elem.second.front());
+        const auto myMinCapacityIntersection =
+            minCapacity(myIntersection, theGraph);
+        const auto myDifference = difference(*jt, elem.second.front());
+        const auto myMinCapacityDifference =
+            minCapacity(myDifference, theGraph);
+
+        if (myMinCapacityIntersection >= aApp.theRate and
+            myMinCapacityDifference >= (aApp.theRate + myMigrationRate)) {
+          // add the current (secondary) path as a candidate iff the
+          // following conditions are met:
+          // 1. the capacity in the intersection between the primary and
+          //    secondary path can withstand the new app
+          // 2. the capacity in the edges of the secondary that are not already
+          //    in the primary path (i.e., the difference path) can withstand
+          //    the new app and all the active apps that would be migrated if
+          //    the new app is allocated to this path
+          // 3. the edge node has sufficient capacity to support the processing
+          //    requirements of the new app (this condition is checked in the
+          //    outer loop)
+          myCandidates.emplace(kt->second - aApp.theLoad + (*theRv)() * EPSILON,
+                               *jt);
+          VLOG(2) << "candidate found in a secondary path, app "
+                  << aApp.toString() << ", migration rate " << myMigrationRate
+                  << ", primary path " << toString(elem.second.front())
+                  << ", secondary path " << toString(*jt) << ", intersection "
+                  << toString(myIntersection) << " ("
+                  << myMinCapacityIntersection << "), difference "
+                  << toString(myDifference) << " (" << myMinCapacityDifference
+                  << "), residual processing " << kt->second;
+        }
+      }
+    }
+
+    // select the candidate that minimizes the residual processing, if any
+    if (not myCandidates.empty()) {
+      const auto myPath     = myCandidates.begin()->second;
+      const auto myEdgeNode = myPath.crbegin()->m_target;
+      auto       ht         = it->second.find(myEdgeNode);
+      assert(ht != it->second.end());
+      auto& myPaths = ht->second;
+
+      // migrate all active apps with same user/edge node to the path selected
+      for (auto& myApp : theActiveApps) {
+        if (myApp.second.theUserNode == aApp.theUserNode and
+            myApp.second.edgeNode() == myEdgeNode) {
+          removeCapacityFromPath(myApp.second.thePath,
+                                 -myApp.second.theRate,
+                                 std::nullopt,
+                                 theGraph);
+          assert(minCapacity(myPath, theGraph) >= myApp.second.theRate);
+          removeCapacityFromPath(
+              myPath, myApp.second.theRate, std::nullopt, theGraph);
+          myApp.second.thePath = myPath;
+        }
+      }
+
+      // make the secondary path the new primary for this user-edge pair
+      auto myPathIt = std::find(myPaths.begin(), myPaths.end(), myPath);
+      assert(myPathIt != myPaths.begin());
+      assert(myPathIt != myPaths.end());
+      std::iter_swap(myPaths.begin(), myPathIt);
+
+      // allocate the app on the selected path
+      allocate(aApp, myPath);
+    }
+  }
 }
 
 std::string MecQkdOnlineNetwork::pathsToString() {
@@ -323,18 +414,25 @@ std::string MecQkdOnlineNetwork::pathsToString() {
   for (const auto& myOuter : thePaths) {
     for (const auto& myInner : myOuter.second) {
       for (const auto& myPath : myInner.second) {
-        ret << myOuter.first << " -> " << myInner.first << " ["
-            << ::toString(myPath,
-                          ", ",
-                          [](const auto& elem) {
-                            return "(" + std::to_string(elem.m_source) + "," +
-                                   std::to_string(elem.m_target) + ")";
-                          })
-            << "]\n";
+        ret << myOuter.first << " -> " << myInner.first << ' '
+            << toString(myPath) << '\n';
       }
     }
   }
   return ret.str();
+}
+
+void MecQkdOnlineNetwork::allocate(Allocation& aApp, const Path& aPath) {
+  aApp.theId   = theNextId++;
+  aApp.thePath = aPath;
+  assert(theEdgeProcessing[aApp.edgeNode()] >= aApp.theLoad);
+  theEdgeProcessing[aApp.edgeNode()] -= aApp.theLoad;
+  theTotProcessing -= aApp.theLoad;
+  assert(minCapacity(aApp.thePath, theGraph) >= aApp.theRate);
+  removeCapacityFromPath(aApp.thePath, aApp.theRate, std::nullopt, theGraph);
+  theTotNetRate += aApp.theRate;
+  theActiveApps.emplace(aApp.theId,
+                        aApp); // keep a copy in the active apps
 }
 
 } // namespace qr

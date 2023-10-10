@@ -549,5 +549,14 @@ std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
   return {myMin, myMax};
 }
 
+std::string toString(const CapacityNetwork::Path& aPath) {
+  std::stringstream ret;
+  ret << '[' << ::toString(aPath, ", ", [](const auto& elem) {
+    return "(" + std::to_string(elem.m_source) + "," +
+           std::to_string(elem.m_target) + ")";
+  }) << ']';
+  return ret.str();
+}
+
 } // namespace qr
 } // namespace uiiit
