@@ -467,5 +467,115 @@ TEST_F(TestCapacityNetwork, test_remove_capacity_from_path_alt) {
   ASSERT_EQ(0, myNetwork.numEdges());
 }
 
+TEST_F(TestCapacityNetwork, test_intersection) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  const auto&     G = myNetwork.theGraph;
+  using P           = CapacityNetwork::Path;
+
+  ASSERT_EQ(P({
+                boost::edge(1, 2, G).first,
+                boost::edge(0, 1, G).first,
+                boost::edge(2, 3, G).first,
+            }),
+            CapacityNetwork::intersect(P({
+                                           boost::edge(0, 1, G).first,
+                                           boost::edge(1, 2, G).first,
+                                           boost::edge(2, 3, G).first,
+                                       }),
+                                       P({
+                                           boost::edge(0, 1, G).first,
+                                           boost::edge(1, 2, G).first,
+                                           boost::edge(2, 3, G).first,
+                                       })));
+
+  ASSERT_EQ(P({
+                boost::edge(1, 2, G).first,
+            }),
+            CapacityNetwork::intersect(P({
+                                           boost::edge(0, 1, G).first,
+                                           boost::edge(1, 2, G).first,
+                                           boost::edge(2, 3, G).first,
+                                       }),
+                                       P({
+                                           boost::edge(0, 4, G).first,
+                                           boost::edge(1, 2, G).first,
+                                       })));
+
+  ASSERT_EQ(P({}),
+            CapacityNetwork::intersect(P({
+                                           boost::edge(0, 1, G).first,
+                                           boost::edge(1, 2, G).first,
+                                           boost::edge(2, 3, G).first,
+                                       }),
+                                       P({})));
+
+  ASSERT_EQ(P({}),
+            CapacityNetwork::intersect(P({}),
+                                       P({
+                                           boost::edge(0, 1, G).first,
+                                           boost::edge(1, 2, G).first,
+                                           boost::edge(2, 3, G).first,
+                                       })));
+
+  ASSERT_EQ(P({}), CapacityNetwork::intersect(P({}), P({})));
+}
+
+TEST_F(TestCapacityNetwork, test_difference) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  const auto&     G = myNetwork.theGraph;
+  using P           = CapacityNetwork::Path;
+
+  ASSERT_EQ(P({
+                boost::edge(0, 1, G).first,
+                boost::edge(1, 2, G).first,
+                boost::edge(2, 3, G).first,
+            }),
+            CapacityNetwork::difference(P({
+                                            boost::edge(0, 1, G).first,
+                                            boost::edge(1, 2, G).first,
+                                            boost::edge(2, 3, G).first,
+                                        }),
+                                        P({
+                                            boost::edge(0, 4, G).first,
+                                            boost::edge(4, 3, G).first,
+                                        })));
+
+  ASSERT_EQ(P({
+                boost::edge(2, 3, G).first,
+            }),
+            CapacityNetwork::difference(P({
+                                            boost::edge(0, 1, G).first,
+                                            boost::edge(1, 2, G).first,
+                                            boost::edge(2, 3, G).first,
+                                        }),
+                                        P({
+                                            boost::edge(0, 1, G).first,
+                                            boost::edge(1, 2, G).first,
+                                            boost::edge(0, 4, G).first,
+                                        })));
+
+  ASSERT_EQ(P({
+                boost::edge(0, 1, G).first,
+                boost::edge(1, 2, G).first,
+                boost::edge(2, 3, G).first,
+            }),
+            CapacityNetwork::difference(P({
+                                            boost::edge(0, 1, G).first,
+                                            boost::edge(1, 2, G).first,
+                                            boost::edge(2, 3, G).first,
+                                        }),
+                                        P({})));
+
+  ASSERT_EQ(P({}),
+            CapacityNetwork::difference(P({}),
+                                        P({
+                                            boost::edge(0, 1, G).first,
+                                            boost::edge(1, 2, G).first,
+                                            boost::edge(2, 3, G).first,
+                                        })));
+
+  ASSERT_EQ(P({}), CapacityNetwork::difference(P({}), P({})));
+}
+
 } // namespace qr
 } // namespace uiiit

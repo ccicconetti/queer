@@ -66,6 +66,8 @@ class CapacityNetwork : public Network
   FRIEND_TEST(TestCapacityNetwork, test_min_capacity_edges);
   FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path);
   FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path_alt);
+  FRIEND_TEST(TestCapacityNetwork, test_intersection);
+  FRIEND_TEST(TestCapacityNetwork, test_difference);
 
   using Graph =
       boost::adjacency_list<boost::listS,
@@ -287,6 +289,12 @@ class CapacityNetwork : public Network
                                      const double                aCapacity,
                                      const std::optional<double> aMinCapacity,
                                      Graph&                      aGraph);
+
+  //! @return the intersection between the two paths.
+  static Path intersect(const Path& aLhsPath, const Path& aRhsPath);
+
+  //! @return the difference between the two paths.
+  static Path difference(const Path& aLhsPath, const Path& aRhsPath);
 
   std::pair<std::size_t, std::size_t> minMaxVertexProp(
       const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&

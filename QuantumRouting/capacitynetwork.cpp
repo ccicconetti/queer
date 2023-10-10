@@ -504,6 +504,33 @@ void CapacityNetwork::removeCapacityFromPath(
   }
 }
 
+CapacityNetwork::Path CapacityNetwork::intersect(const Path& aLhsPath,
+                                                 const Path& aRhsPath) {
+  std::set<EdgeDescriptor> myCommonEdges;
+  for (const auto& edge : aLhsPath) {
+    if (std::find(aRhsPath.begin(), aRhsPath.end(), edge) != aRhsPath.end()) {
+      myCommonEdges.emplace(edge);
+    }
+  }
+  for (const auto& edge : aRhsPath) {
+    if (std::find(aLhsPath.begin(), aLhsPath.end(), edge) != aLhsPath.end()) {
+      myCommonEdges.emplace(edge);
+    }
+  }
+  return {myCommonEdges.begin(), myCommonEdges.end()};
+}
+
+CapacityNetwork::Path CapacityNetwork::difference(const Path& aLhsPath,
+                                                  const Path& aRhsPath) {
+  Path ret;
+  for (const auto& edge : aLhsPath) {
+    if (std::find(aRhsPath.begin(), aRhsPath.end(), edge) == aRhsPath.end()) {
+      ret.emplace_back(edge);
+    }
+  }
+  return ret;
+}
+
 std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
     const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
         aPropFunctor) const {
