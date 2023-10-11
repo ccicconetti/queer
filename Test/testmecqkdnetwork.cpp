@@ -118,7 +118,7 @@ TEST_F(TestMecQkdNetwork, test_allocation_single) {
     ASSERT_FLOAT_EQ(13.0, myNetwork->totalCapacity());
 
     std::vector<MecQkdNetwork::Allocation> myOutput;
-    myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.5, 2.0});
+    myOutput.emplace_back(0, 1.5, 2.0);
 
     myNetwork->allocate(myOutput, myAlgo, theRv);
     ASSERT_EQ(1, myOutput.size());
@@ -149,12 +149,12 @@ TEST_F(TestMecQkdNetwork, test_allocation_multi_spf) {
   auto myNetwork = makeNetwork();
 
   std::vector<MecQkdNetwork::Allocation> myOutput;
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 2.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 99.0, 0.1}); // unfeas
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 2.0, 0.1);
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 99.0, 0.1); // unfeas
 
   myNetwork->allocate(myOutput, MecQkdAlgo::SpfBlind, theRv);
   ASSERT_EQ(6, myOutput.size());
@@ -173,12 +173,12 @@ TEST_F(TestMecQkdNetwork, test_allocation_multi_bf) {
   auto myNetwork = makeNetwork();
 
   std::vector<MecQkdNetwork::Allocation> myOutput;
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 1.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 1.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 2.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 1.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 1.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 99.0});
+  myOutput.emplace_back(0, 0.1, 1.0);
+  myOutput.emplace_back(0, 0.1, 1.0);
+  myOutput.emplace_back(0, 0.1, 2.0);
+  myOutput.emplace_back(0, 0.1, 1.0);
+  myOutput.emplace_back(0, 0.1, 1.0);
+  myOutput.emplace_back(0, 0.1, 99.0);
 
   myNetwork->allocate(myOutput, MecQkdAlgo::BestFitBlind, theRv);
   ASSERT_EQ(6, myOutput.size());
@@ -197,11 +197,11 @@ TEST_F(TestMecQkdNetwork, test_allocation_spf_static) {
   auto myNetwork = makeNetwork();
 
   std::vector<MecQkdNetwork::Allocation> myOutput;
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 3.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 8.0});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 1.0, 0.1});
-  myOutput.emplace_back(MecQkdNetwork::Allocation{0, 0.1, 0.1});
+  myOutput.emplace_back(0, 3.0, 0.1);
+  myOutput.emplace_back(0, 0.1, 8.0);
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 1.0, 0.1);
+  myOutput.emplace_back(0, 0.1, 0.1);
 
   myNetwork->allocate(myOutput, MecQkdAlgo::SpfStatic, theRv);
   ASSERT_EQ(5, myOutput.size());
