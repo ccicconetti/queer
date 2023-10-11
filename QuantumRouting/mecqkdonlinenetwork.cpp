@@ -184,6 +184,16 @@ void MecQkdOnlineNetwork::configure(
   }
   theEdgeProcessing = aEdgeProcessing;
 
+  // save the highest processing capacity
+  theHighestProcessing =
+      std::min_element(theEdgeProcessing.begin(),
+                       theEdgeProcessing.end(),
+                       [](const auto& aLhs, const auto& aRhs) {
+                         return aLhs.second > aRhs.second;
+                       })
+          ->second;
+
+  // compute static primary/secondary paths for 014 policies
   if (theAlgorithm == MecQkdOnlineAlgo::Policy014_k1 or
       theAlgorithm == MecQkdOnlineAlgo::Policy014_k3) {
     computeAllUserEdgePaths(theAlgorithm == MecQkdOnlineAlgo::Policy014_k1 ? 1 :
@@ -191,6 +201,7 @@ void MecQkdOnlineNetwork::configure(
     assert(not thePaths.empty());
   }
 
+  // compute the initial amount of total processing capabilities
   theTotProcessing = std::accumulate(
       theEdgeProcessing.begin(),
       theEdgeProcessing.end(),
@@ -209,12 +220,15 @@ void MecQkdOnlineNetwork::configure(
                                 << ")";
                             return ret.str();
                           })
-            << "]";
+            << "], highest processing " << theHighestProcessing;
 }
 
 void MecQkdOnlineNetwork::add(Allocation& aApp) {
-  VLOG(2) << "request to add new app: " << aApp.toString();
+  // reset the output values
+  aApp.theId   = BLOCKED;
+  aApp.thePath = Path();
 
+  // try to allocated the new app
   switch (theAlgorithm) {
     case MecQkdOnlineAlgo::NotInitialized:
       throw std::runtime_error("network not configured");
@@ -226,6 +240,7 @@ void MecQkdOnlineNetwork::add(Allocation& aApp) {
     case MecQkdOnlineAlgo::Policy015_reuse:
       throw std::runtime_error("policy not yet implemented");
   }
+  VLOG(2) << "request to add new app: " << aApp.toString();
 }
 
 void MecQkdOnlineNetwork::del(const uint64_t aAppId) {
@@ -360,8 +375,10 @@ void MecQkdOnlineNetwork::addPolicy014(Allocation& aApp) {
           // 3. the edge node has sufficient capacity to support the processing
           //    requirements of the new app (this condition is checked in the
           //    outer loop)
-          myCandidates.emplace(kt->second - aApp.theLoad + (*theRv)() * EPSILON,
-                               *jt);
+          myCandidates.emplace(
+              theHighestProcessing * static_cast<double>(jt->size()) +
+                  kt->second - aApp.theLoad + (*theRv)() * EPSILON,
+              *jt);
           VLOG(2) << "candidate found in a secondary path, app "
                   << aApp.toString() << ", migration rate " << myMigrationRate
                   << ", primary path " << toString(elem.second.front())
@@ -397,10 +414,18 @@ void MecQkdOnlineNetwork::addPolicy014(Allocation& aApp) {
         }
       }
 
-      // make the secondary path the new primary for this user-edge pair
       auto myPathIt = std::find(myPaths.begin(), myPaths.end(), myPath);
       assert(myPathIt != myPaths.begin());
       assert(myPathIt != myPaths.end());
+
+      // add the signalling required to switch from primary to secondary
+      const auto myDeltaSignalling =
+          difference(*myPaths.begin(), *myPathIt).size() +
+          difference(*myPathIt, *myPaths.begin()).size();
+      assert(myDeltaSignalling > 0);
+      theSignalling += myDeltaSignalling;
+
+      // make the secondary path the new primary for this user-edge pair
       std::iter_swap(myPaths.begin(), myPathIt);
 
       // allocate the app on the selected path

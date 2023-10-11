@@ -205,7 +205,7 @@ struct Output {
              << ", avg apps active " << theAvgActiveApps << ", avg path length "
              << theAvgPathLength << ", total net rate " << theTotalNetRate
              << " b/s, signalling rate " << theSignallingRate
-             << " links/s, execution time " << theExecutionTime << " s";
+             << " links/request, execution time " << theExecutionTime << " s";
     return myStream.str();
   }
 
@@ -416,9 +416,13 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
     myOutput.theResidualProcessing = myResidualProcessing / myEffectiveDuration;
     myOutput.theTotalNetRate       = myTotNetRate / myEffectiveDuration;
     myOutput.theAvgActiveApps      = myAvgActiveApps / myEffectiveDuration;
+  }
+  if (myAcceptedApps == 0) {
+    myOutput.theSignallingRate = -1;
+  } else {
     myOutput.theSignallingRate =
         static_cast<double>(myNetwork->signalling() - mySignallingInitial) /
-        myEffectiveDuration;
+        static_cast<double>(myAcceptedApps);
   }
   if (myBlockedApps + myAcceptedApps == 0) {
     myOutput.theBlockingProbability = -1;

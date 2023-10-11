@@ -172,8 +172,7 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   static constexpr uint64_t BLOCKED = std::numeric_limits<uint64_t>::max();
 
  private:
-  static constexpr double EPSILON      = 1e-5; // to break ties arbitrarily
-  static constexpr double MIN_CAPACITY = 0.1;
+  static constexpr double EPSILON = 1e-5; // to break ties arbitrarily
 
   // data members initialized in configure()
   MecQkdOnlineAlgo                          theAlgorithm;
@@ -181,6 +180,7 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   std::set<unsigned long>                   theUserNodes;
   std::map<unsigned long, double>           theEdgeProcessing;
   std::set<unsigned long>                   theEdgeNodes;
+  double                                    theHighestProcessing = 0;
 
   // internal data structure
   uint64_t                       theNextId     = 0;
