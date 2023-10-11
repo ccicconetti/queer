@@ -68,6 +68,7 @@ class CapacityNetwork : public Network
   FRIEND_TEST(TestCapacityNetwork, test_remove_capacity_from_path_alt);
   FRIEND_TEST(TestCapacityNetwork, test_intersection);
   FRIEND_TEST(TestCapacityNetwork, test_difference);
+  FRIEND_TEST(TestCapacityNetwork, test_to_path);
 
   using Graph =
       boost::adjacency_list<boost::listS,
@@ -295,6 +296,22 @@ class CapacityNetwork : public Network
 
   //! @return the difference between the two paths.
   static Path difference(const Path& aLhsPath, const Path& aRhsPath);
+
+  /**
+   * @brief Convert a vector of intermediate hops to a path.
+   *
+   * @param aSource The source node.
+   * @param aHops The intermediate hops until the destination.
+   * @param aGraph The network.
+   *
+   * @return the path from the source to all the intermediate hops. The returned
+   * path has the same cardinality as aHops.
+   *
+   * @throw std::runtime_error if an edge does not belong to the network.
+   */
+  static Path toPath(const unsigned long               aSource,
+                     const std::vector<unsigned long>& aHops,
+                     const Graph&                      aGraph);
 
   std::pair<std::size_t, std::size_t> minMaxVertexProp(
       const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&

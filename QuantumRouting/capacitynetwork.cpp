@@ -531,6 +531,27 @@ CapacityNetwork::Path CapacityNetwork::difference(const Path& aLhsPath,
   return ret;
 }
 
+CapacityNetwork::Path
+CapacityNetwork::toPath(const unsigned long               aSource,
+                        const std::vector<unsigned long>& aHops,
+                        const Graph&                      aGraph) {
+  Path ret;
+  for (size_t i = 0; i < aHops.size(); i++) {
+    EdgeDescriptor myEdge;
+    auto           myFound    = false;
+    const auto     u          = i == 0 ? aSource : aHops[i - 1];
+    const auto     v          = aHops[i];
+    std::tie(myEdge, myFound) = boost::edge(u, v, aGraph);
+    if (not myFound) {
+      throw std::runtime_error("edge (" + std::to_string(u) + "," +
+                               std::to_string(v) + ") does not exist");
+    }
+    ret.emplace_back(myEdge);
+  }
+  assert(ret.size() == aHops.size());
+  return ret;
+}
+
 std::pair<std::size_t, std::size_t> CapacityNetwork::minMaxVertexProp(
     const std::function<std::size_t(Graph::vertex_descriptor, const Graph&)>&
         aPropFunctor) const {

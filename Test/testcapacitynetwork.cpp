@@ -577,5 +577,28 @@ TEST_F(TestCapacityNetwork, test_difference) {
   ASSERT_EQ(P({}), CapacityNetwork::difference(P({}), P({})));
 }
 
+TEST_F(TestCapacityNetwork, test_to_path) {
+  CapacityNetwork myNetwork(exampleEdgeWeights());
+  const auto&     G = myNetwork.theGraph;
+  using P           = CapacityNetwork::Path;
+
+  ASSERT_EQ(P({
+                boost::edge(0, 1, G).first,
+                boost::edge(1, 2, G).first,
+                boost::edge(2, 3, G).first,
+            }),
+            CapacityNetwork::toPath(0, {1, 2, 3}, G));
+
+  ASSERT_EQ(P({boost::edge(2, 3, G).first}),
+            CapacityNetwork::toPath(2, {3}, G));
+
+  ASSERT_EQ(P({}), CapacityNetwork::toPath(2, {}, G));
+  ASSERT_EQ(P({}), CapacityNetwork::toPath(99, {}, G)); // node does not exist
+
+  ASSERT_THROW(CapacityNetwork::toPath(4, {2}, G), std::runtime_error);
+  ASSERT_THROW(CapacityNetwork::toPath(2, {99}, G), std::runtime_error);
+  ASSERT_THROW(CapacityNetwork::toPath(0, {1, 2, 99}, G), std::runtime_error);
+}
+
 } // namespace qr
 } // namespace uiiit
