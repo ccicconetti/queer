@@ -201,7 +201,10 @@ class MecQkdOnlineNetwork final : public CapacityNetwork
   void computeAllUserEdgePaths(const std::size_t aK);
 
   // Try to allocate app with Policy014.
-  void addPolicy014(Allocation& aApp);
+  Path addPolicy014(Allocation& aApp);
+
+  // Try to allocate app with Policy015.
+  Path addPolicy015(Allocation& aApp);
 
   // Allocate a given app to a path.
   void allocate(Allocation& aApp, const Path& aPath);

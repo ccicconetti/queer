@@ -273,5 +273,115 @@ TEST_F(TestMecQkdOnlineNetwork, test_policy014_k_3) {
   ASSERT_FLOAT_EQ(6, myNetwork->totNetRate());
 }
 
+TEST_F(TestMecQkdOnlineNetwork, test_policy015) {
+  auto myNetwork = makeNetwork(MecQkdOnlineAlgo::Policy015, false);
+  ASSERT_FLOAT_EQ(19, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(15, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(0, myNetwork->totNetRate());
+
+  // rate is too high
+  MecQkdOnlineNetwork::Allocation myApp(0, 8.1, 1);
+  myNetwork->add(myApp);
+  ASSERT_TRUE(not myApp.allocated());
+
+  // load is too high
+  myApp.theRate = 1;
+  myApp.theLoad = 8.1;
+  myNetwork->add(myApp);
+  ASSERT_TRUE(not myApp.allocated());
+
+  // allocate one app on the closest node
+  myApp.theRate = 2;
+  myApp.theLoad = 1;
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(10, myApp.edgeNode());
+  ASSERT_EQ(1, myApp.thePath.size());
+  ASSERT_FLOAT_EQ(17, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(14, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(2, myNetwork->totNetRate());
+
+  // allocate another one on the farthest node
+  myApp.theRate = 0.5;
+  myApp.theLoad = 5;
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(4, myApp.edgeNode());
+  ASSERT_EQ(4, myApp.thePath.size());
+  ASSERT_FLOAT_EQ(15, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(9, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(2.5, myNetwork->totNetRate());
+
+  // allocate another one on the same node
+  myApp.theRate = 0.5;
+  myApp.theLoad = 3;
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(4, myApp.edgeNode());
+  ASSERT_EQ(4, myApp.thePath.size());
+  ASSERT_FLOAT_EQ(13, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(6, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(3, myNetwork->totNetRate());
+
+  // allocate one on the two-hop path
+  myApp.theRate = 1;
+  myApp.theLoad = 1;
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(9, myApp.edgeNode());
+  ASSERT_EQ(2, myApp.thePath.size());
+  ASSERT_FLOAT_EQ(11, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(5, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(4, myNetwork->totNetRate());
+}
+
+TEST_F(TestMecQkdOnlineNetwork, test_policy015_alt) {
+  auto myNetwork = makeNetwork(MecQkdOnlineAlgo::Policy015, false);
+  ASSERT_FLOAT_EQ(19, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(15, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(0, myNetwork->totNetRate());
+
+  // allocate one app on the three-hop node
+  MecQkdOnlineNetwork::Allocation myApp(0, 1.1, 3);
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(7, myApp.edgeNode());
+
+  // subsequent allocations can be done on one of two nodes
+  std::set<unsigned long> myEdgeNodes;
+  myApp.theRate = 0.001;
+  myApp.theLoad = 0.1;
+  for (size_t i = 0; i < 10; i++) {
+    myNetwork->add(myApp);
+    ASSERT_TRUE(myApp.allocated());
+    myEdgeNodes.emplace(myApp.edgeNode());
+    myNetwork->del(myApp.theId);
+  }
+  ASSERT_EQ(std::set<unsigned long>({7, 10}), myEdgeNodes);
+}
+
+TEST_F(TestMecQkdOnlineNetwork, test_policy015_reuse) {
+  auto myNetwork = makeNetwork(MecQkdOnlineAlgo::Policy015_reuse, false);
+  ASSERT_FLOAT_EQ(19, myNetwork->totalCapacity());
+  ASSERT_FLOAT_EQ(15, myNetwork->totProcessing());
+  ASSERT_FLOAT_EQ(0, myNetwork->totNetRate());
+
+  // allocate one app on the three-hop node
+  MecQkdOnlineNetwork::Allocation myApp(0, 1.1, 3);
+  myNetwork->add(myApp);
+  ASSERT_TRUE(myApp.allocated());
+  ASSERT_EQ(7, myApp.edgeNode());
+
+  // all subsequent allocations are done on the same node
+  myApp.theRate = 0.001;
+  myApp.theLoad = 0.1;
+  for (size_t i = 0; i < 10; i++) {
+    myNetwork->add(myApp);
+    ASSERT_TRUE(myApp.allocated());
+    ASSERT_EQ(7, myApp.edgeNode()) << i;
+    myNetwork->del(myApp.theId);
+  }
+}
+
 } // namespace qr
 } // namespace uiiit
