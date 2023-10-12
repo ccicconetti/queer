@@ -2,6 +2,7 @@
 
 import pandas as pd
 import sys
+from os import getenv
 
 data = pd.read_csv(sys.stdin)
 
@@ -25,14 +26,6 @@ metrics = [
 for metric in metrics:
     grouped_df = data.groupby(["algorithm", "arrival-rate"])
 
-    # raw data (e.g., for boxplots or distributions)
-    for (algorithm, arrival_rate), values in grouped_df:
-        values[metric].to_csv(
-            f"post/{metric}-{algorithm}-{arrival_rate}-raw.dat",
-            header=False,
-            index=False,
-        )
-
     # summary statistics
     grouped = grouped_df[metric]
     outdata = dict()
@@ -49,3 +42,14 @@ for metric in metrics:
                 for y_value in y_values:
                     outfile.write(f" {y_value}")
                 outfile.write("\n")
+
+    if getenv("NORAW"):
+        continue
+
+    # raw data (e.g., for boxplots or distributions)
+    for (algorithm, arrival_rate), values in grouped_df:
+        values[metric].to_csv(
+            f"post/{metric}-{algorithm}-{arrival_rate}-raw.dat",
+            header=False,
+            index=False,
+        )
