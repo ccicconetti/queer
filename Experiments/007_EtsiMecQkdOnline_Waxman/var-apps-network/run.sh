@@ -41,11 +41,11 @@ for x in $algos ; do
     --alpha 0.4 \
     --beta 0.4 \
     --max-distance 100 \
-    --max-capacity 30 \
+    --max-capacity 50 \
     --app-spec ../applications.dat \
     --arrival-rate $a \
     --edge-nodes 10 \
-    --edge-processing U(3,7) \
+    --edge-processing 100 \
     --algo $x \
     "
 
