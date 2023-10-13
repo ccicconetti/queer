@@ -6,8 +6,11 @@ from os import getenv
 
 data = pd.read_csv(sys.stdin)
 
-print(f"algorithm    : {data['algorithm'].unique()}")
-print(f"arrival_rates: {data['arrival-rate'].unique()}")
+groups = getenv("KEYS").split(",")
+assert len(groups) == 2
+
+for group in groups:
+    print(f"{group} values: {data[group].unique()}")
 
 data["capacity-res"] = data["capacity-res"] / data["capacity-tot"]
 data["processing-res"] = data["processing-res"] / data["processing-tot"]
@@ -24,19 +27,19 @@ metrics = [
 ]
 
 for metric in metrics:
-    grouped_df = data.groupby(["algorithm", "arrival-rate"])
+    grouped_df = data.groupby(groups)
 
     # summary statistics
     grouped = grouped_df[metric]
     outdata = dict()
-    for (algorithm, arrival_rate), value in grouped.mean().items():
-        outdata.setdefault(algorithm, dict())
-        outdata[algorithm][arrival_rate] = [value]
-    for (algorithm, arrival_rate), value in grouped.std().items():
-        outdata[algorithm][arrival_rate].append(value)
+    for (group1, group2), value in grouped.mean().items():
+        outdata.setdefault(group1, dict())
+        outdata[group1][group2] = [value]
+    for (group1, group2), value in grouped.std().items():
+        outdata[group1][group2].append(value)
 
-    for algorithm, xy_values in outdata.items():
-        with open(f"post/{metric}-{algorithm}.dat", "w") as outfile:
+    for group1, xy_values in outdata.items():
+        with open(f"post/{metric}-{group1}.dat", "w") as outfile:
             for x_value, y_values in xy_values.items():
                 outfile.write(f"{x_value}")
                 for y_value in y_values:
@@ -47,9 +50,9 @@ for metric in metrics:
         continue
 
     # raw data (e.g., for boxplots or distributions)
-    for (algorithm, arrival_rate), values in grouped_df:
+    for (group1, group2), values in grouped_df:
         values[metric].to_csv(
-            f"post/{metric}-{algorithm}-{arrival_rate}-raw.dat",
+            f"post/{metric}-{group1}-{group2}-raw.dat",
             header=False,
             index=False,
         )
