@@ -23,7 +23,7 @@ if [ ! -x $MAIN ] ; then
   exit 1
 fi
 
-arrival_rates="0.0001 0.0002 0.0005 0.001 0.002 0.005"
+arrival_rates="0.0001389 0.000278 0.0004167 0.00056 0.0006945 0.0008334 0.0009722 0.001111 0.00125 0.001389"
 algos="policy-014-k-1 policy-014-k-3 policy-015 policy-015-reuse"
 
 for a in $arrival_rates ; do
