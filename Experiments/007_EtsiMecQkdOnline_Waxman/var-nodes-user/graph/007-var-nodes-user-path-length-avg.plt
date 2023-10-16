@@ -125,13 +125,13 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Arrival rate (apps/h)" 
+set xlabel "User nodes" 
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ 0.400000 : 5.10000 ] noreverse writeback
+set xrange [ 4.900000 : 25.10000 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
-set ylabel "Blocking probability" 
+set ylabel "Average path length (hops)"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
@@ -168,10 +168,10 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-## Last datafile plotted: "../post/blocking-probability-policy-014-k-1.dat"
+## Last datafile plotted: "../post/path-length-avg-policy-014-k-1.dat"
 plot  \
-  '../post/blocking-probability-policy-014-k-1.dat' u ($1*3600):2 w lp lc 1 lt 1 lw 1 pt 4 title "014|k=1",\
-  '../post/blocking-probability-policy-014-k-3.dat' u ($1*3600):2 w lp lc 2 lt 1 lw 1 pt 5 title "014|k=3",\
-  '../post/blocking-probability-policy-015.dat' u ($1*3600):2 w lp lc 3 lt 1 lw 1 pt 6 title "015",\
-  '../post/blocking-probability-policy-015-reuse.dat' u ($1*3600):2 w lp lc 4 lt 1 lw 1 pt 7 title "015|reuse"
+  '../post/path-length-avg-policy-014-k-1.dat' u ($1):2 w lp lc 1 lt 1 lw 1 pt 4 title "014|k=1",\
+  '../post/path-length-avg-policy-014-k-3.dat' u ($1):2 w lp lc 2 lt 1 lw 1 pt 5 title "014|k=3",\
+  '../post/path-length-avg-policy-015.dat' u ($1):2 w lp lc 3 lt 1 lw 1 pt 6 title "015",\
+  '../post/path-length-avg-policy-015-reuse.dat' u ($1):2 w lp lc 4 lt 1 lw 1 pt 7 title "015|reuse"
 #    EOF

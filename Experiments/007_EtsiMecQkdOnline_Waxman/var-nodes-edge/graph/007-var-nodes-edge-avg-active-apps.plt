@@ -47,7 +47,7 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed left center vertical Right noreverse enhanced autotitle nobox
+set key fixed left top vertical Right noreverse enhanced autotitle nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
@@ -125,17 +125,17 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Arrival rate (apps/h)" 
+set xlabel "Edge nodes" 
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ 0.400000 : 5.10000 ] noreverse writeback
+set xrange [ 4.900000 : 25.10000 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
-set ylabel "Signalling rate (links/app)"
+set ylabel "Active applications"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ 0 : 3.5 ] noreverse writeback
+set yrange [ * : * ] noreverse writeback
 set y2range [ * : * ] noreverse writeback
 set zlabel "" 
 set zlabel  font "" textcolor lt -1 norotate
@@ -168,10 +168,10 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-## Last datafile plotted: "../post/signalling-rate-policy-014-k-1.dat"
+## Last datafile plotted: "../post/avg-active-apps-policy-014-k-1.dat"
 plot  \
-  '../post/signalling-rate-policy-014-k-1.dat' u ($1*3600):2 w lp lc 1 lt 1 lw 1 pt 4 title "014|k=1",\
-  '../post/signalling-rate-policy-014-k-3.dat' u ($1*3600):2 w lp lc 2 lt 1 lw 1 pt 5 title "014|k=3",\
-  '../post/signalling-rate-policy-015.dat' u ($1*3600):2 w lp lc 3 lt 1 lw 1 pt 6 title "015",\
-  '../post/signalling-rate-policy-015-reuse.dat' u ($1*3600):2 w lp lc 4 lt 1 lw 1 pt 7 title "015|reuse"
+  '../post/avg-active-apps-policy-014-k-1.dat' u ($1):2 w lp lc 1 lt 1 lw 1 pt 4 title "014|k=1",\
+  '../post/avg-active-apps-policy-014-k-3.dat' u ($1):2 w lp lc 2 lt 1 lw 1 pt 5 title "014|k=3",\
+  '../post/avg-active-apps-policy-015.dat' u ($1):2 w lp lc 3 lt 1 lw 1 pt 6 title "015",\
+  '../post/avg-active-apps-policy-015-reuse.dat' u ($1):2 w lp lc 4 lt 1 lw 1 pt 7 title "015|reuse"
 #    EOF

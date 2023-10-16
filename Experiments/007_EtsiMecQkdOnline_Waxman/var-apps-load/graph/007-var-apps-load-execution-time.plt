@@ -135,7 +135,7 @@ set ylabel "Allocation execution time (s)"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
-set yrange [ * : * ] noreverse writeback
+set yrange [ 0 : 0.2 ] noreverse writeback
 set y2range [ * : * ] noreverse writeback
 set zlabel "" 
 set zlabel  font "" textcolor lt -1 norotate
