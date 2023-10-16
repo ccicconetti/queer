@@ -129,7 +129,7 @@ set xlabel "Blocking probability"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ * : * ] noreverse writeback
+set xrange [ 0 : 0.35 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
 set ylabel "CDF" 
 set ylabel  font "" textcolor lt -1 rotate
