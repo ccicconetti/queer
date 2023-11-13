@@ -47,7 +47,7 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed right bottom vertical Right noreverse enhanced autotitle nobox
+set key fixed center top vertical Right noreverse enhanced autotitle nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
@@ -125,7 +125,7 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Allocation execution time (s)"
+set xlabel "Average allocation execution time (ms)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
@@ -171,8 +171,8 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-0.001-raw.dat"
 plot \
-  "../post/execution-time-policy-014-k-1-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 1 title "014|k=1",\
-  "../post/execution-time-policy-014-k-3-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 2 title "014|k=3",\
-  "../post/execution-time-policy-015-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 3 title "015",\
-  "../post/execution-time-policy-015-reuse-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 4 title "015|reuse"
+  "../post/execution-time-policy-014-k-1-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
+  "../post/execution-time-policy-014-k-3-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
+  "../post/execution-time-policy-015-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 3 title "015",\
+  "../post/execution-time-policy-015-reuse-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 4 title "015|reuse"
 #    EOF

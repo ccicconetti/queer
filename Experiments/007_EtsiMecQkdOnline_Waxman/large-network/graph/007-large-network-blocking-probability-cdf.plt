@@ -170,8 +170,8 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-0.001-raw.dat"
 plot \
-  "../post/blocking-probability-policy-014-k-1-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 1 title "014|k=1",\
-  "../post/blocking-probability-policy-014-k-3-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 2 title "014|k=3",\
-  "../post/blocking-probability-policy-015-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 3 title "015",\
-  "../post/blocking-probability-policy-015-reuse-0.001-raw.dat" u 1:(1) smooth cnorm lw 2 lc 4 title "015|reuse"
+  "../post/blocking-probability-policy-014-k-1-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
+  "../post/blocking-probability-policy-014-k-3-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
+  "../post/blocking-probability-policy-015-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 3 title "015",\
+  "../post/blocking-probability-policy-015-reuse-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 4 title "015|reuse"
 #    EOF
