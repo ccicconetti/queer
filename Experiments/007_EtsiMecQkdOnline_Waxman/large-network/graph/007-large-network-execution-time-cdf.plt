@@ -47,7 +47,7 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed center top vertical Right noreverse enhanced autotitle nobox
+set key tmargin center horizontal noreverse enhanced autotitle nobox Left
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
@@ -129,7 +129,7 @@ set xlabel "Average allocation execution time (ms)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ * : * ] noreverse writeback
+set xrange [ * : 2.5 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
 set ylabel "CDF" 
 set ylabel  font "" textcolor lt -1 rotate
@@ -147,7 +147,6 @@ set rlabel ""
 set rlabel  font "" textcolor lt -1 norotate
 set rrange [ * : * ] noreverse writeback
 unset logscale
-set logscale x
 unset jitter
 set zero 1e-08
 set lmargin  -1

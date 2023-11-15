@@ -131,7 +131,7 @@ set x2label ""
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ 0.400000 : 5.10000 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
-set ylabel "Signalling rate (links/app)"
+set ylabel "Signaling rate (links/app)"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
@@ -170,7 +170,6 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/signalling-rate-policy-014-k-1.dat"
 plot  \
-  '../post/signalling-rate-policy-014-k-1.dat' u ($1*3600):2 w lp lc 1 lt 1 lw 1 pt 4 title "014|k=1",\
   '../post/signalling-rate-policy-014-k-3.dat' u ($1*3600):2 w lp lc 2 lt 1 lw 1 pt 5 title "014|k=3",\
   '../post/signalling-rate-policy-015.dat' u ($1*3600):2 w lp lc 3 lt 1 lw 1 pt 6 title "015",\
   '../post/signalling-rate-policy-015-reuse.dat' u ($1*3600):2 w lp lc 4 lt 1 lw 1 pt 7 title "015|reuse"

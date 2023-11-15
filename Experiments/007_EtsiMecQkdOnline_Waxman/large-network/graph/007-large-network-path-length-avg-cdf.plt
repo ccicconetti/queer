@@ -125,11 +125,11 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Blocking probability" 
+set xlabel "Average path length (hops)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ 0 : 0.35 ] noreverse writeback
+set xrange [ * : * ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
 set ylabel "CDF" 
 set ylabel  font "" textcolor lt -1 rotate
@@ -170,8 +170,8 @@ set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap 
 GNUTERM = "wxt"
 ## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-0.001-raw.dat"
 plot \
-  "../post/blocking-probability-policy-014-k-1-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
-  "../post/blocking-probability-policy-014-k-3-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
-  "../post/blocking-probability-policy-015-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 3 title "015",\
-  "../post/blocking-probability-policy-015-reuse-0.001-raw.dat" u 1:(1) smooth cnorm lw 3 lc 4 title "015|reuse"
+  "../post/path-length-avg-policy-014-k-1-0.001-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
+  "../post/path-length-avg-policy-014-k-3-0.001-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
+  "../post/path-length-avg-policy-015-0.001-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 3 title "015",\
+  "../post/path-length-avg-policy-015-reuse-0.001-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 4 title "015|reuse"
 #    EOF
