@@ -126,7 +126,7 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Signalling rate (links/app)"
+set xlabel "Signalling overhead (links/app)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate

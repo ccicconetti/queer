@@ -131,7 +131,7 @@ set x2label ""
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ 0.400000 : 5.10000 ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
-set ylabel "Signaling rate (links/app)"
+set ylabel "Signaling overhead (links/app)"
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
