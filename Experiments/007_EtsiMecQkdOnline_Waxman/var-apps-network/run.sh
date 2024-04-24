@@ -41,7 +41,7 @@ for x in $algos ; do
     --alpha 0.4 \
     --beta 0.4 \
     --max-distance 100 \
-    --max-capacity 50 \
+    --max-capacity 66.5 \
     --app-spec ../applications.dat \
     --arrival-rate $a \
     --edge-nodes 10 \

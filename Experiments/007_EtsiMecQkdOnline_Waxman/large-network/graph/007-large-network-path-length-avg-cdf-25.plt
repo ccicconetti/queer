@@ -16,14 +16,14 @@ unset clip points
 set clip one
 unset clip two
 set errorbars front 1.000000 
-set border 2 front lt black linewidth 1.000 dashtype solid
+set border 31 front lt black linewidth 1.000 dashtype solid
 set zdata 
 set ydata 
 set xdata 
 set y2data 
 set x2data 
-set boxwidth 0.5 absolute
-set style fill   solid 0.50 border lt -1
+set boxwidth
+set style fill  empty border
 set style rectangle back fc  bgnd fillstyle   solid 1.00 border lt -1
 set style circle radius graph 0.02 
 set style ellipse size graph 0.05, 0.03 angle 0 units xy
@@ -47,11 +47,10 @@ unset raxis
 set theta counterclockwise right
 set style parallel front  lt black linewidth 2.000 dashtype solid
 set key title "" center
-set key fixed right top vertical Right noreverse enhanced autotitle nobox
+set key tmargin center horizontal noreverse enhanced autotitle nobox Left
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 set key maxcolumns 0 maxrows 0
 set key noopaque
-unset key
 unset label
 unset arrow
 set style increment default
@@ -61,7 +60,7 @@ set style histogram clustered gap 2 title textcolor lt -1
 unset object
 set style textbox transparent margins  1.0,  1.0 border  lt -1 linewidth  1.0
 set offsets 0, 0, 0, 0
-set pointsize 0.5
+set pointsize 1
 set pointintervalbox 1
 set encoding default
 unset polar
@@ -88,7 +87,7 @@ set cntrparam firstlinetype 0 unsorted
 set cntrparam points 5
 set size ratio 0 1,1
 set origin 0,0
-set style data boxplot
+set style data points
 set style function lines
 unset xzeroaxis
 unset yzeroaxis
@@ -105,10 +104,9 @@ set my2tics default
 set mcbtics default
 set mrtics default
 set nomttics
-set xtics border in scale 0,0 nomirror norotate  autojustify
-set xtics  norangelimit 
-set xtics   ("014|k=1" 1.00000, "014|k=3" 2.00000, "015" 3.00000, "015|reuse" 4.00000)
-set ytics border in scale 1,0.5 nomirror norotate  autojustify
+set xtics border in scale 1,0.5 mirror norotate  autojustify
+set xtics  norangelimit autofreq 
+set ytics border in scale 1,0.5 mirror norotate  autojustify
 set ytics  norangelimit autofreq 
 set ztics border in scale 1,0.5 nomirror norotate  autojustify
 set ztics  norangelimit autofreq 
@@ -127,13 +125,13 @@ set timestamp  font "" textcolor lt -1 norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "" 
+set xlabel "Average path length (hops)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
-set ylabel "Blocking probability" 
+set ylabel "CDF" 
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate
@@ -170,10 +168,10 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-0.001-raw.dat"
+## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-25-raw.dat"
 plot \
-  "../post/blocking-probability-policy-014-k-1-0.001-raw.dat" u (1):1,\
-  "../post/blocking-probability-policy-014-k-3-0.001-raw.dat" u (2):1,\
-  "../post/blocking-probability-policy-015-0.001-raw.dat" u (3):1,\
-  "../post/blocking-probability-policy-015-reuse-0.001-raw.dat" u (4):1
+  "../post/path-length-avg-policy-014-k-1-25-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
+  "../post/path-length-avg-policy-014-k-3-25-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
+  "../post/path-length-avg-policy-015-25-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 3 title "015",\
+  "../post/path-length-avg-policy-015-reuse-25-raw.dat" u ($1/1):(1) smooth cnorm lw 3 lc 4 title "015|reuse"
 #    EOF

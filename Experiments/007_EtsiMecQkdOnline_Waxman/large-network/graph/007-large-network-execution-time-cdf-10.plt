@@ -129,7 +129,7 @@ set xlabel "Average allocation execution time (ms)"
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
-set xrange [ * : 2.5 ] noreverse writeback
+set xrange [ * : * ] noreverse writeback
 set x2range [ * : * ] noreverse writeback
 set ylabel "CDF" 
 set ylabel  font "" textcolor lt -1 rotate
@@ -168,10 +168,10 @@ set fontpath
 set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
-## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-0.001-raw.dat"
+## Last datafile plotted: "../post/blocking-probability-policy-014-k-1-10-raw.dat"
 plot \
-  "../post/execution-time-policy-014-k-1-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
-  "../post/execution-time-policy-014-k-3-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
-  "../post/execution-time-policy-015-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 3 title "015",\
-  "../post/execution-time-policy-015-reuse-0.001-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 4 title "015|reuse"
+  "../post/execution-time-policy-014-k-1-10-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 1 title "014|k=1",\
+  "../post/execution-time-policy-014-k-3-10-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 2 title "014|k=3",\
+  "../post/execution-time-policy-015-10-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 3 title "015",\
+  "../post/execution-time-policy-015-reuse-10-raw.dat" u ($1/1036.8*1000):(1) smooth cnorm lw 3 lc 4 title "015|reuse"
 #    EOF

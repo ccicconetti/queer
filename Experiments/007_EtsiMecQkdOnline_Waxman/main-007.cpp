@@ -231,11 +231,11 @@ void runExperiment(Data& aData, Parameters&& aParameters) {
 
   // create network
   std::vector<qr::Coordinate> myCoordinates;
-  const auto                  myMaxDistance = myRaii.in().theMaxDistance;
+  const auto                  myAttenuation = 0.0609;
   const auto                  myMaxCapacity = myRaii.in().theMaxCapacity;
   auto myNetwork = qr::makeCapacityNetworkWaxman<qr::MecQkdOnlineNetwork>(
-      [myMaxDistance, myMaxCapacity](const double d) {
-        return myMaxCapacity * std::exp(-d / myMaxDistance);
+      [myAttenuation, myMaxCapacity](const double d) {
+        return myMaxCapacity * std::exp(-d * myAttenuation);
       },
       myRaii.in().theSeed,
       myRaii.in().theNodes,
